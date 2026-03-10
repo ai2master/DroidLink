@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">DroidLink</string>
+    <string name="droidlink_companion">DroidLink Компаньон</string>
+    <string name="service_running">Служба запущена</string>
+    <string name="service_stopped">Служба остановлена</string>
+    <string name="start_service">Запустить службу</string>
+    <string name="stop_service">Остановить службу</string>
+    <string name="connection_status">Статус подключения</string>
+    <string name="server_address">Связь: только USB ADB</string>
+    <string name="permissions_required">Необходимы разрешения</string>
+    <string name="permissions_need_desc">Требуются разрешения на контакты, SMS и журнал вызовов</string>
+    <string name="grant_permissions">Предоставить разрешения</string>
+    <string name="permissions_granted">Разрешения предоставлены</string>
+    <string name="sync_info">Информация о синхронизации</string>
+    <string name="contacts_synced">Контакты: %d</string>
+    <string name="messages_synced">Сообщения: %d</string>
+    <string name="calllogs_synced">Журнал вызовов: %d</string>
+    <string name="notification_title">DroidLink работает</string>
+    <string name="notification_text">Режим USB - ожидание команд ADB</string>
+    <string name="notification_channel_name">Служба DroidLink</string>
+    <string name="notification_channel_description">Поддержание работы службы DroidLink</string>
+    <string name="ime_name">DroidLink Ввод</string>
+    <string name="ime_subtype_label">DroidLink (ввод с ПК)</string>
+    <string name="ime_banner">DroidLink Ввод - ввод текста с ПК</string>
+    <string name="security_title">Безопасность</string>
+    <string name="security_desc">• Только USB ADB связь, без сети\n• Телефон в пассивном режиме, отвечает только на команды ПК\n• Телефон не может получить доступ к буферу обмена ПК\n• Все операции инициируются и контролируются ПК\n• Нет разрешения INTERNET, нет доступа к сети</string>
+</resources>

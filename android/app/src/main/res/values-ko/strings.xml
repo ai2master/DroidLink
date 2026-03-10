@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">DroidLink</string>
+    <string name="droidlink_companion">DroidLink 컴패니언</string>
+    <string name="service_running">서비스 실행 중</string>
+    <string name="service_stopped">서비스 중지됨</string>
+    <string name="start_service">서비스 시작</string>
+    <string name="stop_service">서비스 중지</string>
+    <string name="connection_status">연결 상태</string>
+    <string name="server_address">통신 방식: 순수 USB ADB</string>
+    <string name="permissions_required">권한 필요</string>
+    <string name="permissions_need_desc">연락처, 문자, 통화 기록 권한이 필요합니다</string>
+    <string name="grant_permissions">권한 허용</string>
+    <string name="permissions_granted">권한 허용됨</string>
+    <string name="sync_info">동기화 정보</string>
+    <string name="contacts_synced">연락처: %d</string>
+    <string name="messages_synced">메시지: %d</string>
+    <string name="calllogs_synced">통화 기록: %d</string>
+    <string name="notification_title">DroidLink 실행 중</string>
+    <string name="notification_text">USB 모드 - ADB 명령 대기 중</string>
+    <string name="notification_channel_name">DroidLink 서비스</string>
+    <string name="notification_channel_description">DroidLink 서비스 유지</string>
+    <string name="ime_name">DroidLink 입력법</string>
+    <string name="ime_subtype_label">DroidLink (PC에서 입력)</string>
+    <string name="ime_banner">DroidLink 입력법 - PC에서 입력</string>
+    <string name="security_title">보안 정보</string>
+    <string name="security_desc">• 순수 USB ADB 통신, 네트워크 미사용\n• 폰은 수동 모드, PC 명령에만 응답\n• 폰이 PC 클립보드에 접근 불가\n• 모든 작업은 PC에서 시작 및 제어\n• INTERNET 권한 없음, 네트워크 접근 없음</string>
+</resources>

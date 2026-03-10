@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">DroidLink</string>
+    <string name="droidlink_companion">تطبيق DroidLink المرافق</string>
+    <string name="service_running">الخدمة قيد التشغيل</string>
+    <string name="service_stopped">الخدمة متوقفة</string>
+    <string name="start_service">بدء الخدمة</string>
+    <string name="stop_service">إيقاف الخدمة</string>
+    <string name="connection_status">حالة الاتصال</string>
+    <string name="server_address">طريقة الاتصال: USB ADB فقط</string>
+    <string name="permissions_required">الأذونات مطلوبة</string>
+    <string name="permissions_need_desc">يلزم إذن جهات الاتصال والرسائل وسجل المكالمات</string>
+    <string name="grant_permissions">منح الأذونات</string>
+    <string name="permissions_granted">تم منح الأذونات</string>
+    <string name="sync_info">معلومات المزامنة</string>
+    <string name="contacts_synced">جهات الاتصال: %d</string>
+    <string name="messages_synced">الرسائل: %d</string>
+    <string name="calllogs_synced">سجل المكالمات: %d</string>
+    <string name="notification_title">DroidLink قيد التشغيل</string>
+    <string name="notification_text">وضع USB - في انتظار أوامر ADB</string>
+    <string name="notification_channel_name">خدمة DroidLink</string>
+    <string name="notification_channel_description">الحفاظ على تشغيل خدمة DroidLink</string>
+    <string name="ime_name">إدخال DroidLink</string>
+    <string name="ime_subtype_label">DroidLink (إدخال من الكمبيوتر)</string>
+    <string name="ime_banner">إدخال DroidLink - إدخال النص من الكمبيوتر</string>
+    <string name="security_title">معلومات الأمان</string>
+    <string name="security_desc">• اتصال USB ADB فقط، بدون شبكة\n• الهاتف في الوضع السلبي، يستجيب فقط لأوامر الكمبيوتر\n• لا يمكن للهاتف الوصول إلى حافظة الكمبيوتر\n• جميع العمليات يبدأها ويتحكم بها الكمبيوتر\n• لا إذن INTERNET، لا وصول للشبكة</string>
+</resources>

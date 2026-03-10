@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- No network security config needed - DroidLink uses pure ADB USB, no network -->
+<network-security-config>
+</network-security-config>

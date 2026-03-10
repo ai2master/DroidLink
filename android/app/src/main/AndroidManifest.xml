@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- Permissions for contacts, SMS, and call logs -->
+    <uses-permission android:name="android.permission.READ_CONTACTS" />
+    <uses-permission android:name="android.permission.WRITE_CONTACTS" />
+    <uses-permission android:name="android.permission.READ_SMS" />
+    <uses-permission android:name="android.permission.READ_CALL_LOG" />
+    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
+
+    <!-- Foreground service and notifications -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <!-- No INTERNET permission needed - all communication is via ADB USB -->
+
+    <application
+        android:allowBackup="true"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="@xml/backup_rules"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.DroidLink"
+        android:networkSecurityConfig="@xml/network_security_config"
+        tools:targetApi="31">
+
+        <!-- Main Activity -->
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:label="@string/app_name"
+            android:theme="@style/Theme.DroidLink">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- Clipboard Activity (Android 10+ workaround for background clipboard restrictions) -->
+        <!-- Transparent, finishes immediately after clipboard operation -->
+        <activity
+            android:name=".clipboard.ClipboardActivity"
+            android:exported="true"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar"
+            android:taskAffinity=""
+            android:excludeFromRecents="true"
+            android:noHistory="true" />
+
+        <!-- DroidLink Foreground Service (content observers only, no HTTP server) -->
+        <service
+            android:name=".DroidLinkService"
+            android:enabled="true"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
+
+        <!-- Clipboard Broadcast Receiver (set/get clipboard via ADB broadcast) -->
+        <receiver
+            android:name=".clipboard.ClipboardReceiver"
+            android:enabled="true"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.droidlink.SET_CLIPBOARD" />
+                <action android:name="com.droidlink.GET_CLIPBOARD" />
+                <action android:name="com.droidlink.SET_CLIPBOARD_FILE" />
+                <action android:name="com.droidlink.GET_CLIPBOARD_FILE" />
+            </intent-filter>
+        </receiver>
+
+        <!-- Data Export Broadcast Receiver (dump data to temp files via ADB broadcast) -->
+        <receiver
+            android:name=".data.DataExportReceiver"
+            android:enabled="true"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.droidlink.EXPORT_CONTACTS" />
+                <action android:name="com.droidlink.EXPORT_MESSAGES" />
+                <action android:name="com.droidlink.EXPORT_CALLLOGS" />
+                <action android:name="com.droidlink.EXPORT_CHANGES" />
+            </intent-filter>
+        </receiver>
+
+        <!-- DroidLink Input Method Service (enables Chinese/CJK input from desktop via ADB) -->
+        <service
+            android:name=".ime.DroidLinkIME"
+            android:exported="true"
+            android:label="@string/ime_name"
+            android:permission="android.permission.BIND_INPUT_METHOD">
+            <intent-filter>
+                <action android:name="android.view.InputMethod" />
+            </intent-filter>
+            <meta-data
+                android:name="android.view.im"
+                android:resource="@xml/method" />
+        </service>
+    </application>
+
+</manifest>

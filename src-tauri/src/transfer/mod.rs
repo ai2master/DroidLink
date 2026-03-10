@@ -1,0 +1,828 @@
+use crate::adb;
+use crate::db::{Database, FolderSyncEntry, FolderSyncPair};
+use crossbeam_channel::{Sender, Receiver, unbounded};
+use log::{debug, error, info, warn};
+use notify::{Config, Event, RecommendedWatcher, RecursiveMode, Watcher};
+use parking_lot::Mutex;
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use std::path::{Path, PathBuf};
+use std::sync::Arc;
+use std::time::{Duration, Instant, SystemTime};
+use thiserror::Error;
+use walkdir::WalkDir;
+use xxhash_rust::xxh3::xxh3_64;
+
+/// ADB file transfer limits (researched):
+///
+/// | Factor              | Limit                  | Notes                                    |
+/// |---------------------|------------------------|------------------------------------------|
+/// | adb push/pull       | No hard limit          | Can transfer GB-sized files               |
+/// | USB 2.0 speed       | ~20-40 MB/s            | Most phones                               |
+/// | USB 3.0 speed       | ~200-500 MB/s          | Modern flagships                          |
+/// | Android ext4        | Up to 16 TB per file   | Internal storage                          |
+/// | FAT32 (SD card)     | 4 GB per file           | External SD limitation                    |
+/// | ADB buffer          | Chunked automatically  | ADB protocol handles chunking             |
+/// | Timeout             | None for data transfer | ADB keeps connection alive during I/O     |
+///
+/// Strategies to maximize transfer capability:
+/// 1. No artificial size limits in code - let adb push/pull handle any size
+/// 2. Report progress via file size tracking during transfer
+/// 3. For FAT32 SD cards, warn user about 4GB limit
+/// 4. Chunked transfer not needed - ADB handles this internally
+
+const IGNORE_FILE_NAME: &str = ".droidlinkignore";
+const VERSIONS_DIR: &str = ".droidlink_versions";
+
+#[derive(Debug, Error)]
+pub enum FolderSyncError {
+    #[error("Database error: {0}")]
+    DatabaseError(String),
+    #[error("ADB error: {0}")]
+    AdbError(String),
+    #[error("IO error: {0}")]
+    IoError(#[from] std::io::Error),
+    #[error("Sync pair not found: {0}")]
+    PairNotFound(String),
+    #[error("Invalid path: {0}")]
+    InvalidPath(String),
+    #[error("Watch error: {0}")]
+    WatchError(String),
+    #[error("UTF-8 error: {0}")]
+    Utf8Error(#[from] std::string::FromUtf8Error),
+}
+
+pub type Result<T> = std::result::Result<T, FolderSyncError>;
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SyncResult {
+    pub pushed: u64,
+    pub pulled: u64,
+    pub deleted_local: u64,
+    pub deleted_remote: u64,
+    pub conflicts: u64,
+    pub skipped: u64,
+    pub errors: Vec<String>,
+    pub bytes_pushed: u64,
+    pub bytes_pulled: u64,
+    pub duration_ms: u64,
+    pub speed_mbps: f64,
+}
+
+impl Default for SyncResult {
+    fn default() -> Self {
+        Self {
+            pushed: 0, pulled: 0, deleted_local: 0, deleted_remote: 0,
+            conflicts: 0, skipped: 0, errors: Vec::new(),
+            bytes_pushed: 0, bytes_pulled: 0, duration_ms: 0, speed_mbps: 0.0,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum FolderSyncEvent {
+    Started { pair_id: String },
+    Progress {
+        pair_id: String, current: u64, total: u64,
+        file: String, action: String, bytes: u64,
+    },
+    Completed { pair_id: String, result: SyncResult },
+    Error { pair_id: String, message: String },
+    FileChanged { pair_id: String, path: String },
+}
+
+/// Conflict resolution policy (configurable per sync pair, like Syncthing)
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub enum ConflictPolicy {
+    KeepBoth,
+    LocalWins,
+    RemoteWins,
+    NewestWins,
+}
+
+impl Default for ConflictPolicy {
+    fn default() -> Self { ConflictPolicy::KeepBoth }
+}
+
+impl ConflictPolicy {
+    pub fn from_str(s: &str) -> Self {
+        match s {
+            "local_wins" => Self::LocalWins,
+            "remote_wins" => Self::RemoteWins,
+            "newest_wins" => Self::NewestWins,
+            _ => Self::KeepBoth,
+        }
+    }
+    pub fn to_str(&self) -> &str {
+        match self {
+            Self::KeepBoth => "keep_both",
+            Self::LocalWins => "local_wins",
+            Self::RemoteWins => "remote_wins",
+            Self::NewestWins => "newest_wins",
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct ChangeItem {
+    pub relative_path: String,
+    pub action: ChangeAction,
+    pub local_path: Option<PathBuf>,
+    pub remote_path: Option<String>,
+    pub local_size: u64,
+    pub remote_size: u64,
+    pub local_modified: u64,
+    pub remote_modified: u64,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum ChangeAction {
+    PushNew,
+    PushModified,
+    PullNew,
+    PullModified,
+    DeleteLocal,
+    DeleteRemote,
+    Conflict,
+}
+
+// ========== Ignore Patterns (.droidlinkignore, like Syncthing's .stignore) ==========
+
+struct IgnorePatterns {
+    patterns: Vec<IgnoreRule>,
+}
+
+#[derive(Debug)]
+struct IgnoreRule {
+    pattern: String,
+    negate: bool,
+}
+
+impl IgnorePatterns {
+    fn new() -> Self { Self { patterns: Vec::new() } }
+
+    fn load_from_file(path: &Path) -> Self {
+        let mut p = Self::new();
+        // Always ignore internal dirs
+        p.add(VERSIONS_DIR, false);
+        p.add(IGNORE_FILE_NAME, false);
+        p.add(".DS_Store", false);
+        p.add("Thumbs.db", false);
+        p.add("desktop.ini", false);
+        p.add(".Trash-*", false);
+
+        let ignore_file = path.join(IGNORE_FILE_NAME);
+        if let Ok(content) = std::fs::read_to_string(&ignore_file) {
+            for line in content.lines() {
+                let line = line.trim();
+                if line.is_empty() || line.starts_with('#') { continue; }
+                if let Some(stripped) = line.strip_prefix('!') {
+                    p.add(stripped, true);
+                } else {
+                    p.add(line, false);
+                }
+            }
+        }
+        p
+    }
+
+    fn add(&mut self, pattern: &str, negate: bool) {
+        self.patterns.push(IgnoreRule { pattern: pattern.to_string(), negate });
+    }
+
+    fn is_ignored(&self, path: &str) -> bool {
+        let mut ignored = false;
+        for rule in &self.patterns {
+            if self.matches(path, &rule.pattern) {
+                ignored = !rule.negate;
+            }
+        }
+        ignored
+    }
+
+    fn matches(&self, path: &str, pattern: &str) -> bool {
+        let fname = path.rsplit('/').next().unwrap_or(path);
+        if pattern.contains('*') {
+            self.glob_match(path, pattern) || self.glob_match(fname, pattern)
+        } else if pattern.ends_with('/') {
+            let dir = pattern.trim_end_matches('/');
+            path.starts_with(dir) || path.contains(&format!("/{}/", dir)) || fname == dir
+        } else {
+            path == pattern || fname == pattern || path.starts_with(&format!("{}/", pattern))
+        }
+    }
+
+    fn glob_match(&self, text: &str, pattern: &str) -> bool {
+        let parts: Vec<&str> = pattern.split('*').collect();
+        if parts.len() == 1 { return text == pattern; }
+        let mut pos = 0;
+        for (i, part) in parts.iter().enumerate() {
+            if part.is_empty() { continue; }
+            if let Some(found) = text[pos..].find(part) {
+                if i == 0 && found != 0 { return false; }
+                pos += found + part.len();
+            } else {
+                return false;
+            }
+        }
+        parts.last().map_or(true, |last| last.is_empty() || pos == text.len())
+    }
+}
+
+// ========== File Info ==========
+
+#[derive(Debug)]
+struct LocalFileInfo {
+    path: PathBuf,
+    size: u64,
+    modified: u64,
+    hash: Option<String>,
+}
+
+#[derive(Debug)]
+struct RemoteFileInfo {
+    path: String,
+    size: u64,
+    modified: u64,
+}
+
+// ========== Transfer Info ==========
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TransferInfo {
+    pub usb_speed: String,
+    pub estimated_speed: String,
+    pub max_file_size: String,
+    pub filesystem: String,
+    pub has_fat32_limit: bool,
+}
+
+// ========== Watch Handle ==========
+
+struct WatchHandle {
+    _watcher: RecommendedWatcher,
+    stop_tx: Sender<()>,
+}
+
+// ========== FolderSync ==========
+
+pub struct FolderSync {
+    db: Arc<Database>,
+    active_watches: Arc<Mutex<HashMap<String, WatchHandle>>>,
+    event_tx: Option<Sender<FolderSyncEvent>>,
+}
+
+impl FolderSync {
+    pub fn new(db: Arc<Database>) -> Self {
+        Self { db, active_watches: Arc::new(Mutex::new(HashMap::new())), event_tx: None }
+    }
+
+    pub fn set_event_sender(&mut self, tx: Sender<FolderSyncEvent>) {
+        self.event_tx = Some(tx);
+    }
+
+    fn emit_event(&self, event: FolderSyncEvent) {
+        if let Some(tx) = &self.event_tx { let _ = tx.send(event); }
+    }
+
+    fn hash_local_file(path: &Path) -> Result<String> {
+        let data = std::fs::read(path)?;
+        Ok(format!("{:016x}", xxh3_64(&data)))
+    }
+
+    fn scan_local_directory(local_path: &Path, ignore: &IgnorePatterns) -> Result<HashMap<String, LocalFileInfo>> {
+        let mut files = HashMap::new();
+        for entry in WalkDir::new(local_path).follow_links(false).into_iter().filter_map(|e| e.ok()) {
+            if !entry.file_type().is_file() { continue; }
+            let full_path = entry.path();
+            let relative_path = full_path
+                .strip_prefix(local_path)
+                .map_err(|_| FolderSyncError::InvalidPath("relative path".to_string()))?
+                .to_str()
+                .ok_or_else(|| FolderSyncError::InvalidPath("non-UTF8 path".to_string()))?
+                .replace('\\', "/");
+
+            if ignore.is_ignored(&relative_path) { continue; }
+
+            if let Ok(metadata) = entry.metadata() {
+                let modified = metadata.modified().ok()
+                    .and_then(|t| t.duration_since(SystemTime::UNIX_EPOCH).ok())
+                    .map(|d| d.as_secs()).unwrap_or(0);
+                let hash = Self::hash_local_file(full_path).ok();
+                files.insert(relative_path, LocalFileInfo {
+                    path: full_path.to_path_buf(), size: metadata.len(), modified, hash,
+                });
+            }
+        }
+        Ok(files)
+    }
+
+    fn scan_remote_directory(serial: &str, remote_path: &str, ignore: &IgnorePatterns) -> Result<HashMap<String, RemoteFileInfo>> {
+        let mut files = HashMap::new();
+        let escaped = remote_path.replace("'", "'\\''");
+        let cmd = format!("find '{}' -type f -printf '%p\\t%s\\t%T@\\n' 2>/dev/null", escaped);
+        let output = adb::shell(serial, &cmd).map_err(|e| FolderSyncError::AdbError(e.to_string()))?;
+
+        let base = if remote_path.ends_with('/') { remote_path.to_string() } else { format!("{}/", remote_path) };
+
+        for line in output.lines() {
+            if line.trim().is_empty() { continue; }
+            let parts: Vec<&str> = line.split('\t').collect();
+            if parts.len() < 3 { continue; }
+
+            let full = parts[0];
+            let size = parts[1].parse::<u64>().unwrap_or(0);
+            let modified = parts[2].parse::<f64>().unwrap_or(0.0) as u64;
+
+            let relative = if full.starts_with(&base) {
+                full[base.len()..].to_string()
+            } else if full.starts_with(remote_path) {
+                full[remote_path.len()..].trim_start_matches('/').to_string()
+            } else { continue; };
+
+            if relative.is_empty() || ignore.is_ignored(&relative) { continue; }
+
+            files.insert(relative, RemoteFileInfo { path: full.to_string(), size, modified });
+        }
+        Ok(files)
+    }
+
+    /// Version a local file before overwriting/deleting (Syncthing-like file versioning)
+    fn version_local_file(local_path: &Path, pair_root: &Path) -> Result<()> {
+        if !local_path.exists() { return Ok(()); }
+
+        let version_dir = pair_root.join(VERSIONS_DIR);
+        std::fs::create_dir_all(&version_dir)?;
+
+        let relative = local_path.strip_prefix(pair_root)
+            .map_err(|_| FolderSyncError::InvalidPath("version relative path".to_string()))?;
+
+        let ts = chrono::Utc::now().format("%Y%m%d_%H%M%S");
+        let stem = relative.file_stem().and_then(|s| s.to_str()).unwrap_or("file");
+        let ext = relative.extension().and_then(|s| s.to_str());
+        let ext_suffix = ext.map(|e| format!(".{}", e)).unwrap_or_default();
+        let version_name = format!("{}~{}{}", stem, ts, ext_suffix);
+
+        let sub = if let Some(p) = relative.parent() { version_dir.join(p) } else { version_dir };
+        std::fs::create_dir_all(&sub)?;
+        std::fs::copy(local_path, sub.join(version_name))?;
+        Ok(())
+    }
+
+    /// Clean old versioned files beyond retention days
+    pub fn clean_old_versions(local_root: &Path, retention_days: u32) -> Result<u64> {
+        let dir = local_root.join(VERSIONS_DIR);
+        if !dir.exists() { return Ok(0); }
+        let cutoff = SystemTime::now() - Duration::from_secs(retention_days as u64 * 86400);
+        let mut cleaned = 0u64;
+        for entry in WalkDir::new(&dir).into_iter().filter_map(|e| e.ok()) {
+            if entry.file_type().is_file() {
+                if let Ok(m) = entry.metadata() {
+                    if let Ok(mod_time) = m.modified() {
+                        if mod_time < cutoff {
+                            if std::fs::remove_file(entry.path()).is_ok() { cleaned += 1; }
+                        }
+                    }
+                }
+            }
+        }
+        info!("Cleaned {} old version files from {}", cleaned, dir.display());
+        Ok(cleaned)
+    }
+
+    fn detect_changes(
+        local_files: &HashMap<String, LocalFileInfo>,
+        remote_files: &HashMap<String, RemoteFileInfo>,
+        index: &HashMap<String, FolderSyncEntry>,
+        direction: &str, remote_path: &str, local_path: &Path,
+    ) -> Vec<ChangeItem> {
+        let mut changes = Vec::new();
+
+        for (rel, local_info) in local_files {
+            let remote = remote_files.get(rel);
+            let idx = index.get(rel);
+            let full_remote = format!("{}/{}", remote_path.trim_end_matches('/'), rel);
+
+            match (remote, idx) {
+                (None, None) => {
+                    if direction == "bidirectional" || direction == "push" {
+                        changes.push(ChangeItem {
+                            relative_path: rel.clone(), action: ChangeAction::PushNew,
+                            local_path: Some(local_info.path.clone()), remote_path: Some(full_remote),
+                            local_size: local_info.size, remote_size: 0,
+                            local_modified: local_info.modified, remote_modified: 0,
+                        });
+                    }
+                }
+                (Some(r), None) => {
+                    changes.push(ChangeItem {
+                        relative_path: rel.clone(), action: ChangeAction::Conflict,
+                        local_path: Some(local_info.path.clone()), remote_path: Some(r.path.clone()),
+                        local_size: local_info.size, remote_size: r.size,
+                        local_modified: local_info.modified, remote_modified: r.modified,
+                    });
+                }
+                (None, Some(_)) => {
+                    if direction == "bidirectional" || direction == "pull" {
+                        changes.push(ChangeItem {
+                            relative_path: rel.clone(), action: ChangeAction::DeleteLocal,
+                            local_path: Some(local_info.path.clone()), remote_path: None,
+                            local_size: local_info.size, remote_size: 0,
+                            local_modified: local_info.modified, remote_modified: 0,
+                        });
+                    }
+                }
+                (Some(r), Some(entry)) => {
+                    let local_hash = local_info.hash.as_deref();
+                    let stored_hash = entry.local_hash.as_deref();
+                    let local_changed = local_hash != stored_hash;
+                    let stored_mod = entry.remote_modified.as_ref()
+                        .and_then(|s| s.parse::<u64>().ok()).unwrap_or(0);
+                    let remote_changed = r.modified != stored_mod
+                        || r.size != entry.remote_size.unwrap_or(0) as u64;
+
+                    if local_changed && remote_changed {
+                        changes.push(ChangeItem {
+                            relative_path: rel.clone(), action: ChangeAction::Conflict,
+                            local_path: Some(local_info.path.clone()), remote_path: Some(r.path.clone()),
+                            local_size: local_info.size, remote_size: r.size,
+                            local_modified: local_info.modified, remote_modified: r.modified,
+                        });
+                    } else if local_changed && (direction == "bidirectional" || direction == "push") {
+                        changes.push(ChangeItem {
+                            relative_path: rel.clone(), action: ChangeAction::PushModified,
+                            local_path: Some(local_info.path.clone()), remote_path: Some(r.path.clone()),
+                            local_size: local_info.size, remote_size: r.size,
+                            local_modified: local_info.modified, remote_modified: r.modified,
+                        });
+                    } else if remote_changed && (direction == "bidirectional" || direction == "pull") {
+                        changes.push(ChangeItem {
+                            relative_path: rel.clone(), action: ChangeAction::PullModified,
+                            local_path: Some(local_info.path.clone()), remote_path: Some(r.path.clone()),
+                            local_size: local_info.size, remote_size: r.size,
+                            local_modified: local_info.modified, remote_modified: r.modified,
+                        });
+                    }
+                }
+            }
+        }
+
+        for (rel, r) in remote_files {
+            if local_files.contains_key(rel) { continue; }
+            match index.get(rel) {
+                None => {
+                    if direction == "bidirectional" || direction == "pull" {
+                        changes.push(ChangeItem {
+                            relative_path: rel.clone(), action: ChangeAction::PullNew,
+                            local_path: Some(local_path.join(rel)), remote_path: Some(r.path.clone()),
+                            local_size: 0, remote_size: r.size,
+                            local_modified: 0, remote_modified: r.modified,
+                        });
+                    }
+                }
+                Some(_) => {
+                    if direction == "bidirectional" || direction == "push" {
+                        changes.push(ChangeItem {
+                            relative_path: rel.clone(), action: ChangeAction::DeleteRemote,
+                            local_path: None, remote_path: Some(r.path.clone()),
+                            local_size: 0, remote_size: r.size,
+                            local_modified: 0, remote_modified: r.modified,
+                        });
+                    }
+                }
+            }
+        }
+
+        changes
+    }
+
+    fn resolve_conflict(serial: &str, change: &ChangeItem, policy: &ConflictPolicy, local_root: &Path) -> Result<Option<ChangeAction>> {
+        match policy {
+            ConflictPolicy::KeepBoth => {
+                if let (Some(local), Some(remote)) = (&change.local_path, &change.remote_path) {
+                    let ts = chrono::Utc::now().format("%Y%m%d_%H%M%S");
+                    let conflict_path = PathBuf::from(format!("{}.sync-conflict-{}", local.display(), ts));
+                    if let Some(p) = conflict_path.parent() { let _ = std::fs::create_dir_all(p); }
+                    let _ = adb::pull(serial, remote, conflict_path.to_str().unwrap_or(""));
+                }
+                Ok(Some(ChangeAction::PushModified))
+            }
+            ConflictPolicy::LocalWins => Ok(Some(ChangeAction::PushModified)),
+            ConflictPolicy::RemoteWins => {
+                if let Some(local) = &change.local_path { let _ = Self::version_local_file(local, local_root); }
+                Ok(Some(ChangeAction::PullModified))
+            }
+            ConflictPolicy::NewestWins => {
+                if change.local_modified >= change.remote_modified {
+                    Ok(Some(ChangeAction::PushModified))
+                } else {
+                    if let Some(local) = &change.local_path { let _ = Self::version_local_file(local, local_root); }
+                    Ok(Some(ChangeAction::PullModified))
+                }
+            }
+        }
+    }
+
+    /// Perform full synchronization of a folder pair
+    pub fn sync_pair(&self, serial: &str, pair_id: &str) -> Result<SyncResult> {
+        let start = Instant::now();
+        info!("Starting folder sync for pair: {}", pair_id);
+        self.emit_event(FolderSyncEvent::Started { pair_id: pair_id.to_string() });
+
+        let pairs = self.db.get_folder_sync_pairs(Some(serial))
+            .map_err(|e| FolderSyncError::DatabaseError(e.to_string()))?;
+        let pair = pairs.iter().find(|p| p.id == pair_id)
+            .ok_or_else(|| FolderSyncError::PairNotFound(pair_id.to_string()))?.clone();
+
+        if !pair.enabled {
+            return Err(FolderSyncError::PairNotFound(format!("disabled: {}", pair_id)));
+        }
+
+        let local_path = Path::new(&pair.local_path);
+        let remote_path = &pair.remote_path;
+
+        std::fs::create_dir_all(local_path)?;
+        let _ = adb::create_dir(serial, remote_path);
+
+        let ignore = IgnorePatterns::load_from_file(local_path);
+        let local_files = Self::scan_local_directory(local_path, &ignore)?;
+        let remote_files = Self::scan_remote_directory(serial, remote_path, &ignore)?;
+
+        let index_entries = self.db.get_folder_sync_index(pair_id)
+            .map_err(|e| FolderSyncError::DatabaseError(e.to_string()))?;
+        let index: HashMap<String, FolderSyncEntry> = index_entries.into_iter()
+            .filter(|e| e.status != "deleted")
+            .map(|e| (e.relative_path.clone(), e)).collect();
+
+        let changes = Self::detect_changes(&local_files, &remote_files, &index, &pair.direction, remote_path, local_path);
+        let total = changes.len() as u64;
+        let mut result = SyncResult::default();
+        let mut current = 0u64;
+
+        let conflict_str = self.db.get_setting("conflict_policy").unwrap_or(None).unwrap_or_else(|| "keep_both".to_string());
+        let conflict_policy = ConflictPolicy::from_str(&conflict_str);
+
+        for change in changes {
+            current += 1;
+            self.emit_event(FolderSyncEvent::Progress {
+                pair_id: pair_id.to_string(), current, total,
+                file: change.relative_path.clone(), action: format!("{:?}", change.action),
+                bytes: change.local_size.max(change.remote_size),
+            });
+
+            match change.action {
+                ChangeAction::PushNew | ChangeAction::PushModified => {
+                    if let (Some(local), Some(remote)) = (&change.local_path, &change.remote_path) {
+                        if let Some(p) = PathBuf::from(remote).parent() {
+                            let _ = adb::create_dir(serial, p.to_str().unwrap_or(""));
+                        }
+                        match adb::push(serial, local.to_str().unwrap_or(""), remote) {
+                            Ok(_) => {
+                                result.pushed += 1;
+                                result.bytes_pushed += change.local_size;
+                                self.update_index_entry(&pair, &change.relative_path, local, Some(remote), serial)?;
+                            }
+                            Err(e) => result.errors.push(format!("Push: {} - {}", change.relative_path, e)),
+                        }
+                    }
+                }
+                ChangeAction::PullNew | ChangeAction::PullModified => {
+                    if let (Some(local), Some(remote)) = (&change.local_path, &change.remote_path) {
+                        if change.action == ChangeAction::PullModified && local.exists() {
+                            let _ = Self::version_local_file(local, local_path);
+                        }
+                        if let Some(p) = local.parent() { let _ = std::fs::create_dir_all(p); }
+                        match adb::pull(serial, remote, local.to_str().unwrap_or("")) {
+                            Ok(_) => {
+                                result.pulled += 1;
+                                result.bytes_pulled += change.remote_size;
+                                self.update_index_entry(&pair, &change.relative_path, local, Some(remote), serial)?;
+                            }
+                            Err(e) => result.errors.push(format!("Pull: {} - {}", change.relative_path, e)),
+                        }
+                    }
+                }
+                ChangeAction::DeleteLocal => {
+                    if let Some(local) = &change.local_path {
+                        let _ = Self::version_local_file(local, local_path);
+                        match std::fs::remove_file(local) {
+                            Ok(_) => { result.deleted_local += 1; self.remove_index_entry(pair_id, &change.relative_path)?; }
+                            Err(e) => result.errors.push(format!("DelLocal: {} - {}", change.relative_path, e)),
+                        }
+                    }
+                }
+                ChangeAction::DeleteRemote => {
+                    if let Some(remote) = &change.remote_path {
+                        match adb::delete_path(serial, remote) {
+                            Ok(_) => { result.deleted_remote += 1; self.remove_index_entry(pair_id, &change.relative_path)?; }
+                            Err(e) => result.errors.push(format!("DelRemote: {} - {}", change.relative_path, e)),
+                        }
+                    }
+                }
+                ChangeAction::Conflict => {
+                    result.conflicts += 1;
+                    match Self::resolve_conflict(serial, &change, &conflict_policy, local_path)? {
+                        Some(ChangeAction::PushModified) => {
+                            if let (Some(local), Some(remote)) = (&change.local_path, &change.remote_path) {
+                                if let Some(p) = PathBuf::from(remote).parent() {
+                                    let _ = adb::create_dir(serial, p.to_str().unwrap_or(""));
+                                }
+                                match adb::push(serial, local.to_str().unwrap_or(""), remote) {
+                                    Ok(_) => { result.pushed += 1; result.bytes_pushed += change.local_size;
+                                        self.update_index_entry(&pair, &change.relative_path, local, Some(remote), serial)?; }
+                                    Err(e) => result.errors.push(format!("ConflictPush: {} - {}", change.relative_path, e)),
+                                }
+                            }
+                        }
+                        Some(ChangeAction::PullModified) => {
+                            if let (Some(local), Some(remote)) = (&change.local_path, &change.remote_path) {
+                                if let Some(p) = local.parent() { let _ = std::fs::create_dir_all(p); }
+                                match adb::pull(serial, remote, local.to_str().unwrap_or("")) {
+                                    Ok(_) => { result.pulled += 1; result.bytes_pulled += change.remote_size;
+                                        self.update_index_entry(&pair, &change.relative_path, local, Some(remote), serial)?; }
+                                    Err(e) => result.errors.push(format!("ConflictPull: {} - {}", change.relative_path, e)),
+                                }
+                            }
+                        }
+                        _ => result.errors.push(format!("Unresolved: {}", change.relative_path)),
+                    }
+                }
+            }
+        }
+
+        let elapsed = start.elapsed();
+        result.duration_ms = elapsed.as_millis() as u64;
+        let total_bytes = result.bytes_pushed + result.bytes_pulled;
+        result.speed_mbps = if elapsed.as_secs_f64() > 0.0 {
+            (total_bytes as f64 / 1_048_576.0) / elapsed.as_secs_f64()
+        } else { 0.0 };
+
+        info!("Sync done [{}]: push={}, pull={}, conflicts={}, speed={:.1}MB/s, {}ms",
+            pair_id, result.pushed, result.pulled, result.conflicts, result.speed_mbps, result.duration_ms);
+
+        self.emit_event(FolderSyncEvent::Completed { pair_id: pair_id.to_string(), result: result.clone() });
+        Ok(result)
+    }
+
+    fn update_index_entry(&self, pair: &FolderSyncPair, rel: &str, local: &Path, remote: Option<&str>, serial: &str) -> Result<()> {
+        let local_hash = Self::hash_local_file(local).ok();
+        let meta = std::fs::metadata(local).ok();
+        let local_size = meta.as_ref().map(|m| m.len() as i64);
+        let local_modified = meta.and_then(|m| m.modified().ok())
+            .and_then(|t| t.duration_since(SystemTime::UNIX_EPOCH).ok())
+            .map(|d| d.as_secs().to_string());
+
+        let (remote_hash, remote_size, remote_modified) = if let Some(rp) = remote {
+            let cmd = format!("stat -c '%s %Y' '{}' 2>/dev/null", rp.replace("'", "'\\''"));
+            if let Ok(output) = adb::shell(serial, &cmd) {
+                let parts: Vec<&str> = output.trim().split(' ').collect();
+                (local_hash.clone(), parts.first().and_then(|s| s.parse().ok()), parts.get(1).map(|s| s.to_string()))
+            } else { (None, None, None) }
+        } else { (None, None, None) };
+
+        self.db.upsert_folder_sync_entry(&FolderSyncEntry {
+            pair_id: pair.id.clone(), relative_path: rel.to_string(),
+            local_hash, remote_hash, local_modified, remote_modified,
+            local_size, remote_size, status: "synced".to_string(),
+        }).map_err(|e| FolderSyncError::DatabaseError(e.to_string()))?;
+        Ok(())
+    }
+
+    fn remove_index_entry(&self, pair_id: &str, rel: &str) -> Result<()> {
+        self.db.upsert_folder_sync_entry(&FolderSyncEntry {
+            pair_id: pair_id.to_string(), relative_path: rel.to_string(),
+            local_hash: None, remote_hash: None, local_modified: None, remote_modified: None,
+            local_size: None, remote_size: None, status: "deleted".to_string(),
+        }).map_err(|e| FolderSyncError::DatabaseError(e.to_string()))?;
+        Ok(())
+    }
+
+    pub fn start_watching(&self, serial: &str, pair_id: &str) -> Result<()> {
+        let pairs = self.db.get_folder_sync_pairs(Some(serial))
+            .map_err(|e| FolderSyncError::DatabaseError(e.to_string()))?;
+        let pair = pairs.iter().find(|p| p.id == pair_id)
+            .ok_or_else(|| FolderSyncError::PairNotFound(pair_id.to_string()))?.clone();
+        if !pair.enabled { return Err(FolderSyncError::PairNotFound(format!("disabled: {}", pair_id))); }
+
+        let local_path = PathBuf::from(&pair.local_path);
+        if !local_path.exists() { return Err(FolderSyncError::InvalidPath(pair.local_path)); }
+
+        let (stop_tx, stop_rx): (Sender<()>, Receiver<()>) = unbounded();
+        let (event_tx, event_rx) = unbounded();
+        let event_sender = self.event_tx.clone();
+        let pair_id_clone = pair_id.to_string();
+
+        let mut watcher = RecommendedWatcher::new(
+            move |res: notify::Result<Event>| { if let Ok(e) = res { let _ = event_tx.send(e); } },
+            Config::default(),
+        ).map_err(|e| FolderSyncError::WatchError(e.to_string()))?;
+
+        watcher.watch(&local_path, RecursiveMode::Recursive)
+            .map_err(|e| FolderSyncError::WatchError(e.to_string()))?;
+
+        std::thread::spawn(move || {
+            let ignore = IgnorePatterns::load_from_file(&local_path);
+            loop {
+                crossbeam_channel::select! {
+                    recv(stop_rx) -> _ => break,
+                    recv(event_rx) -> event => {
+                        if let Ok(event) = event {
+                            for path in event.paths {
+                                if path.is_file() {
+                                    let rel = path.strip_prefix(&local_path)
+                                        .map(|p| p.to_string_lossy().replace('\\', "/")).unwrap_or_default();
+                                    if !rel.is_empty() && !ignore.is_ignored(&rel) {
+                                        if let Some(tx) = &event_sender {
+                                            let _ = tx.send(FolderSyncEvent::FileChanged {
+                                                pair_id: pair_id_clone.clone(), path: rel,
+                                            });
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        self.active_watches.lock().insert(pair_id.to_string(), WatchHandle { _watcher: watcher, stop_tx });
+        info!("Started watching pair: {}", pair_id);
+        Ok(())
+    }
+
+    pub fn stop_watching(&self, pair_id: &str) {
+        if let Some(h) = self.active_watches.lock().remove(pair_id) { let _ = h.stop_tx.send(()); }
+    }
+
+    pub fn stop_all_watching(&self) {
+        for (_, h) in self.active_watches.lock().drain() { let _ = h.stop_tx.send(()); }
+    }
+
+    /// Get USB transfer speed and filesystem info for a device
+    pub fn get_transfer_info(serial: &str) -> Result<TransferInfo> {
+        let usb = adb::shell(serial, "cat /sys/class/android_usb/android0/speed 2>/dev/null || echo unknown")
+            .map_err(|e| FolderSyncError::AdbError(e.to_string()))?;
+        let mount = adb::shell(serial, "mount | grep -E '/sdcard|/storage/emulated' | head -1")
+            .map_err(|e| FolderSyncError::AdbError(e.to_string()))?;
+
+        let is_fat32 = mount.to_lowercase().contains("vfat") || mount.to_lowercase().contains("fat32");
+        let usb_speed = usb.trim().to_string();
+        let est = match usb_speed.as_str() {
+            "480" => "USB 2.0 (~30 MB/s)", "5000" => "USB 3.0 (~300 MB/s)",
+            "10000" => "USB 3.1 (~500 MB/s)", _ => "未知",
+        };
+
+        Ok(TransferInfo {
+            usb_speed, estimated_speed: est.to_string(),
+            max_file_size: if is_fat32 { "4 GB (FAT32)" } else { "无限制 (ext4)" }.to_string(),
+            filesystem: if is_fat32 { "FAT32" } else { "ext4" }.to_string(),
+            has_fat32_limit: is_fat32,
+        })
+    }
+}
+
+impl Drop for FolderSync {
+    fn drop(&mut self) { self.stop_all_watching(); }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_ignore_patterns() {
+        let mut p = IgnorePatterns::new();
+        p.add("*.tmp", false);
+        p.add(".DS_Store", false);
+        p.add("node_modules", false);
+        assert!(p.is_ignored("test.tmp"));
+        assert!(p.is_ignored(".DS_Store"));
+        assert!(p.is_ignored("node_modules/package.json"));
+        assert!(!p.is_ignored("test.txt"));
+    }
+
+    #[test]
+    fn test_ignore_negate() {
+        let mut p = IgnorePatterns::new();
+        p.add("*.log", false);
+        p.add("important.log", true);
+        assert!(p.is_ignored("debug.log"));
+        assert!(!p.is_ignored("important.log"));
+    }
+
+    #[test]
+    fn test_conflict_policy() {
+        assert_eq!(ConflictPolicy::from_str("local_wins"), ConflictPolicy::LocalWins);
+        assert_eq!(ConflictPolicy::from_str("newest_wins"), ConflictPolicy::NewestWins);
+        assert_eq!(ConflictPolicy::from_str("unknown"), ConflictPolicy::KeepBoth);
+    }
+
+    #[test]
+    fn test_sync_result_default() {
+        let r = SyncResult::default();
+        assert_eq!(r.pushed, 0);
+        assert_eq!(r.bytes_pushed, 0);
+        assert_eq!(r.speed_mbps, 0.0);
+    }
+}

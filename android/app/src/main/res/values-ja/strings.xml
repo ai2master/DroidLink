@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">DroidLink</string>
+    <string name="droidlink_companion">DroidLink コンパニオン</string>
+    <string name="service_running">サービス実行中</string>
+    <string name="service_stopped">サービス停止中</string>
+    <string name="start_service">サービス開始</string>
+    <string name="stop_service">サービス停止</string>
+    <string name="connection_status">接続状態</string>
+    <string name="server_address">通信方式: 純粋なUSB ADB</string>
+    <string name="permissions_required">権限が必要です</string>
+    <string name="permissions_need_desc">連絡先、SMS、通話履歴の権限が必要です</string>
+    <string name="grant_permissions">権限を付与</string>
+    <string name="permissions_granted">権限付与済み</string>
+    <string name="sync_info">同期情報</string>
+    <string name="contacts_synced">連絡先: %d</string>
+    <string name="messages_synced">メッセージ: %d</string>
+    <string name="calllogs_synced">通話履歴: %d</string>
+    <string name="notification_title">DroidLinkが実行中</string>
+    <string name="notification_text">USBモード - ADBコマンド待機中</string>
+    <string name="notification_channel_name">DroidLinkサービス</string>
+    <string name="notification_channel_description">DroidLinkサービスを維持</string>
+    <string name="ime_name">DroidLink入力法</string>
+    <string name="ime_subtype_label">DroidLink (PCから入力)</string>
+    <string name="ime_banner">DroidLink入力法 - PCから入力</string>
+    <string name="security_title">セキュリティ情報</string>
+    <string name="security_desc">• 純粋なUSB ADB通信、ネットワーク不使用\n• スマホは受動モード、PCの指令にのみ応答\n• スマホはPCのクリップボードにアクセス不可\n• 全操作はPC側から開始・制御\n• INTERNETパーミッションなし、ネットワークなし</string>
+</resources>

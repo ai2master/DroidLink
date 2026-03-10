@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 默认语言: 中文简体 / Default language: Simplified Chinese -->
+<resources>
+    <string name="app_name">DroidLink</string>
+    <string name="droidlink_companion">DroidLink 伴侣应用</string>
+    <string name="service_running">服务运行中</string>
+    <string name="service_stopped">服务已停止</string>
+    <string name="start_service">启动服务</string>
+    <string name="stop_service">停止服务</string>
+    <string name="connection_status">连接状态</string>
+    <string name="server_address">通信方式: 纯 USB ADB</string>
+    <string name="permissions_required">需要权限</string>
+    <string name="permissions_need_desc">需要授予联系人、短信、通话记录权限</string>
+    <string name="grant_permissions">授予权限</string>
+    <string name="permissions_granted">权限已授予</string>
+    <string name="sync_info">同步信息</string>
+    <string name="contacts_synced">联系人: %d</string>
+    <string name="messages_synced">短信: %d</string>
+    <string name="calllogs_synced">通话记录: %d</string>
+    <string name="notification_title">DroidLink 正在运行</string>
+    <string name="notification_text">纯 USB 模式 - 等待 ADB 命令</string>
+    <string name="notification_channel_name">DroidLink 服务</string>
+    <string name="notification_channel_description">保持 DroidLink 服务运行</string>
+    <string name="ime_name">DroidLink 输入法</string>
+    <string name="ime_subtype_label">DroidLink (从电脑输入)</string>
+    <string name="ime_banner">DroidLink 输入法 - 从电脑输入中文</string>
+    <string name="security_title">安全说明</string>
+    <string name="security_desc">• 纯 USB ADB 通信，不使用网络\n• 手机端为被动模式，仅响应电脑端指令\n• 手机无法主动读写电脑剪贴板或传输文件\n• 所有操作由电脑端发起和控制\n• 无 INTERNET 权限，无网络连接</string>
+</resources>
