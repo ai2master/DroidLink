@@ -104,7 +104,7 @@ pub fn run() {
 
             // 初始化文件夹同步
             // Initialize folder sync
-            let folder_sync = Arc::new(FolderSync::new(db.clone()));
+            let mut folder_sync_inner = FolderSync::new(db.clone());
 
             // 初始化设备监控器
             // Initialize device monitor
@@ -116,7 +116,8 @@ pub fn run() {
             sync_engine.set_event_sender(sync_tx);
 
             let (folder_tx, folder_rx) = crossbeam_channel::unbounded();
-            folder_sync.set_event_sender(folder_tx);
+            folder_sync_inner.set_event_sender(folder_tx);
+            let folder_sync = Arc::new(folder_sync_inner);
 
             // 设备监控事件
             // Device monitor events
