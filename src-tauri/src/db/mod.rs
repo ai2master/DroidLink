@@ -428,6 +428,12 @@ impl Database {
         Ok(rows)
     }
 
+    pub fn delete_message(&self, serial: &str, message_id: &str) -> DbResult<()> {
+        let conn = self.conn.lock();
+        conn.execute("DELETE FROM messages WHERE device_serial = ?1 AND message_id = ?2", params![serial, message_id])?;
+        Ok(())
+    }
+
     pub fn get_message_hashes(&self, serial: &str) -> DbResult<Vec<(String, String)>> {
         let conn = self.conn.lock();
         let mut stmt = conn.prepare("SELECT message_id, hash FROM messages WHERE device_serial = ?1")?;
@@ -467,6 +473,12 @@ impl Database {
             })
         })?.collect::<SqlResult<Vec<_>>>()?;
         Ok(rows)
+    }
+
+    pub fn delete_call_log(&self, serial: &str, call_id: &str) -> DbResult<()> {
+        let conn = self.conn.lock();
+        conn.execute("DELETE FROM call_logs WHERE device_serial = ?1 AND call_id = ?2", params![serial, call_id])?;
+        Ok(())
     }
 
     pub fn get_call_log_hashes(&self, serial: &str) -> DbResult<Vec<(String, String)>> {

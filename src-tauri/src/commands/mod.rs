@@ -1,6 +1,6 @@
 use std::sync::Arc;
 use serde_json::Value;
-use tauri::State;
+use tauri::{State, Manager};
 
 use crate::app_state::AppState;
 use crate::adb;

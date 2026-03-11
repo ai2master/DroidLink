@@ -1,5 +1,5 @@
 use crate::adb;
-use crate::db::{Database, Contact, Message, CallLog};
+use crate::db::{Database, ContactRecord, MessageRecord, CallLogRecord};
 use crossbeam_channel::Sender;
 use log::{debug, error, info, warn};
 use parking_lot::Mutex;
@@ -143,11 +143,13 @@ impl SyncEngine {
 
         let running = Arc::new(AtomicBool::new(true));
         let running_clone = running.clone();
-        let serial = serial.to_string();
+        let serial_owned = serial.to_string();
+        let serial_for_insert = serial_owned.clone();
         let db = self.db.clone();
         let event_tx = self.event_tx.clone();
 
         std::thread::spawn(move || {
+            let serial = serial_owned;
             info!("Starting auto-sync for device: {} (pure ADB)", serial);
 
             let has_companion = Self::check_companion(&serial);
@@ -203,7 +205,7 @@ impl SyncEngine {
         });
 
         active.insert(
-            serial.to_string(),
+            serial_for_insert,
             SyncHandle { running },
         );
     }
@@ -300,9 +302,9 @@ impl SyncEngine {
         let existing_contacts = self.db.get_contacts(serial)
             .map_err(|e| SyncError::Database(e.to_string()))?;
 
-        let mut existing_map: HashMap<String, Contact> = existing_contacts
+        let mut existing_map: HashMap<String, ContactRecord> = existing_contacts
             .into_iter()
-            .map(|c| (c.id.clone(), c))
+            .map(|c| (c.contact_id.clone(), c))
             .collect();
 
         for (idx, contact_with_hash) in contacts.iter().enumerate() {
@@ -314,20 +316,21 @@ impl SyncEngine {
             };
 
             if needs_update {
-                let contact = Contact {
-                    id: contact_with_hash.id.clone(),
-                    device_serial: serial.to_string(),
-                    display_name: contact_with_hash.display_name.clone(),
-                    phone_numbers: serde_json::to_string(&contact_with_hash.phone_numbers)
-                        .unwrap_or_default(),
-                    emails: serde_json::to_string(&contact_with_hash.emails)
-                        .unwrap_or_default(),
-                    photo_uri: contact_with_hash.photo_uri.clone(),
-                    last_modified: chrono::Utc::now().timestamp(),
-                };
+                let phone_json = serde_json::to_string(&contact_with_hash.phone_numbers)
+                    .unwrap_or_default();
+                let email_json = serde_json::to_string(&contact_with_hash.emails)
+                    .unwrap_or_default();
 
-                self.db.save_contact(&contact)
-                    .map_err(|e| SyncError::Database(e.to_string()))?;
+                self.db.upsert_contact(
+                    serial,
+                    &contact_with_hash.id,
+                    &contact_with_hash.display_name,
+                    &phone_json,
+                    &email_json,
+                    "",
+                    "{}",
+                    &contact_with_hash.hash,
+                ).map_err(|e| SyncError::Database(e.to_string()))?;
                 synced += 1;
             }
 
@@ -344,7 +347,7 @@ impl SyncEngine {
         }
 
         for (contact_id, _) in existing_map {
-            self.db.delete_contact(&contact_id)
+            self.db.delete_contact(serial, &contact_id)
                 .map_err(|e| SyncError::Database(e.to_string()))?;
         }
 
@@ -396,12 +399,12 @@ impl SyncEngine {
         let total = messages.len() as u64;
         let mut synced = 0u64;
 
-        let existing_messages = self.db.get_messages(serial)
+        let existing_messages = self.db.get_messages(serial, None)
             .map_err(|e| SyncError::Database(e.to_string()))?;
 
-        let mut existing_map: HashMap<String, Message> = existing_messages
+        let mut existing_map: HashMap<String, MessageRecord> = existing_messages
             .into_iter()
-            .map(|m| (m.id.clone(), m))
+            .map(|m| (m.message_id.clone(), m))
             .collect();
 
         for (idx, msg_with_hash) in messages.iter().enumerate() {
@@ -413,21 +416,19 @@ impl SyncEngine {
             };
 
             if needs_update {
-                let message = Message {
-                    id: msg_with_hash.id.clone(),
-                    device_serial: serial.to_string(),
-                    thread_id: msg_with_hash.thread_id.clone(),
-                    address: msg_with_hash.address.clone(),
-                    body: msg_with_hash.body.clone(),
-                    date: msg_with_hash.date,
-                    date_sent: msg_with_hash.date_sent,
-                    type_: msg_with_hash.type_,
-                    read: msg_with_hash.read,
-                    last_modified: chrono::Utc::now().timestamp(),
-                };
-
-                self.db.save_message(&message)
-                    .map_err(|e| SyncError::Database(e.to_string()))?;
+                self.db.upsert_message(
+                    serial,
+                    &msg_with_hash.id,
+                    &msg_with_hash.thread_id,
+                    &msg_with_hash.address,
+                    "",
+                    &msg_with_hash.body,
+                    &msg_with_hash.date.to_string(),
+                    &msg_with_hash.date_sent.to_string(),
+                    msg_with_hash.type_,
+                    if msg_with_hash.read { 1 } else { 0 },
+                    &msg_with_hash.hash,
+                ).map_err(|e| SyncError::Database(e.to_string()))?;
                 synced += 1;
             }
 
@@ -444,7 +445,7 @@ impl SyncEngine {
         }
 
         for (msg_id, _) in existing_map {
-            self.db.delete_message(&msg_id)
+            self.db.delete_message(serial, &msg_id)
                 .map_err(|e| SyncError::Database(e.to_string()))?;
         }
 
@@ -499,9 +500,9 @@ impl SyncEngine {
         let existing_logs = self.db.get_call_logs(serial)
             .map_err(|e| SyncError::Database(e.to_string()))?;
 
-        let mut existing_map: HashMap<String, CallLog> = existing_logs
+        let mut existing_map: HashMap<String, CallLogRecord> = existing_logs
             .into_iter()
-            .map(|c| (c.id.clone(), c))
+            .map(|c| (c.call_id.clone(), c))
             .collect();
 
         for (idx, log_with_hash) in call_logs.iter().enumerate() {
@@ -513,19 +514,16 @@ impl SyncEngine {
             };
 
             if needs_update {
-                let call_log = CallLog {
-                    id: log_with_hash.id.clone(),
-                    device_serial: serial.to_string(),
-                    number: log_with_hash.number.clone(),
-                    cached_name: log_with_hash.cached_name.clone(),
-                    type_: log_with_hash.type_,
-                    date: log_with_hash.date,
-                    duration: log_with_hash.duration,
-                    last_modified: chrono::Utc::now().timestamp(),
-                };
-
-                self.db.save_call_log(&call_log)
-                    .map_err(|e| SyncError::Database(e.to_string()))?;
+                self.db.upsert_call_log(
+                    serial,
+                    &log_with_hash.id,
+                    &log_with_hash.number,
+                    log_with_hash.cached_name.as_deref().unwrap_or(""),
+                    log_with_hash.type_,
+                    &log_with_hash.date.to_string(),
+                    log_with_hash.duration,
+                    &log_with_hash.hash,
+                ).map_err(|e| SyncError::Database(e.to_string()))?;
                 synced += 1;
             }
 
@@ -542,7 +540,7 @@ impl SyncEngine {
         }
 
         for (log_id, _) in existing_map {
-            self.db.delete_call_log(&log_id)
+            self.db.delete_call_log(serial, &log_id)
                 .map_err(|e| SyncError::Database(e.to_string()))?;
         }
 
@@ -815,10 +813,10 @@ impl SyncEngine {
 
     // ========== Hash Computation ==========
 
-    fn compute_contact_hash(contact: &Contact) -> String {
+    fn compute_contact_hash(contact: &ContactRecord) -> String {
         let phone_numbers: Vec<String> = serde_json::from_str(&contact.phone_numbers).unwrap_or_default();
         let emails: Vec<String> = serde_json::from_str(&contact.emails).unwrap_or_default();
-        Self::compute_contact_hash_raw(&contact.id, &contact.display_name, &phone_numbers, &emails)
+        Self::compute_contact_hash_raw(&contact.contact_id, &contact.display_name, &phone_numbers, &emails)
     }
 
     fn compute_contact_hash_raw(id: &str, display_name: &str, phone_numbers: &[String], emails: &[String]) -> String {
@@ -830,8 +828,10 @@ impl SyncEngine {
         format!("{:x}", xxh3_64(&data))
     }
 
-    fn compute_message_hash(message: &Message) -> String {
-        Self::compute_message_hash_raw(&message.id, &message.address, &message.body, message.date, message.type_, message.read)
+    fn compute_message_hash(message: &MessageRecord) -> String {
+        let date: i64 = message.date.parse().unwrap_or(0);
+        let read = message.read != 0;
+        Self::compute_message_hash_raw(&message.message_id, &message.address, &message.body, date, message.msg_type, read)
     }
 
     fn compute_message_hash_raw(id: &str, address: &str, body: &str, date: i64, type_: i32, read: bool) -> String {
@@ -845,8 +845,10 @@ impl SyncEngine {
         format!("{:x}", xxh3_64(&data))
     }
 
-    fn compute_call_log_hash(log: &CallLog) -> String {
-        Self::compute_call_log_hash_raw(&log.id, &log.number, log.cached_name.as_deref(), log.type_, log.date, log.duration)
+    fn compute_call_log_hash(log: &CallLogRecord) -> String {
+        let date: i64 = log.date.parse().unwrap_or(0);
+        let cached_name = if log.contact_name.is_empty() { None } else { Some(log.contact_name.as_str()) };
+        Self::compute_call_log_hash_raw(&log.call_id, &log.number, cached_name, log.call_type, date, log.duration)
     }
 
     fn compute_call_log_hash_raw(id: &str, number: &str, cached_name: Option<&str>, type_: i32, date: i64, duration: i64) -> String {

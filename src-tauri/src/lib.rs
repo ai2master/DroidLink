@@ -18,6 +18,7 @@ pub mod transfer;
 pub mod version;
 
 use std::sync::Arc;
+use tauri::{Manager, Emitter};
 
 use adb::DeviceMonitor;
 use clipboard::ClipboardBridge;
