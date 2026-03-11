@@ -493,7 +493,7 @@
     "step3Title": "完成",
     "step3Desc": "手机端应用已准备就绪",
     "permissionNote": "需要设备授权",
-    "permissionNoteDesc": "设备可能会要求您确认安装。如果手机屏幕上出现提示，请点击"允许"或"安装"。",
+    "permissionNoteDesc": "设备可能会要求您确认安装。如果手机屏幕上出现提示，请点击\u201c允许\u201d或\u201c安装\u201d。",
     "install": "安装手机端应用",
     "installing": "正在安装...",
     "installSuccess": "安装成功！",
