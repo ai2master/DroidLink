@@ -47,6 +47,9 @@
       "deb": {
         "depends": ["android-tools-adb"]
       },
+      "rpm": {
+        "depends": ["android-tools"]
+      },
       "appimage": {
         "bundleMediaFramework": false
       }

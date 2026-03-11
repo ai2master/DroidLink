@@ -72,7 +72,8 @@ jobs:
             patchelf \
             libssl-dev \
             libgtk-3-dev \
-            libayatana-appindicator3-dev
+            libayatana-appindicator3-dev \
+            rpm
 
       - name: Install npm dependencies
         run: npm ci || npm install
@@ -98,14 +99,30 @@ jobs:
           tauriScript: npx tauri
 
       # 上传构建产物 / Upload build artifacts
-      - name: Upload Linux artifacts
+      # 分开上传 Linux 产物，避免 AppImage 撑大总体积
+      # Upload Linux artifacts separately to show individual sizes
+      - name: Upload Linux DEB
         if: matrix.target == 'linux'
         uses: actions/upload-artifact@v4
         with:
-          name: DroidLink-linux
-          path: |
-            src-tauri/target/release/bundle/deb/*.deb
-            src-tauri/target/release/bundle/appimage/*.AppImage
+          name: DroidLink-linux-deb
+          path: src-tauri/target/release/bundle/deb/*.deb
+          if-no-files-found: warn
+
+      - name: Upload Linux RPM
+        if: matrix.target == 'linux'
+        uses: actions/upload-artifact@v4
+        with:
+          name: DroidLink-linux-rpm
+          path: src-tauri/target/release/bundle/rpm/*.rpm
+          if-no-files-found: warn
+
+      - name: Upload Linux AppImage
+        if: matrix.target == 'linux'
+        uses: actions/upload-artifact@v4
+        with:
+          name: DroidLink-linux-appimage
+          path: src-tauri/target/release/bundle/appimage/*.AppImage
           if-no-files-found: warn
 
       - name: Upload Windows artifacts
