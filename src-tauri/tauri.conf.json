@@ -10,7 +10,6 @@
     "frontendDist": "../dist"
   },
   "app": {
-    "title": "DroidLink",
     "windows": [
       {
         "title": "DroidLink - Android 手机管理",
