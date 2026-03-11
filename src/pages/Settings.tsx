@@ -198,7 +198,7 @@ export const Settings: React.FC = () => {
                   <InputNumber
                     min={1000000} max={50000000} step={1000000} style={{ width: '100%' }}
                     formatter={(value) => `${((value || 0) / 1000000).toFixed(1)} Mbps`}
-                    parser={(value) => parseFloat(value?.replace(' Mbps', '') || '0') * 1000000}
+                    parser={(value) => parseFloat(value?.replace(' Mbps', '') || '0') * 1000000 as any}
                   />
                 </Form.Item>
               </Card>

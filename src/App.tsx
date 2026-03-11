@@ -4,16 +4,16 @@ import { tauriInvoke, tauriListen } from './utils/tauri';
 import Sidebar from './components/Sidebar';
 import StatusBar from './components/StatusBar';
 import CompanionInstallPrompt from './components/CompanionInstallPrompt';
-import Dashboard from './pages/Dashboard';
-import Contacts from './pages/Contacts';
-import Messages from './pages/Messages';
-import CallLogs from './pages/CallLogs';
+import { Dashboard } from './pages/Dashboard';
+import { Contacts } from './pages/Contacts';
+import { Messages } from './pages/Messages';
+import { CallLogs } from './pages/CallLogs';
 import FileManager from './pages/FileManager';
 import FolderSync from './pages/FolderSync';
 import ScreenMirror from './pages/ScreenMirror';
 import Transfer from './pages/Transfer';
-import VersionHistory from './pages/VersionHistory';
-import Settings from './pages/Settings';
+import { VersionHistory } from './pages/VersionHistory';
+import { Settings } from './pages/Settings';
 
 function App() {
   const currentPage = useStore((s) => s.currentPage);

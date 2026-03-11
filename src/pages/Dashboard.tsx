@@ -23,7 +23,7 @@ import {
   PhoneOutlined,
   MessageOutlined,
   ContactsOutlined,
-  BatteryFullOutlined,
+  ThunderboltOutlined,
   AndroidOutlined,
   CheckCircleOutlined,
   ClockCircleOutlined,
@@ -31,7 +31,7 @@ import {
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { tauriInvoke } from '../utils/tauri';
-import { useStore } from '../stores/useStore';
+import { useStore, type SyncStatus } from '../stores/useStore';
 import { formatFileSize, formatRelativeTime } from '../utils/format';
 
 const { Title, Text } = Typography;
@@ -230,7 +230,7 @@ export const Dashboard: React.FC = () => {
             </Col>
             <Col span={6}>
               <Space>
-                <BatteryFullOutlined style={{ fontSize: 20, color: '#52c41a' }} />
+                <ThunderboltOutlined style={{ fontSize: 20, color: '#52c41a' }} />
                 <Statistic
                   title={t('dashboard.battery')}
                   value={connectedDevice.batteryLevel || 0}
@@ -337,7 +337,7 @@ export const Dashboard: React.FC = () => {
             <Card title={t('dashboard.syncStatus')} style={{ marginBottom: 24 }}>
               <Space direction="vertical" style={{ width: '100%' }} size="middle">
                 {['contacts', 'messages', 'call_logs', 'folders'].map((type) => {
-                  const status = syncStatuses?.[type];
+                  const status = syncStatuses?.[type] as (SyncStatus & { status?: string; lastSync?: string }) | undefined;
                   const labelKey = `dashboard.${type === 'call_logs' ? 'callLogs' : type === 'folders' ? 'folderSync' : type}`;
                   return (
                     <div
