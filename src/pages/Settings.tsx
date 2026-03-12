@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import {
   Card, Form, Switch, InputNumber, Button, Space, Typography, message,
-  Divider, Spin, Descriptions, Badge, Tag, Select,
+  Divider, Spin, Descriptions, Badge, Tag, Select, Radio, Input, Tooltip,
 } from 'antd';
 import {
   SettingOutlined, CheckCircleOutlined, CloseCircleOutlined,
-  SaveOutlined, GlobalOutlined,
+  SaveOutlined, GlobalOutlined, ToolOutlined, FolderOpenOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { supportedLanguages } from '../i18n';
@@ -31,6 +31,12 @@ interface AdbInfo {
   port: number;
   reused_server: boolean;
   version: string;
+  source: string;
+}
+
+interface ToolSources {
+  adb: string[];
+  scrcpy: string[];
 }
 
 interface SystemInfo {
@@ -64,23 +70,43 @@ export const Settings: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [changed, setChanged] = useState(false);
+  const [toolSources, setToolSources] = useState<ToolSources>({ adb: [], scrcpy: [] });
+  const [adbSource, setAdbSource] = useState('bundled');
+  const [adbCustomPath, setAdbCustomPath] = useState('');
+  const [scrcpySource, setScrcpySource] = useState('system');
+  const [scrcpyCustomPath, setScrcpyCustomPath] = useState('');
 
   useEffect(() => {
     loadSettings();
     loadSystemInfo();
+    loadToolSources();
   }, []);
 
   const loadSettings = async () => {
     setLoading(true);
     try {
-      const data = await tauriInvoke<SettingsData>('get_settings');
-      setSettings(data);
+      const data = await tauriInvoke<Record<string, string>>('get_settings');
+      setSettings(data as any);
       form.setFieldsValue(data);
+      // 读取工具路径设置 / Load tool path settings
+      if (data.adb_source) setAdbSource(data.adb_source);
+      if (data.adb_custom_path) setAdbCustomPath(data.adb_custom_path);
+      if (data.scrcpy_source) setScrcpySource(data.scrcpy_source);
+      if (data.scrcpy_custom_path) setScrcpyCustomPath(data.scrcpy_custom_path);
     } catch (error) {
       console.error('Failed to load settings:', error);
       message.error(t('common.error'));
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadToolSources = async () => {
+    try {
+      const sources = await tauriInvoke<ToolSources>('get_tool_sources');
+      setToolSources(sources);
+    } catch (error) {
+      console.error('Failed to load tool sources:', error);
     }
   };
 
@@ -110,12 +136,38 @@ export const Settings: React.FC = () => {
       const values = form.getFieldsValue();
       await tauriInvoke('set_settings', { settings: values });
       setSettings(values);
+
+      // 更新工具路径 / Update tool paths
+      await tauriInvoke('update_tool_paths', {
+        adbSource,
+        adbCustomPath: adbCustomPath || null,
+        scrcpySource,
+        scrcpyCustomPath: scrcpyCustomPath || null,
+      });
+
+      // 刷新 ADB 信息 / Refresh ADB info
+      await loadSystemInfo();
+
       setChanged(false);
       message.success(t('common.success'));
     } catch (error) {
       message.error(t('common.error'));
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleValidatePath = async (tool: string, path: string) => {
+    if (!path) return;
+    try {
+      const valid = await tauriInvoke<boolean>('validate_tool_path', { tool, path });
+      if (valid) {
+        message.success(t('settings.pathValid'));
+      } else {
+        message.warning(t('settings.invalidToolPath'));
+      }
+    } catch (error) {
+      message.error(t('settings.invalidToolPath'));
     }
   };
 
@@ -204,6 +256,88 @@ export const Settings: React.FC = () => {
               </Card>
             </Form>
 
+            {/* 工具路径配置 / Tool paths configuration */}
+            <Card type="inner" title={<><ToolOutlined style={{ marginRight: 8 }} />{t('settings.toolPaths')}</>} style={{ marginBottom: 16 }}>
+              <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+                <div>
+                  <Text strong style={{ display: 'block', marginBottom: 8 }}>{t('settings.adbSource')}</Text>
+                  <Radio.Group
+                    value={adbSource}
+                    onChange={(e) => { setAdbSource(e.target.value); setChanged(true); }}
+                  >
+                    <Space direction="vertical">
+                      <Radio value="bundled" disabled={!toolSources.adb.includes('bundled')}>
+                        {t('settings.bundledAdb')}
+                        <Text type="secondary" style={{ marginLeft: 8, fontSize: 12 }}>
+                          {t('settings.bundledAdbDesc')}
+                        </Text>
+                      </Radio>
+                      <Radio value="system" disabled={!toolSources.adb.includes('system')}>
+                        {t('settings.systemAdb')}
+                        <Text type="secondary" style={{ marginLeft: 8, fontSize: 12 }}>
+                          {t('settings.systemAdbDesc')}
+                        </Text>
+                      </Radio>
+                      <Radio value="custom">
+                        {t('settings.customAdb')}
+                      </Radio>
+                    </Space>
+                  </Radio.Group>
+                  {adbSource === 'custom' && (
+                    <Space.Compact style={{ width: '100%', marginTop: 8 }}>
+                      <Input
+                        value={adbCustomPath}
+                        onChange={(e) => { setAdbCustomPath(e.target.value); setChanged(true); }}
+                        placeholder={t('settings.adbCustomPath')}
+                        style={{ flex: 1 }}
+                      />
+                      <Tooltip title={t('settings.validatePath')}>
+                        <Button
+                          icon={<CheckCircleOutlined />}
+                          onClick={() => handleValidatePath('adb', adbCustomPath)}
+                        />
+                      </Tooltip>
+                    </Space.Compact>
+                  )}
+                </div>
+
+                <Divider style={{ margin: '8px 0' }} />
+
+                <div>
+                  <Text strong style={{ display: 'block', marginBottom: 8 }}>{t('settings.scrcpySource')}</Text>
+                  <Radio.Group
+                    value={scrcpySource}
+                    onChange={(e) => { setScrcpySource(e.target.value); setChanged(true); }}
+                  >
+                    <Space direction="vertical">
+                      <Radio value="system" disabled={!toolSources.scrcpy.includes('system')}>
+                        {t('settings.systemScrcpy')}
+                      </Radio>
+                      <Radio value="custom">
+                        {t('settings.customScrcpy')}
+                      </Radio>
+                    </Space>
+                  </Radio.Group>
+                  {scrcpySource === 'custom' && (
+                    <Space.Compact style={{ width: '100%', marginTop: 8 }}>
+                      <Input
+                        value={scrcpyCustomPath}
+                        onChange={(e) => { setScrcpyCustomPath(e.target.value); setChanged(true); }}
+                        placeholder={t('settings.scrcpyCustomPath')}
+                        style={{ flex: 1 }}
+                      />
+                      <Tooltip title={t('settings.validatePath')}>
+                        <Button
+                          icon={<CheckCircleOutlined />}
+                          onClick={() => handleValidatePath('scrcpy', scrcpyCustomPath)}
+                        />
+                      </Tooltip>
+                    </Space.Compact>
+                  )}
+                </div>
+              </Space>
+            </Card>
+
             {/* ADB 信息 / ADB info */}
             <Card type="inner" title={t('settings.adbInfo')} style={{ marginBottom: 16 }}>
               <Descriptions bordered column={1} size="small">
@@ -218,8 +352,10 @@ export const Settings: React.FC = () => {
                     <Descriptions.Item label={t('settings.adbPort')}>
                       <Tag>{systemInfo.adbInfo.port}</Tag>
                     </Descriptions.Item>
-                    <Descriptions.Item label={t('settings.adbBundled')}>
-                      {systemInfo.adbInfo.is_bundled ? <Tag color="blue">{t('common.yes')}</Tag> : <Tag>{t('common.no')}</Tag>}
+                    <Descriptions.Item label={t('settings.adbSource')}>
+                      {systemInfo.adbInfo.source === 'bundled' && <Tag color="blue">{t('settings.bundled')}</Tag>}
+                      {systemInfo.adbInfo.source === 'system' && <Tag color="green">{t('settings.system')}</Tag>}
+                      {systemInfo.adbInfo.source === 'custom' && <Tag color="orange">{t('settings.custom')}</Tag>}
                     </Descriptions.Item>
                     <Descriptions.Item label={t('settings.adbReused')}>
                       {systemInfo.adbInfo.reused_server ? <Tag color="green">{t('common.yes')}</Tag> : <Tag>{t('common.no')}</Tag>}

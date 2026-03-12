@@ -108,6 +108,9 @@ pub struct AdbPathInfo {
     /// ADB 版本号
     /// ADB version string
     pub version: String,
+    /// 当前使用的来源 (bundled / system / custom)
+    /// Current source in use
+    pub source: String,
 }
 
 // ========== ADB 路径解析与冲突避免 ==========
@@ -133,11 +136,69 @@ pub struct AdbPathInfo {
 const DEFAULT_ADB_PORT: u16 = 5037;
 const FALLBACK_ADB_PORT: u16 = 5038;
 
-/// 初始化 ADB：解析路径、处理端口冲突、确保服务器运行
-/// Initialize ADB: resolve path, handle port conflicts, ensure server is running
-pub fn init_adb(bundled_adb_dir: &Path) -> Result<AdbPathInfo> {
+/// 初始化 ADB：根据设置解析路径、处理端口冲突、确保服务器运行
+/// Initialize ADB: resolve path from settings, handle port conflicts, ensure server is running
+///
+/// adb_source: "bundled" | "system" | "custom"
+/// custom_path: 自定义 ADB 路径 (仅 adb_source="custom" 时使用)
+pub fn init_adb(bundled_adb_dir: &Path, adb_source: &str, custom_path: &str) -> Result<AdbPathInfo> {
     let bundled = bundled_adb_binary(bundled_adb_dir);
     let system_adb = find_system_adb();
+
+    // 根据设置决定使用哪个 ADB
+    // Resolve ADB binary based on settings
+    let (adb_path, source) = match adb_source {
+        "system" => {
+            if let Some(ref sys) = system_adb {
+                (sys.clone(), "system".to_string())
+            } else {
+                log::warn!("系统 ADB 未找到，回退到内置 / System ADB not found, falling back to bundled");
+                if bundled.exists() {
+                    (bundled.clone(), "bundled".to_string())
+                } else {
+                    return Err(AdbError::AdbNotFound);
+                }
+            }
+        }
+        "custom" => {
+            if !custom_path.is_empty() {
+                let custom = PathBuf::from(custom_path);
+                if custom.exists() {
+                    (custom, "custom".to_string())
+                } else {
+                    log::warn!("自定义 ADB 路径不存在: {}，回退到内置 / Custom ADB path not found: {}, falling back", custom_path, custom_path);
+                    if bundled.exists() {
+                        (bundled.clone(), "bundled".to_string())
+                    } else if let Some(ref sys) = system_adb {
+                        (sys.clone(), "system".to_string())
+                    } else {
+                        return Err(AdbError::AdbNotFound);
+                    }
+                }
+            } else {
+                log::warn!("自定义 ADB 路径为空，回退到内置 / Custom ADB path empty, falling back to bundled");
+                if bundled.exists() {
+                    (bundled.clone(), "bundled".to_string())
+                } else if let Some(ref sys) = system_adb {
+                    (sys.clone(), "system".to_string())
+                } else {
+                    return Err(AdbError::AdbNotFound);
+                }
+            }
+        }
+        _ => {
+            // "bundled" 或默认: 内置优先，回退到系统
+            // "bundled" or default: bundled first, fallback to system
+            if bundled.exists() {
+                (bundled.clone(), "bundled".to_string())
+            } else if let Some(ref sys) = system_adb {
+                log::info!("内置 ADB 未找到，使用系统 ADB / Bundled ADB not found, using system ADB");
+                (sys.clone(), "system".to_string())
+            } else {
+                return Err(AdbError::AdbNotFound);
+            }
+        }
+    };
 
     // 优先检测系统 ADB 服务器是否已运行
     // First check if a system ADB server is already running
@@ -145,37 +206,15 @@ pub fn init_adb(bundled_adb_dir: &Path) -> Result<AdbPathInfo> {
         log::info!("检测到系统 ADB 服务器已在端口 {} 运行 / Detected existing ADB server on port {}", DEFAULT_ADB_PORT, DEFAULT_ADB_PORT);
         (DEFAULT_ADB_PORT, true)
     } else {
-        // 尝试用内置 ADB 启动服务器
-        // Try to start server with bundled ADB
-        let adb_to_start = if bundled.exists() {
-            &bundled
-        } else if let Some(ref sys) = system_adb {
-            sys
-        } else {
-            return Err(AdbError::AdbNotFound);
-        };
-
-        match start_adb_server(adb_to_start, DEFAULT_ADB_PORT) {
+        match start_adb_server(&adb_path, DEFAULT_ADB_PORT) {
             Ok(()) => (DEFAULT_ADB_PORT, false),
             Err(_) => {
-                // 端口被占用，尝试备用端口
-                // Port occupied, try fallback port
                 log::warn!("端口 {} 被占用，尝试备用端口 {} / Port {} occupied, trying fallback port {}",
                     DEFAULT_ADB_PORT, FALLBACK_ADB_PORT, DEFAULT_ADB_PORT, FALLBACK_ADB_PORT);
-                start_adb_server(adb_to_start, FALLBACK_ADB_PORT)?;
+                start_adb_server(&adb_path, FALLBACK_ADB_PORT)?;
                 (FALLBACK_ADB_PORT, false)
             }
         }
-    };
-
-    // 决定使用哪个 ADB 二进制 (客户端)
-    // Decide which ADB binary to use (client)
-    let adb_path = if bundled.exists() {
-        bundled.clone()
-    } else if let Some(ref sys) = system_adb {
-        sys.clone()
-    } else {
-        return Err(AdbError::AdbNotFound);
     };
 
     // 缓存到全局变量
@@ -183,14 +222,14 @@ pub fn init_adb(bundled_adb_dir: &Path) -> Result<AdbPathInfo> {
     let _ = ADB_PATH.set(adb_path.clone());
     let _ = ADB_PORT.set(port);
 
-    let is_bundled = bundled.exists() && adb_path == bundled;
+    let is_bundled = source == "bundled";
 
     // 获取版本号
     // Get version string
     let version = get_adb_version(&adb_path, port).unwrap_or_else(|_| "unknown".to_string());
 
-    log::info!("ADB 初始化完成 / ADB initialized: path={:?}, port={}, bundled={}, reused_server={}",
-        adb_path, port, is_bundled, reused);
+    log::info!("ADB 初始化完成 / ADB initialized: path={:?}, port={}, source={}, reused_server={}",
+        adb_path, port, source, reused);
 
     Ok(AdbPathInfo {
         adb_path: adb_path.to_string_lossy().to_string(),
@@ -198,7 +237,36 @@ pub fn init_adb(bundled_adb_dir: &Path) -> Result<AdbPathInfo> {
         port,
         reused_server: reused,
         version,
+        source,
     })
+}
+
+/// 验证 ADB 二进制是否可用
+/// Validate an ADB binary path is usable
+pub fn validate_adb_path(path: &str) -> bool {
+    let p = Path::new(path);
+    if !p.exists() {
+        return false;
+    }
+    Command::new(p)
+        .arg("version")
+        .output()
+        .map(|o| o.status.success())
+        .unwrap_or(false)
+}
+
+/// 获取可用的 ADB 来源列表
+/// Get list of available ADB sources
+pub fn get_available_sources(bundled_adb_dir: &Path) -> Vec<String> {
+    let mut sources = Vec::new();
+    if bundled_adb_binary(bundled_adb_dir).exists() {
+        sources.push("bundled".to_string());
+    }
+    if find_system_adb().is_some() {
+        sources.push("system".to_string());
+    }
+    sources.push("custom".to_string()); // custom 始终可选 / always available
+    sources
 }
 
 /// 获取内置 ADB 二进制路径
@@ -304,12 +372,17 @@ pub fn get_adb_path_info() -> AdbPathInfo {
     let adb_path = get_adb_command();
     let port = get_adb_port();
     let version = get_adb_version(&adb_path, port).unwrap_or_else(|_| "unknown".to_string());
+    let path_str = adb_path.to_string_lossy().to_string();
+    // 通过路径判断来源 / Determine source from path
+    let is_bundled = path_str.contains("resources") && path_str.contains("adb");
+    let source = if is_bundled { "bundled" } else { "system" }.to_string();
     AdbPathInfo {
-        adb_path: adb_path.to_string_lossy().to_string(),
-        is_bundled: adb_path.to_string_lossy().contains("droidlink"),
+        adb_path: path_str,
+        is_bundled,
         port,
         reused_server: false,
         version,
+        source,
     }
 }
 

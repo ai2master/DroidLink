@@ -136,7 +136,7 @@ impl ScrcpyManager {
     /// 检查 scrcpy 是否可用
     /// Check if scrcpy is installed and available
     pub fn check_available() -> ScrcpyResult<String> {
-        let output = Command::new(scrcpy_binary())
+        let output = Command::new(&scrcpy_binary())
             .arg("--version")
             .output()
             .map_err(|_| ScrcpyError::NotFound)?;
@@ -159,7 +159,7 @@ impl ScrcpyManager {
         }
 
         let opts = options.unwrap_or_default();
-        let mut cmd = Command::new(scrcpy_binary());
+        let mut cmd = Command::new(&scrcpy_binary());
 
         // 设备选择 (仅 USB) / Device selection (USB only)
         cmd.arg("-s").arg(serial);
@@ -528,12 +528,55 @@ impl Drop for ScrcpyManager {
     }
 }
 
-fn scrcpy_binary() -> &'static str {
-    if cfg!(target_os = "windows") {
-        "scrcpy.exe"
-    } else {
-        "scrcpy"
+/// 全局 scrcpy 自定义路径 (设置后覆盖默认值)
+/// Global scrcpy custom path (overrides default when set)
+static SCRCPY_CUSTOM_PATH: std::sync::OnceLock<String> = std::sync::OnceLock::new();
+
+/// 设置 scrcpy 自定义路径
+/// Set custom scrcpy path from settings
+pub fn set_scrcpy_custom_path(path: &str) {
+    let _ = SCRCPY_CUSTOM_PATH.set(path.to_string());
+}
+
+/// scrcpy 来源模式 (system / custom)
+/// scrcpy source mode
+static SCRCPY_SOURCE: std::sync::OnceLock<String> = std::sync::OnceLock::new();
+
+/// 设置 scrcpy 来源
+/// Set scrcpy source mode
+pub fn set_scrcpy_source(source: &str) {
+    let _ = SCRCPY_SOURCE.set(source.to_string());
+}
+
+fn scrcpy_binary() -> String {
+    let source = SCRCPY_SOURCE.get().map(|s| s.as_str()).unwrap_or("system");
+    if source == "custom" {
+        if let Some(custom) = SCRCPY_CUSTOM_PATH.get() {
+            if !custom.is_empty() {
+                return custom.clone();
+            }
+        }
     }
+    // 默认系统 PATH / Default: system PATH
+    if cfg!(target_os = "windows") {
+        "scrcpy.exe".to_string()
+    } else {
+        "scrcpy".to_string()
+    }
+}
+
+/// 验证 scrcpy 路径是否可用
+/// Validate a scrcpy binary path
+pub fn validate_scrcpy_path(path: &str) -> bool {
+    let p = std::path::Path::new(path);
+    if !p.exists() {
+        return false;
+    }
+    Command::new(p)
+        .arg("--version")
+        .output()
+        .map(|o| o.status.success())
+        .unwrap_or(false)
 }
 
 /// Base64 编码 (用于 shell 安全传输文本)

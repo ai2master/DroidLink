@@ -34,7 +34,8 @@
     "targets": "all",
     "resources": [
       "resources/companion/DroidLinkCompanion.apk",
-      "resources/companion/version.txt"
+      "resources/companion/version.txt",
+      "resources/adb/*"
     ],
     "icon": [
       "icons/32x32.png",
@@ -45,10 +46,10 @@
     ],
     "linux": {
       "deb": {
-        "depends": ["android-tools-adb"]
+        "depends": []
       },
       "rpm": {
-        "depends": ["android-tools"]
+        "depends": []
       },
       "appimage": {
         "bundleMediaFramework": false

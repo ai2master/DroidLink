@@ -285,7 +285,11 @@ impl Database {
                 ('clipboard_sync', 'true'),
                 ('scrcpy_max_size', '1920'),
                 ('scrcpy_bit_rate', '8000000'),
-                ('language', 'zh-CN');
+                ('language', 'zh-CN'),
+                ('adb_source', 'bundled'),
+                ('adb_custom_path', ''),
+                ('scrcpy_source', 'system'),
+                ('scrcpy_custom_path', '');
             ",
         )?;
         Ok(())

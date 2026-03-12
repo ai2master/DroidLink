@@ -756,8 +756,6 @@ pub async fn install_companion_app(serial: String, app_handle: tauri::AppHandle)
 /// 获取内置 companion APK 的版本号
 /// Get the bundled companion APK version
 fn get_bundled_companion_version() -> String {
-    // Try to read version from version.txt next to the APK
-    // In dev mode, read from resources directory directly
     let paths = [
         "resources/companion/version.txt",
         "../resources/companion/version.txt",
@@ -768,4 +766,86 @@ fn get_bundled_companion_version() -> String {
         }
     }
     String::new()
+}
+
+// ========== 工具路径命令 ==========
+// ========== Tool Path Commands ==========
+
+/// 获取可用的工具来源列表
+/// Get available tool sources (which ADB/scrcpy sources are usable)
+#[tauri::command]
+pub async fn get_tool_sources(app_handle: tauri::AppHandle) -> Result<Value, String> {
+    let resource_dir = app_handle.path().resource_dir()
+        .map_err(|e| format!("Failed to get resource dir: {}", e))?;
+
+    let adb_sources = crate::adb::get_available_sources(&resource_dir);
+
+    // scrcpy: 检查系统是否有 scrcpy / Check if system has scrcpy
+    let mut scrcpy_sources = Vec::new();
+    if which::which(if cfg!(target_os = "windows") { "scrcpy.exe" } else { "scrcpy" }).is_ok() {
+        scrcpy_sources.push("system".to_string());
+    }
+    scrcpy_sources.push("custom".to_string());
+
+    Ok(serde_json::json!({
+        "adb": adb_sources,
+        "scrcpy": scrcpy_sources,
+    }))
+}
+
+/// 更新工具路径设置并重新初始化
+/// Update tool path settings and reinitialize
+#[tauri::command]
+pub async fn update_tool_paths(
+    adb_source: String,
+    adb_custom_path: Option<String>,
+    scrcpy_source: String,
+    scrcpy_custom_path: Option<String>,
+    state: State<'_, AppState>,
+    app_handle: tauri::AppHandle,
+) -> Result<Value, String> {
+    // 保存设置到数据库 / Save settings to database
+    state.db.set_setting("adb_source", &adb_source).map_err(|e| e.to_string())?;
+    state.db.set_setting("adb_custom_path", adb_custom_path.as_deref().unwrap_or("")).map_err(|e| e.to_string())?;
+    state.db.set_setting("scrcpy_source", &scrcpy_source).map_err(|e| e.to_string())?;
+    state.db.set_setting("scrcpy_custom_path", scrcpy_custom_path.as_deref().unwrap_or("")).map_err(|e| e.to_string())?;
+
+    // 重新初始化 ADB / Reinitialize ADB
+    let resource_dir = app_handle.path().resource_dir()
+        .map_err(|e| format!("Failed to get resource dir: {}", e))?;
+    let adb_result = crate::adb::init_adb(
+        &resource_dir,
+        &adb_source,
+        adb_custom_path.as_deref().unwrap_or(""),
+    );
+
+    // 更新 scrcpy 设置 / Update scrcpy settings
+    crate::scrcpy::set_scrcpy_source(&scrcpy_source);
+    if let Some(ref path) = scrcpy_custom_path {
+        if !path.is_empty() {
+            crate::scrcpy::set_scrcpy_custom_path(path);
+        }
+    }
+
+    match adb_result {
+        Ok(info) => Ok(serde_json::json!({
+            "success": true,
+            "adb": serde_json::to_value(&info).unwrap(),
+        })),
+        Err(e) => Ok(serde_json::json!({
+            "success": false,
+            "error": e.to_string(),
+        })),
+    }
+}
+
+/// 验证工具路径是否有效
+/// Validate a tool path before saving
+#[tauri::command]
+pub async fn validate_tool_path(tool: String, path: String) -> Result<bool, String> {
+    match tool.as_str() {
+        "adb" => Ok(crate::adb::validate_adb_path(&path)),
+        "scrcpy" => Ok(crate::scrcpy::validate_scrcpy_path(&path)),
+        _ => Err(format!("Unknown tool: {}", tool)),
+    }
 }

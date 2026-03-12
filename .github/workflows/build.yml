@@ -91,6 +91,31 @@ jobs:
             echo "1.0" > src-tauri/resources/companion/version.txt
           fi
 
+      # 下载 Google 官方 platform-tools (内含 ADB)
+      # Download official Google platform-tools (contains ADB)
+      - name: Download platform-tools
+        shell: bash
+        run: |
+          mkdir -p src-tauri/resources/adb
+          if [ "${{ matrix.target }}" == "windows" ]; then
+            curl -L -o platform-tools.zip "https://dl.google.com/android/repository/platform-tools-latest-windows.zip"
+            unzip -q platform-tools.zip
+            cp platform-tools/adb.exe src-tauri/resources/adb/
+            cp platform-tools/AdbWinApi.dll src-tauri/resources/adb/
+            cp platform-tools/AdbWinUsbApi.dll src-tauri/resources/adb/
+          elif [ "${{ matrix.target }}" == "macos" ]; then
+            curl -L -o platform-tools.zip "https://dl.google.com/android/repository/platform-tools-latest-darwin.zip"
+            unzip -q platform-tools.zip
+            cp platform-tools/adb src-tauri/resources/adb/
+            chmod +x src-tauri/resources/adb/adb
+          elif [ "${{ matrix.target }}" == "linux" ]; then
+            curl -L -o platform-tools.zip "https://dl.google.com/android/repository/platform-tools-latest-linux.zip"
+            unzip -q platform-tools.zip
+            cp platform-tools/adb src-tauri/resources/adb/
+            chmod +x src-tauri/resources/adb/adb
+          fi
+          ls -lah src-tauri/resources/adb/
+
       - name: Build Tauri app
         uses: tauri-apps/tauri-action@v0
         env:

@@ -64,28 +64,40 @@ pub fn run() {
 
             log::info!("Data path: {:?}", data_path);
 
-            // ========== 初始化 ADB (避免与系统 ADB 冲突) ==========
-            // ========== Initialize ADB (avoid conflict with system ADB) ==========
-            //
-            // 内置 ADB 放在应用资源目录下 (resources/adb/)
-            // 解析策略: 检测现有服务器 -> 复用或启动 -> 缓存路径和端口
-            // Bundled ADB lives in app resource dir (resources/adb/)
-            // Strategy: detect existing server -> reuse or start -> cache path and port
+            // 先初始化数据库，读取工具路径设置
+            // Initialize database first to read tool path settings
+            let db = Arc::new(Database::new(&data_path).expect("Failed to initialize database"));
+
+            // 从数据库读取 ADB/scrcpy 来源设置
+            // Read ADB/scrcpy source settings from database
+            let adb_source = db.get_setting("adb_source")
+                .ok().flatten().unwrap_or_else(|| "bundled".to_string());
+            let adb_custom_path = db.get_setting("adb_custom_path")
+                .ok().flatten().unwrap_or_default();
+
+            // ========== 初始化 ADB (根据用户设置选择来源) ==========
+            // ========== Initialize ADB (source based on user settings) ==========
             let resource_dir = app.path().resource_dir().unwrap_or_else(|_| data_dir.clone());
-            match adb::init_adb(&resource_dir) {
+            match adb::init_adb(&resource_dir, &adb_source, &adb_custom_path) {
                 Ok(info) => {
-                    log::info!("ADB 初始化成功 / ADB initialized: path={}, port={}, bundled={}, reused={}",
-                        info.adb_path, info.port, info.is_bundled, info.reused_server);
+                    log::info!("ADB 初始化成功 / ADB initialized: path={}, port={}, source={}, reused={}",
+                        info.adb_path, info.port, info.source, info.reused_server);
                 }
                 Err(e) => {
-                    // ADB 不可用时仍继续启动 (用户可手动安装)
-                    // Continue startup even if ADB unavailable (user can install manually)
                     log::warn!("ADB 初始化失败 / ADB init failed (app will still start): {}", e);
                 }
             }
 
-            // 初始化数据库 / Initialize database
-            let db = Arc::new(Database::new(&data_path).expect("Failed to initialize database"));
+            // 初始化 scrcpy 路径设置
+            // Initialize scrcpy path settings
+            let scrcpy_source = db.get_setting("scrcpy_source")
+                .ok().flatten().unwrap_or_else(|| "system".to_string());
+            let scrcpy_custom_path = db.get_setting("scrcpy_custom_path")
+                .ok().flatten().unwrap_or_default();
+            scrcpy::set_scrcpy_source(&scrcpy_source);
+            if !scrcpy_custom_path.is_empty() {
+                scrcpy::set_scrcpy_custom_path(&scrcpy_custom_path);
+            }
 
             // 初始化版本管理器 / Initialize version manager
             let version_manager = Arc::new(VersionManager::new(db.clone(), &data_path));
@@ -336,6 +348,10 @@ pub fn run() {
             commands::set_settings,
             commands::get_data_path,
             commands::open_in_explorer,
+            // 工具路径命令 / Tool path commands
+            commands::get_tool_sources,
+            commands::update_tool_paths,
+            commands::validate_tool_path,
         ])
         .run(tauri::generate_context!())
         .expect("error while running DroidLink");
