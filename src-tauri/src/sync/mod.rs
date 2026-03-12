@@ -660,6 +660,11 @@ impl SyncEngine {
     }
 
     fn fetch_phone_numbers(serial: &str, contact_id: &str) -> Result<Vec<String>> {
+        // 验证 contact_id 为纯数字，防止 shell 注入
+        // Validate contact_id is numeric to prevent shell injection
+        if !contact_id.chars().all(|c| c.is_ascii_digit()) {
+            return Err(SyncError::Parse(format!("Invalid contact_id: {}", contact_id)));
+        }
         let output = adb::shell(
             serial,
             &format!(
@@ -681,6 +686,11 @@ impl SyncEngine {
     }
 
     fn fetch_emails(serial: &str, contact_id: &str) -> Result<Vec<String>> {
+        // 验证 contact_id 为纯数字，防止 shell 注入
+        // Validate contact_id is numeric to prevent shell injection
+        if !contact_id.chars().all(|c| c.is_ascii_digit()) {
+            return Err(SyncError::Parse(format!("Invalid contact_id: {}", contact_id)));
+        }
         let output = adb::shell(
             serial,
             &format!(

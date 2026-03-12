@@ -58,10 +58,12 @@
             android:foregroundServiceType="dataSync" />
 
         <!-- Clipboard Broadcast Receiver (set/get clipboard via ADB broadcast) -->
+        <!-- exported=false: only ADB shell (with system-level UID) can reach this via explicit -n targeting -->
+        <!-- Third-party apps on the device CANNOT send broadcasts to this receiver -->
         <receiver
             android:name=".clipboard.ClipboardReceiver"
             android:enabled="true"
-            android:exported="true">
+            android:exported="false">
             <intent-filter>
                 <action android:name="com.droidlink.SET_CLIPBOARD" />
                 <action android:name="com.droidlink.GET_CLIPBOARD" />
@@ -71,10 +73,11 @@
         </receiver>
 
         <!-- Data Export Broadcast Receiver (dump data to temp files via ADB broadcast) -->
+        <!-- exported=false: only ADB shell can trigger data exports, not third-party apps -->
         <receiver
             android:name=".data.DataExportReceiver"
             android:enabled="true"
-            android:exported="true">
+            android:exported="false">
             <intent-filter>
                 <action android:name="com.droidlink.EXPORT_CONTACTS" />
                 <action android:name="com.droidlink.EXPORT_MESSAGES" />
