@@ -120,7 +120,7 @@ jobs:
           cd android
           gradle assembleRelease --no-daemon --stacktrace
           mkdir -p ../src-tauri/resources/companion
-          cp app/build/outputs/apk/release/app-release-unsigned.apk ../src-tauri/resources/companion/DroidLinkCompanion.apk
+          cp app/build/outputs/apk/release/app-release.apk ../src-tauri/resources/companion/DroidLinkCompanion.apk
           echo "${{ env.VERSION }}" > ../src-tauri/resources/companion/version.txt
           ls -lah ../src-tauri/resources/companion/
 
