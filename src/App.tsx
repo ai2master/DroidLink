@@ -18,9 +18,13 @@ import { Settings } from './pages/Settings';
 function App() {
   const currentPage = useStore((s) => s.currentPage);
   const setConnectedDevice = useStore((s) => s.setConnectedDevice);
+  const setCompanionInstalled = useStore((s) => s.setCompanionInstalled);
   const updateSyncStatus = useStore((s) => s.updateSyncStatus);
   const setClipboardContent = useStore((s) => s.setClipboardContent);
   const setSettings = useStore((s) => s.setSettings);
+  const connectedDevice = useStore((s) => s.connectedDevice);
+  const showCompanionPrompt = useStore((s) => s.showCompanionPrompt);
+  const setShowCompanionPrompt = useStore((s) => s.setShowCompanionPrompt);
 
   // Companion app 安装提示状态
   // Companion app install prompt state
@@ -56,19 +60,22 @@ function App() {
     // 监听 companion 状态事件 - 设备连接后后端自动检查并通知
     // Listen for companion status event - backend checks after device connects
     const unlistenCompanion = tauriListen('companion-status', (status: any) => {
-      if (status && !status.installed) {
-        // Companion 未安装，弹出安装提示（需要用户同意才安装）
-        // Companion not installed, show install prompt (requires user consent)
-        setCompanionDeviceSerial(status.serial || '');
-        tauriInvoke<any>('get_device_info', { serial: status.serial })
-          .then((info: any) => {
-            setCompanionDeviceName(info?.display_name || info?.model || status.serial);
-            setCompanionPromptVisible(true);
-          })
-          .catch(() => {
-            setCompanionDeviceName(status.serial);
-            setCompanionPromptVisible(true);
-          });
+      if (status) {
+        setCompanionInstalled(!!status.installed);
+        if (!status.installed) {
+          // Companion 未安装，弹出安装提示（需要用户同意才安装）
+          // Companion not installed, show install prompt (requires user consent)
+          setCompanionDeviceSerial(status.serial || '');
+          tauriInvoke<any>('get_device_info', { serial: status.serial })
+            .then((info: any) => {
+              setCompanionDeviceName(info?.display_name || info?.model || status.serial);
+              setCompanionPromptVisible(true);
+            })
+            .catch(() => {
+              setCompanionDeviceName(status.serial);
+              setCompanionPromptVisible(true);
+            });
+        }
       }
     });
 
@@ -93,6 +100,16 @@ function App() {
       unlistenClipboard.then((fn) => fn());
     };
   }, []);
+
+  // When a page requests companion install, show the prompt
+  useEffect(() => {
+    if (showCompanionPrompt && connectedDevice) {
+      setCompanionDeviceSerial(connectedDevice.serial);
+      setCompanionDeviceName(connectedDevice.displayName || connectedDevice.model);
+      setCompanionPromptVisible(true);
+      setShowCompanionPrompt(false);
+    }
+  }, [showCompanionPrompt]);
 
   const renderPage = () => {
     switch (currentPage) {
@@ -127,7 +144,7 @@ function App() {
         serial={companionDeviceSerial}
         deviceName={companionDeviceName}
         onClose={() => setCompanionPromptVisible(false)}
-        onInstalled={() => setCompanionPromptVisible(false)}
+        onInstalled={() => { setCompanionInstalled(true); setCompanionPromptVisible(false); }}
       />
     </div>
   );

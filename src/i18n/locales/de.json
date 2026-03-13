@@ -71,7 +71,10 @@
     "copy": "Kopieren",
     "path": "Pfad",
     "goUp": "Übergeordnet",
-    "clean": "Bereinigen"
+    "clean": "Bereinigen",
+    "companionRequired": "Begleit-App erforderlich",
+    "companionRequiredDesc": "Diese Funktion erfordert die DroidLink Begleit-App auf Ihrem Telefon. Bitte installieren Sie sie zuerst und erteilen Sie die erforderlichen Berechtigungen.",
+    "installCompanion": "Begleit-App installieren"
   },
   "dashboard": {
     "title": "Dashboard",

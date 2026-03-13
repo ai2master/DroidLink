@@ -71,7 +71,10 @@
     "copy": "复制",
     "path": "路径",
     "goUp": "上级",
-    "clean": "清理"
+    "clean": "清理",
+    "companionRequired": "需要安装伴侣应用",
+    "companionRequiredDesc": "此功能需要在手机上安装 DroidLink 伴侣应用才能使用。请先安装伴侣应用，然后在手机上授予相关权限。",
+    "installCompanion": "安装伴侣应用"
   },
   "dashboard": {
     "title": "控制台",

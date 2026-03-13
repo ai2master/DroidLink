@@ -46,7 +46,7 @@ interface Version {
 
 export const Contacts: React.FC = () => {
   const { t } = useTranslation();
-  const { connectedDevice } = useStore();
+  const { connectedDevice, companionInstalled, setShowCompanionPrompt } = useStore();
   const toast = useToast();
   const { confirm } = useConfirm();
   const [contacts, setContacts] = useState<Contact[]>([]);
@@ -286,6 +286,22 @@ export const Contacts: React.FC = () => {
             {t('common.connectDeviceTitle')}
           </h3>
           <p className="text-[var(--font-size-base)]">{t('contacts.connectDeviceDesc')}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (companionInstalled === false) {
+    return (
+      <div className="flex items-center justify-center" style={{ padding: '100px 20px' }}>
+        <div className="text-center py-12 text-gray-400">
+          <h3 className="text-[var(--font-size-lg)] font-semibold mb-2 text-gray-900">
+            {t('common.companionRequired')}
+          </h3>
+          <p className="text-[var(--font-size-base)] mb-4">{t('common.companionRequiredDesc')}</p>
+          <Button variant="primary" onClick={() => setShowCompanionPrompt(true)}>
+            {t('common.installCompanion')}
+          </Button>
         </div>
       </div>
     );

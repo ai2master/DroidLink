@@ -71,7 +71,10 @@
     "copy": "نسخ",
     "path": "المسار",
     "goUp": "المجلد الأصل",
-    "clean": "تنظيف"
+    "clean": "تنظيف",
+    "companionRequired": "يلزم تطبيق مساعد",
+    "companionRequiredDesc": "تتطلب هذه الميزة تثبيت تطبيق DroidLink المساعد على هاتفك. يرجى تثبيته أولاً ومنح الأذونات اللازمة.",
+    "installCompanion": "تثبيت التطبيق المساعد"
   },
   "dashboard": {
     "title": "لوحة التحكم",

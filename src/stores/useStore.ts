@@ -29,6 +29,10 @@ interface AppStore {
   connectedDevice: DeviceInfo | null;
   setConnectedDevice: (device: DeviceInfo | null) => void;
 
+  // Companion app installed state (null = not checked yet)
+  companionInstalled: boolean | null;
+  setCompanionInstalled: (installed: boolean | null) => void;
+
   // Current page
   currentPage: string;
   setCurrentPage: (page: string) => void;
@@ -49,6 +53,10 @@ interface AppStore {
   // Display density
   density: Density;
   setDensity: (density: Density) => void;
+
+  // Show companion install prompt (triggered from pages that need it)
+  showCompanionPrompt: boolean;
+  setShowCompanionPrompt: (show: boolean) => void;
 }
 
 const getInitialDensity = (): Density => {
@@ -61,7 +69,10 @@ const getInitialDensity = (): Density => {
 
 export const useStore = create<AppStore>((set) => ({
   connectedDevice: null,
-  setConnectedDevice: (device) => set({ connectedDevice: device }),
+  setConnectedDevice: (device) => set({ connectedDevice: device, companionInstalled: device ? null : null }),
+
+  companionInstalled: null,
+  setCompanionInstalled: (installed) => set({ companionInstalled: installed }),
 
   currentPage: 'dashboard',
   setCurrentPage: (page) => set({ currentPage: page }),
@@ -89,4 +100,7 @@ export const useStore = create<AppStore>((set) => ({
     document.documentElement.setAttribute('data-density', density);
     set({ density });
   },
+
+  showCompanionPrompt: false,
+  setShowCompanionPrompt: (show) => set({ showCompanionPrompt: show }),
 }));

@@ -71,7 +71,10 @@
     "copy": "コピー",
     "path": "パス",
     "goUp": "上へ",
-    "clean": "クリーンアップ"
+    "clean": "クリーンアップ",
+    "companionRequired": "コンパニオンアプリが必要です",
+    "companionRequiredDesc": "この機能を使用するには、スマートフォンに DroidLink コンパニオンアプリをインストールする必要があります。先にインストールして、必要な権限を許可してください。",
+    "installCompanion": "コンパニオンアプリをインストール"
   },
   "dashboard": {
     "title": "ダッシュボード",

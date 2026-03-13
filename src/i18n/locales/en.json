@@ -71,7 +71,10 @@
     "copy": "Copy",
     "path": "Path",
     "goUp": "Parent",
-    "clean": "Clean"
+    "clean": "Clean",
+    "companionRequired": "Companion App Required",
+    "companionRequiredDesc": "This feature requires the DroidLink companion app installed on your phone. Please install it first and grant the necessary permissions.",
+    "installCompanion": "Install Companion App"
   },
   "dashboard": {
     "title": "Dashboard",

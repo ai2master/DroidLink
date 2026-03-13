@@ -39,7 +39,7 @@ interface Activity {
 export const Dashboard: React.FC = () => {
   const { t } = useTranslation();
   const toast = useToast();
-  const { connectedDevice, syncStatuses } = useStore();
+  const { connectedDevice, syncStatuses, companionInstalled, setShowCompanionPrompt } = useStore();
   const [stats, setStats] = useState<Stats>({
     contactCount: 0,
     messageCount: 0,
@@ -50,10 +50,10 @@ export const Dashboard: React.FC = () => {
   const [activities, setActivities] = useState<Activity[]>([]);
 
   useEffect(() => {
-    if (connectedDevice) {
+    if (connectedDevice && companionInstalled !== false) {
       loadStats();
     }
-  }, [connectedDevice]);
+  }, [connectedDevice, companionInstalled]);
 
   useEffect(() => {
     if (connectedDevice) {
@@ -188,6 +188,19 @@ export const Dashboard: React.FC = () => {
       )}
 
       <h2 className="text-[var(--font-size-title)] font-semibold mb-6">{t('dashboard.title')}</h2>
+
+      {/* Companion app not installed notice */}
+      {companionInstalled === false && (
+        <div className="rounded-[var(--border-radius)] border border-amber-200 bg-amber-50 p-[var(--card-padding)] mb-[var(--card-gap)] flex items-center justify-between gap-4">
+          <div>
+            <div className="font-semibold text-amber-900 text-[var(--font-size-base)]">{t('common.companionRequired')}</div>
+            <div className="text-amber-700 text-[var(--font-size-sm)] mt-1">{t('common.companionRequiredDesc')}</div>
+          </div>
+          <Button variant="primary" size="sm" onClick={() => setShowCompanionPrompt(true)}>
+            {t('common.installCompanion')}
+          </Button>
+        </div>
+      )}
 
       {/* 设备信息卡片 / Device Info Card */}
       <div className="rounded-[var(--border-radius)] border border-border bg-white p-[var(--card-padding)] mb-[var(--card-gap)]">

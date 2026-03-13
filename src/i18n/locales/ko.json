@@ -71,7 +71,10 @@
     "copy": "복사",
     "path": "경로",
     "goUp": "상위",
-    "clean": "정리"
+    "clean": "정리",
+    "companionRequired": "컴패니언 앱 설치 필요",
+    "companionRequiredDesc": "이 기능을 사용하려면 휴대폰에 DroidLink 컴패니언 앱을 설치해야 합니다. 먼저 설치하고 필요한 권한을 허용해 주세요.",
+    "installCompanion": "컴패니언 앱 설치"
   },
   "dashboard": {
     "title": "대시보드",
