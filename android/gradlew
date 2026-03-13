@@ -1,0 +1,45 @@
+#!/bin/sh
+# Gradle wrapper script - downloads and runs Gradle
+# See https://docs.gradle.org/current/userguide/gradle_wrapper.html
+
+set -e
+
+APP_NAME="Gradle"
+APP_BASE_NAME=$(basename "$0")
+DEFAULT_JVM_OPTS='"-Xmx64m" "-Xms64m"'
+
+# Resolve script location
+PRG="$0"
+while [ -h "$PRG" ]; do
+    ls=$(ls -ld "$PRG")
+    link=$(expr "$ls" : '.*-> \(.*\)$')
+    if expr "$link" : '/.*' > /dev/null; then
+        PRG="$link"
+    else
+        PRG=$(dirname "$PRG")/"$link"
+    fi
+done
+SAVED="$(pwd)"
+cd "$(dirname "$PRG")/" >/dev/null
+APP_HOME="$(pwd -P)"
+cd "$SAVED" >/dev/null
+
+CLASSPATH=$APP_HOME/gradle/wrapper/gradle-wrapper.jar
+
+# Download gradle-wrapper.jar if not present
+if [ ! -f "$CLASSPATH" ]; then
+    echo "Downloading Gradle wrapper JAR..."
+    mkdir -p "$APP_HOME/gradle/wrapper"
+    curl -sL "https://raw.githubusercontent.com/gradle/gradle/v8.5.0/gradle/wrapper/gradle-wrapper.jar" -o "$CLASSPATH" 2>/dev/null || \
+    curl -sL "https://github.com/nicejmp1/android-gradle-wrapper/raw/main/gradle/wrapper/gradle-wrapper.jar" -o "$CLASSPATH" 2>/dev/null || \
+    { echo "ERROR: Could not download gradle-wrapper.jar"; exit 1; }
+fi
+
+# Determine the Java command
+if [ -n "$JAVA_HOME" ]; then
+    JAVACMD="$JAVA_HOME/bin/java"
+else
+    JAVACMD="java"
+fi
+
+exec "$JAVACMD" $DEFAULT_JVM_OPTS $JAVA_OPTS -classpath "$CLASSPATH" org.gradle.wrapper.GradleWrapperMain "$@"

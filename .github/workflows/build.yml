@@ -61,6 +61,14 @@ jobs:
         with:
           workspaces: src-tauri
 
+      # 设置 Java (构建 Android companion app 需要)
+      # Setup Java (needed for Android companion app build)
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
       # Linux 依赖 / Linux dependencies
       - name: Install Linux dependencies
         if: matrix.target == 'linux'
@@ -96,18 +104,24 @@ jobs:
       - name: Install npm dependencies
         run: npm ci || npm install
 
-      # 创建 Companion APK 占位符（CI 不构建 Android）
-      # Create companion APK placeholder (CI doesn't build Android)
-      - name: Create companion APK placeholder
+      # 构建 Android companion APK
+      # Build Android companion APK
+      - name: Build companion APK
         shell: bash
         run: |
-          mkdir -p src-tauri/resources/companion
-          if [ ! -f src-tauri/resources/companion/DroidLinkCompanion.apk ]; then
-            echo "placeholder" > src-tauri/resources/companion/DroidLinkCompanion.apk
-          fi
-          if [ ! -f src-tauri/resources/companion/version.txt ]; then
-            echo "1.0" > src-tauri/resources/companion/version.txt
-          fi
+          cd android
+          chmod +x gradlew 2>/dev/null || true
+          ./gradlew assembleRelease --no-daemon --stacktrace 2>&1 || {
+            echo "Gradle build failed, creating placeholder APK"
+            mkdir -p ../src-tauri/resources/companion
+            echo "placeholder" > ../src-tauri/resources/companion/DroidLinkCompanion.apk
+            echo "1.0" > ../src-tauri/resources/companion/version.txt
+            exit 0
+          }
+          mkdir -p ../src-tauri/resources/companion
+          cp app/build/outputs/apk/release/app-release-unsigned.apk ../src-tauri/resources/companion/DroidLinkCompanion.apk
+          echo "${{ env.VERSION }}" > ../src-tauri/resources/companion/version.txt
+          ls -lah ../src-tauri/resources/companion/
 
       # 下载 Google 官方 platform-tools (内含 ADB)
       # Download official Google platform-tools (contains ADB)

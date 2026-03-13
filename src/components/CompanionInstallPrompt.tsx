@@ -4,6 +4,7 @@ import {
   CheckCircle2,
   Loader2,
   AlertTriangle,
+  ChevronRight,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { tauriInvoke } from '../utils/tauri';
@@ -100,27 +101,71 @@ export const CompanionInstallPrompt: React.FC<CompanionInstallPromptProps> = ({
           </div>
         </div>
 
-        {/* Why Needed Section */}
+        {/* Feature Details (Expandable) */}
         <div>
-          <h4 className="text-base font-semibold text-gray-900 mb-3">{t('companion.whyNeeded')}</h4>
-          <ul className="space-y-2 text-sm text-gray-700">
-            <li className="flex gap-2">
-              <span className="text-gray-400">•</span>
-              <span>{t('companion.reason1')}</span>
-            </li>
-            <li className="flex gap-2">
-              <span className="text-gray-400">•</span>
-              <span>{t('companion.reason2')}</span>
-            </li>
-            <li className="flex gap-2">
-              <span className="text-gray-400">•</span>
-              <span>{t('companion.reason3')}</span>
-            </li>
-            <li className="flex gap-2">
-              <span className="text-gray-400">•</span>
-              <span>{t('companion.reason4')}</span>
-            </li>
-          </ul>
+          <h4 className="text-base font-semibold text-gray-900 mb-2">{t('companion.featureOverview')}</h4>
+          <p className="text-sm text-gray-600 mb-3">{t('companion.featureOverviewDesc')}</p>
+          <details className="group">
+            <summary className="cursor-pointer text-sm font-medium text-primary hover:underline select-none flex items-center gap-1">
+              <ChevronRight className="w-4 h-4 transition-transform group-open:rotate-90" />
+              {t('companion.viewFeatureDetails')}
+            </summary>
+            <div className="mt-3 space-y-4 pl-5">
+              {/* Features requiring companion app */}
+              <div>
+                <div className="text-sm font-semibold text-gray-800 mb-2">{t('companion.featuresWithApk')}</div>
+                <ul className="space-y-1.5 text-sm text-gray-700">
+                  <li className="flex gap-2 items-start">
+                    <CheckCircle2 className="w-4 h-4 text-green-500 flex-shrink-0 mt-0.5" />
+                    <span>{t('companion.featureContacts')}</span>
+                  </li>
+                  <li className="flex gap-2 items-start">
+                    <CheckCircle2 className="w-4 h-4 text-green-500 flex-shrink-0 mt-0.5" />
+                    <span>{t('companion.featureMessages')}</span>
+                  </li>
+                  <li className="flex gap-2 items-start">
+                    <CheckCircle2 className="w-4 h-4 text-green-500 flex-shrink-0 mt-0.5" />
+                    <span>{t('companion.featureCallLogs')}</span>
+                  </li>
+                  <li className="flex gap-2 items-start">
+                    <CheckCircle2 className="w-4 h-4 text-green-500 flex-shrink-0 mt-0.5" />
+                    <span>{t('companion.featureClipboard')}</span>
+                  </li>
+                  <li className="flex gap-2 items-start">
+                    <CheckCircle2 className="w-4 h-4 text-green-500 flex-shrink-0 mt-0.5" />
+                    <span>{t('companion.featureCjkInput')}</span>
+                  </li>
+                  <li className="flex gap-2 items-start">
+                    <CheckCircle2 className="w-4 h-4 text-green-500 flex-shrink-0 mt-0.5" />
+                    <span>{t('companion.featureRealTimeSync')}</span>
+                  </li>
+                </ul>
+              </div>
+
+              {/* Features that work without companion app */}
+              <div>
+                <div className="text-sm font-semibold text-gray-800 mb-2">{t('companion.featuresWithoutApk')}</div>
+                <ul className="space-y-1.5 text-sm text-gray-700">
+                  <li className="flex gap-2 items-start">
+                    <CheckCircle2 className="w-4 h-4 text-blue-500 flex-shrink-0 mt-0.5" />
+                    <span>{t('companion.featureScreenMirror')}</span>
+                  </li>
+                  <li className="flex gap-2 items-start">
+                    <CheckCircle2 className="w-4 h-4 text-blue-500 flex-shrink-0 mt-0.5" />
+                    <span>{t('companion.featureFileManager')}</span>
+                  </li>
+                  <li className="flex gap-2 items-start">
+                    <CheckCircle2 className="w-4 h-4 text-blue-500 flex-shrink-0 mt-0.5" />
+                    <span>{t('companion.featureFileTransfer')}</span>
+                  </li>
+                  <li className="flex gap-2 items-start">
+                    <CheckCircle2 className="w-4 h-4 text-blue-500 flex-shrink-0 mt-0.5" />
+                    <span>{t('companion.featureScreenshot')}</span>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </details>
         </div>
 
         {/* How It Works Section */}

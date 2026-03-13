@@ -26,16 +26,16 @@ html, body, #root {
 
 /* ========== Density variables (compact default) ========== */
 :root {
-  --page-padding: 12px;
-  --card-padding: 10px;
-  --card-gap: 10px;
-  --section-gap: 12px;
-  --item-padding-y: 6px;
-  --item-padding-x: 10px;
-  --sidebar-width: 200px;
-  --font-size-base: 13px;
-  --font-size-sm: 12px;
-  --font-size-xs: 11px;
+  --page-padding: 16px;
+  --card-padding: 14px;
+  --card-gap: 12px;
+  --section-gap: 16px;
+  --item-padding-y: 8px;
+  --item-padding-x: 12px;
+  --sidebar-width: 210px;
+  --font-size-base: 13.5px;
+  --font-size-sm: 12.5px;
+  --font-size-xs: 11.5px;
   --font-size-lg: 15px;
   --font-size-title: 17px;
   --border-radius: 6px;
@@ -47,11 +47,11 @@ html, body, #root {
   --card-padding: 20px;
   --card-gap: 16px;
   --section-gap: 24px;
-  --item-padding-y: 10px;
-  --item-padding-x: 14px;
-  --sidebar-width: 220px;
-  --font-size-base: 14px;
-  --font-size-sm: 13px;
+  --item-padding-y: 12px;
+  --item-padding-x: 16px;
+  --sidebar-width: 230px;
+  --font-size-base: 14.5px;
+  --font-size-sm: 13.5px;
   --font-size-xs: 12px;
   --font-size-lg: 16px;
   --font-size-title: 20px;
