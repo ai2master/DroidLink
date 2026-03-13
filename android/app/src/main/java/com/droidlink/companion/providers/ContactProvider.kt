@@ -215,22 +215,25 @@ class ContactProvider(private val context: Context) {
 
     private fun queryOrganizations(contacts: MutableMap<String, ContactBuilder>) {
         val projection = arrayOf(
-            ContactsContract.CommonDataKinds.Organization.CONTACT_ID,
+            ContactsContract.Data.CONTACT_ID,
             ContactsContract.CommonDataKinds.Organization.COMPANY
         )
+
+        val selection = "${ContactsContract.Data.MIMETYPE} = ?"
+        val selectionArgs = arrayOf(ContactsContract.CommonDataKinds.Organization.CONTENT_ITEM_TYPE)
 
         var cursor: Cursor? = null
         try {
             cursor = contentResolver.query(
-                ContactsContract.CommonDataKinds.Organization.CONTENT_URI,
+                ContactsContract.Data.CONTENT_URI,
                 projection,
-                null,
-                null,
+                selection,
+                selectionArgs,
                 null
             )
 
             cursor?.use {
-                val contactIdIndex = it.getColumnIndex(ContactsContract.CommonDataKinds.Organization.CONTACT_ID)
+                val contactIdIndex = it.getColumnIndex(ContactsContract.Data.CONTACT_ID)
                 val companyIndex = it.getColumnIndex(ContactsContract.CommonDataKinds.Organization.COMPANY)
 
                 while (it.moveToNext()) {
@@ -271,7 +274,8 @@ class ContactProvider(private val context: Context) {
 
         fun build(): Contact {
             val hashString = "$id|$displayName|${phoneNumbers.joinToString(",")}|${emails.joinToString(",")}|$organization|$timestamp"
-            val hash = hashString.toMD5()
+            val bytes = MessageDigest.getInstance("MD5").digest(hashString.toByteArray())
+            val hash = bytes.joinToString("") { "%02x".format(it) }
 
             return Contact(
                 id = id,
@@ -283,10 +287,5 @@ class ContactProvider(private val context: Context) {
                 hash = hash
             )
         }
-    }
-
-    private fun String.toMD5(): String {
-        val bytes = MessageDigest.getInstance("MD5").digest(this.toByteArray())
-        return bytes.joinToString("") { "%02x".format(it) }
     }
 }

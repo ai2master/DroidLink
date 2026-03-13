@@ -13,6 +13,7 @@ import android.view.View
 import android.view.inputmethod.InputConnection
 import android.widget.LinearLayout
 import android.widget.TextView
+import com.droidlink.companion.R
 import java.util.Base64
 
 /**
@@ -40,9 +41,9 @@ class DroidLinkIME : InputMethodService() {
         private const val ACTION_INPUT_ENTER = "com.droidlink.INPUT_ENTER"
         private const val ACTION_INPUT_CLEAR = "com.droidlink.INPUT_CLEAR"
 
-        // Static reference to current InputConnection
+        // Static reference to active InputConnection
         @Volatile
-        private var currentInputConnection: InputConnection? = null
+        private var activeIC: InputConnection? = null
     }
 
     private var textReceiver: BroadcastReceiver? = null
@@ -83,7 +84,7 @@ class DroidLinkIME : InputMethodService() {
         } catch (e: Exception) {
             Log.e(TAG, "Error unregistering receiver", e)
         }
-        currentInputConnection = null
+        activeIC = null
         Log.i(TAG, "DroidLink IME destroyed")
     }
 
@@ -122,31 +123,31 @@ class DroidLinkIME : InputMethodService() {
 
     override fun onStartInput(attribute: android.view.inputmethod.EditorInfo?, restarting: Boolean) {
         super.onStartInput(attribute, restarting)
-        currentInputConnection = currentInputConnection
+        activeIC = currentInputConnection
         Log.d(TAG, "Input started, restarting=$restarting")
     }
 
     override fun onStartInputView(info: android.view.inputmethod.EditorInfo?, restarting: Boolean) {
         super.onStartInputView(info, restarting)
-        currentInputConnection = currentInputConnection
+        activeIC = currentInputConnection
         Log.d(TAG, "Input view started")
     }
 
     override fun onFinishInput() {
         super.onFinishInput()
-        currentInputConnection = null
+        activeIC = null
         Log.d(TAG, "Input finished")
     }
 
     override fun onBindInput() {
         super.onBindInput()
-        currentInputConnection = currentInputConnection
+        activeIC = currentInputConnection
         Log.d(TAG, "Input bound")
     }
 
     override fun onUnbindInput() {
         super.onUnbindInput()
-        currentInputConnection = null
+        activeIC = null
         Log.d(TAG, "Input unbound")
     }
 
@@ -155,7 +156,7 @@ class DroidLinkIME : InputMethodService() {
      * Supports base64-encoded text for safe shell transmission.
      */
     private fun handleInputText(intent: Intent) {
-        val ic = currentInputConnection ?: run {
+        val ic = activeIC ?: run {
             Log.w(TAG, "No input connection available")
             return
         }
@@ -195,7 +196,7 @@ class DroidLinkIME : InputMethodService() {
      * Handle INPUT_KEY action: send key event.
      */
     private fun handleInputKey(intent: Intent) {
-        val ic = currentInputConnection ?: run {
+        val ic = activeIC ?: run {
             Log.w(TAG, "No input connection available")
             return
         }
@@ -219,7 +220,7 @@ class DroidLinkIME : InputMethodService() {
      * Handle INPUT_BACKSPACE action: send N backspace key events.
      */
     private fun handleBackspace(intent: Intent) {
-        val ic = currentInputConnection ?: run {
+        val ic = activeIC ?: run {
             Log.w(TAG, "No input connection available")
             return
         }
@@ -240,7 +241,7 @@ class DroidLinkIME : InputMethodService() {
      * Handle INPUT_ENTER action: send Enter key event.
      */
     private fun handleEnter() {
-        val ic = currentInputConnection ?: run {
+        val ic = activeIC ?: run {
             Log.w(TAG, "No input connection available")
             return
         }
@@ -258,7 +259,7 @@ class DroidLinkIME : InputMethodService() {
      * Handle INPUT_CLEAR action: clear composition.
      */
     private fun handleClear() {
-        val ic = currentInputConnection ?: run {
+        val ic = activeIC ?: run {
             Log.w(TAG, "No input connection available")
             return
         }
