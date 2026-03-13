@@ -52,9 +52,14 @@ export const Dashboard: React.FC = () => {
   useEffect(() => {
     if (connectedDevice) {
       loadStats();
-      loadActivities();
     }
   }, [connectedDevice]);
+
+  useEffect(() => {
+    if (connectedDevice) {
+      loadActivities();
+    }
+  }, [connectedDevice, syncStatuses]);
 
   const loadStats = async () => {
     if (!connectedDevice) return;
@@ -79,32 +84,29 @@ export const Dashboard: React.FC = () => {
   };
 
   const loadActivities = async () => {
-    // 模拟最近活动 - 实际应用中从后端获取
-    // Mock recent activities - in real app, this would come from backend
-    const mockActivities: Activity[] = [
-      {
-        id: '1',
-        type: 'contacts',
-        action: t('dashboard.syncContacts'),
-        timestamp: new Date(Date.now() - 5 * 60000).toISOString(),
-        status: 'success',
-      },
-      {
-        id: '2',
-        type: 'messages',
-        action: t('dashboard.syncMessages'),
-        timestamp: new Date(Date.now() - 15 * 60000).toISOString(),
-        status: 'success',
-      },
-      {
-        id: '3',
-        type: 'call_logs',
-        action: t('dashboard.syncCallLogs'),
-        timestamp: new Date(Date.now() - 30 * 60000).toISOString(),
-        status: 'success',
-      },
-    ];
-    setActivities(mockActivities);
+    // 从 syncStatuses 中提取真实的同步记录
+    // Build activity list from actual sync statuses
+    const realActivities: Activity[] = [];
+    const typeLabels: Record<string, string> = {
+      contacts: t('dashboard.syncContacts'),
+      messages: t('dashboard.syncMessages'),
+      call_logs: t('dashboard.syncCallLogs'),
+    };
+    for (const [type, label] of Object.entries(typeLabels)) {
+      const status = syncStatuses?.[type] as (SyncStatus & { status?: string; lastSync?: string }) | undefined;
+      if (status?.lastSync && status?.status) {
+        realActivities.push({
+          id: type,
+          type,
+          action: label,
+          timestamp: status.lastSync,
+          status: status.status === 'error' ? 'error' : 'success',
+        });
+      }
+    }
+    // 按时间倒序排列 / Sort by time descending
+    realActivities.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    setActivities(realActivities);
   };
 
   const handleSyncAll = async () => {
@@ -173,7 +175,7 @@ export const Dashboard: React.FC = () => {
     );
   }
 
-  const storagePercent = connectedDevice.storageTotal
+  const storagePercent = connectedDevice.storageTotal && connectedDevice.storageUsed
     ? (connectedDevice.storageUsed / connectedDevice.storageTotal) * 100
     : 0;
 
