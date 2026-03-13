@@ -6,27 +6,17 @@
     "core:default",
     "dialog:default",
     "shell:allow-open",
-    "clipboard-manager:allow-read",
-    "clipboard-manager:allow-write",
-    "clipboard-manager:allow-read-text",
-    "clipboard-manager:allow-write-text",
+    "clipboard-manager:default",
     "process:default",
     "notification:default",
-    {
-      "identifier": "fs:default",
-      "allow": [
-        { "path": "$APPDATA/**" },
-        { "path": "$DOWNLOAD/**" },
-        { "path": "$TEMP/**" },
-        { "path": "$HOME/**" }
-      ],
-      "deny": [
-        { "path": "**/.ssh/**" },
-        { "path": "**/.gnupg/**" },
-        { "path": "**/id_rsa*" },
-        { "path": "**/*.key" },
-        { "path": "**/*.pem" }
-      ]
-    }
+    "fs:default",
+    "fs:read-all",
+    "fs:write-all",
+    "fs:scope-appdata-recursive",
+    "fs:scope-download-recursive",
+    "fs:scope-temp-recursive",
+    "fs:scope-home-recursive",
+    "fs:deny-webview-data-linux",
+    "fs:deny-webview-data-windows"
   ]
 }
