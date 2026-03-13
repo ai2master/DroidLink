@@ -10,6 +10,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { supportedLanguages } from '../i18n';
 import { tauriInvoke } from '../utils/tauri';
+import { getVersion } from '@tauri-apps/api/app';
 
 const { Title, Text } = Typography;
 
@@ -80,6 +81,10 @@ export const Settings: React.FC = () => {
     loadSettings();
     loadSystemInfo();
     loadToolSources();
+    // 从 Tauri 读取真实版本号 / Read real version from Tauri app config
+    getVersion().then((v) => {
+      setSystemInfo((prev) => ({ ...prev, appVersion: v }));
+    }).catch(() => {});
   }, []);
 
   const loadSettings = async () => {
@@ -118,13 +123,13 @@ export const Settings: React.FC = () => {
         tauriInvoke<string>('get_data_path').catch(() => ''),
         tauriInvoke<AdbInfo>('get_adb_info').catch(() => null),
       ]);
-      setSystemInfo({
+      setSystemInfo((prev) => ({
+        ...prev,
         adbAvailable: adb,
         adbInfo: adbInfo,
         scrcpyVersion: scrcpy || null,
         dataPath: dataPath || '',
-        appVersion: '1.0.0',
-      });
+      }));
     } catch (error) {
       console.error('Failed to load system info:', error);
     }

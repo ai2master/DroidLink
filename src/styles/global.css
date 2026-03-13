@@ -152,6 +152,13 @@ html, body, #root {
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  min-width: 0;
+}
+
+.app-page-scroll {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .page-header {

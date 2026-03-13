@@ -44,6 +44,19 @@ pub mod app_state {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // Linux: 启用 WebKitGTK GPU 硬件加速，适配 Intel/AMD/NVIDIA 显卡
+    // Linux: Enable WebKitGTK GPU hardware acceleration for Intel/AMD/NVIDIA
+    #[cfg(target_os = "linux")]
+    {
+        // 启用硬件加速合成 / Enable hardware-accelerated compositing
+        if std::env::var("WEBKIT_DISABLE_COMPOSITING_MODE").is_err() {
+            std::env::set_var("WEBKIT_DISABLE_COMPOSITING_MODE", "0");
+        }
+        // NVIDIA 闭源驱动: 如果 DMA-BUF 渲染器有问题，用户可以手动设置此变量
+        // NVIDIA proprietary driver: if DMA-BUF renderer causes issues, user can set this
+        // WEBKIT_DISABLE_DMABUF_RENDERER=1
+    }
+
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info"))
         .init();
 

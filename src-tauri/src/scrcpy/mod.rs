@@ -133,17 +133,14 @@ impl ScrcpyManager {
         }
     }
 
-    /// 检查 scrcpy 是否可用
-    /// Check if scrcpy is installed and available
+    /// 检查 scrcpy 是否可用（不执行 scrcpy，避免 snap notice 弹窗）
+    /// Check if scrcpy is installed (without executing it, to avoid snap notice popups)
     pub fn check_available() -> ScrcpyResult<String> {
-        let output = Command::new(&scrcpy_binary())
-            .arg("--version")
-            .output()
-            .map_err(|_| ScrcpyError::NotFound)?;
-
-        if output.status.success() {
-            let version = String::from_utf8_lossy(&output.stdout).trim().to_string();
-            Ok(version)
+        let binary = scrcpy_binary();
+        // 仅检查二进制文件是否存在，不执行它
+        // Only check if binary exists, don't execute it
+        if which::which(&binary).is_ok() {
+            Ok("installed".to_string())
         } else {
             Err(ScrcpyError::NotFound)
         }
@@ -578,10 +575,15 @@ pub fn validate_scrcpy_path(path: &str) -> bool {
     if !p.exists() {
         return false;
     }
+    // 关闭 stdin 防止 snap notice 等交互提示阻塞
+    // Close stdin to prevent snap notice or other interactive prompts from blocking
     Command::new(p)
         .arg("--version")
-        .output()
-        .map(|o| o.status.success())
+        .stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .status()
+        .map(|s| s.success())
         .unwrap_or(false)
 }
 

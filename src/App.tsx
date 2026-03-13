@@ -114,7 +114,9 @@ function App() {
     <div className="app-layout">
       <Sidebar />
       <div className="app-content">
-        {renderPage()}
+        <div className="app-page-scroll">
+          {renderPage()}
+        </div>
         <StatusBar />
       </div>
 
