@@ -1,28 +1,28 @@
 import {
-  DashboardOutlined, ContactsOutlined, MessageOutlined, PhoneOutlined,
-  FolderOutlined, SyncOutlined, DesktopOutlined, SwapOutlined,
-  HistoryOutlined, SettingOutlined, MobileOutlined,
-} from '@ant-design/icons';
+  LayoutDashboard, Users, MessageSquare, Phone,
+  Folder, RefreshCw, Monitor, ArrowLeftRight,
+  History, Settings, Smartphone,
+} from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useStore } from '../stores/useStore';
 
 // 导航项使用 i18n key，渲染时再翻译
 // Nav items use i18n keys, translated at render time
 const navConfig = [
-  { key: 'dashboard', icon: <DashboardOutlined />, labelKey: 'sidebar.dashboard' },
+  { key: 'dashboard', icon: <LayoutDashboard />, labelKey: 'sidebar.dashboard' },
   { section: 'data' },
-  { key: 'contacts', icon: <ContactsOutlined />, labelKey: 'sidebar.contacts' },
-  { key: 'messages', icon: <MessageOutlined />, labelKey: 'sidebar.messages' },
-  { key: 'calllogs', icon: <PhoneOutlined />, labelKey: 'sidebar.callLogs' },
+  { key: 'contacts', icon: <Users />, labelKey: 'sidebar.contacts' },
+  { key: 'messages', icon: <MessageSquare />, labelKey: 'sidebar.messages' },
+  { key: 'calllogs', icon: <Phone />, labelKey: 'sidebar.callLogs' },
   { section: 'files' },
-  { key: 'filemanager', icon: <FolderOutlined />, labelKey: 'sidebar.fileManager' },
-  { key: 'foldersync', icon: <SyncOutlined />, labelKey: 'sidebar.folderSync' },
+  { key: 'filemanager', icon: <Folder />, labelKey: 'sidebar.fileManager' },
+  { key: 'foldersync', icon: <RefreshCw />, labelKey: 'sidebar.folderSync' },
   { section: 'tools' },
-  { key: 'screenmirror', icon: <DesktopOutlined />, labelKey: 'sidebar.screenMirror' },
-  { key: 'transfer', icon: <SwapOutlined />, labelKey: 'sidebar.transfer' },
-  { key: 'versionhistory', icon: <HistoryOutlined />, labelKey: 'sidebar.versionHistory' },
+  { key: 'screenmirror', icon: <Monitor />, labelKey: 'sidebar.screenMirror' },
+  { key: 'transfer', icon: <ArrowLeftRight />, labelKey: 'sidebar.transfer' },
+  { key: 'versionhistory', icon: <History />, labelKey: 'sidebar.versionHistory' },
   { section: '' },
-  { key: 'settings', icon: <SettingOutlined />, labelKey: 'sidebar.settings' },
+  { key: 'settings', icon: <Settings />, labelKey: 'sidebar.settings' },
 ];
 
 export default function Sidebar() {
@@ -36,7 +36,7 @@ export default function Sidebar() {
       <div className="app-sidebar-header">
         <div className="app-sidebar-logo">
           <div className="logo-icon">
-            <MobileOutlined />
+            <Smartphone />
           </div>
           <h1>DroidLink</h1>
         </div>

@@ -1,40 +1,26 @@
 import React, { useEffect, useState } from 'react';
 import {
-  Card,
-  Row,
-  Col,
-  Statistic,
-  Button,
-  Space,
-  Progress,
-  Timeline,
-  Empty,
-  Spin,
-  Badge,
-  Divider,
-  Typography,
-  Tag,
-  message,
-} from 'antd';
-import {
-  SyncOutlined,
-  DesktopOutlined,
-  FolderOutlined,
-  PhoneOutlined,
-  MessageOutlined,
-  ContactsOutlined,
-  ThunderboltOutlined,
-  AndroidOutlined,
-  CheckCircleOutlined,
-  ClockCircleOutlined,
-  ExclamationCircleOutlined,
-} from '@ant-design/icons';
+  RefreshCw,
+  Monitor,
+  Folder,
+  Phone,
+  MessageSquare,
+  Users,
+  Zap,
+  Smartphone,
+  CheckCircle2,
+  XCircle,
+  Clock,
+  AlertCircle,
+} from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { tauriInvoke } from '../utils/tauri';
 import { useStore, type SyncStatus } from '../stores/useStore';
 import { formatFileSize, formatRelativeTime } from '../utils/format';
-
-const { Title, Text } = Typography;
+import { Button } from '../components/ui/button';
+import { Progress } from '../components/ui/progress';
+import { useToast } from '../components/ui/toast';
+import { cn } from '../utils/cn';
 
 interface Stats {
   contactCount: number;
@@ -52,6 +38,7 @@ interface Activity {
 
 export const Dashboard: React.FC = () => {
   const { t } = useTranslation();
+  const toast = useToast();
   const { connectedDevice, syncStatuses } = useStore();
   const [stats, setStats] = useState<Stats>({
     contactCount: 0,
@@ -85,7 +72,7 @@ export const Dashboard: React.FC = () => {
       });
     } catch (error) {
       console.error('Failed to load stats:', error);
-      message.error(t('dashboard.loadStatsFailed'));
+      toast.error(t('dashboard.loadStatsFailed'));
     } finally {
       setLoading(false);
     }
@@ -125,36 +112,36 @@ export const Dashboard: React.FC = () => {
     setSyncing(true);
     try {
       await tauriInvoke('trigger_sync', { serial: connectedDevice.serial });
-      message.success(t('dashboard.syncAllStarted'));
+      toast.success(t('dashboard.syncAllStarted'));
       setTimeout(() => {
         loadStats();
         loadActivities();
       }, 2000);
     } catch (error) {
-      message.error(t('common.syncFailed'));
+      toast.error(t('common.syncFailed'));
     } finally {
       setSyncing(false);
     }
   };
 
   const handleScreenMirror = () => {
-    message.info(t('dashboard.startMirrorMsg'));
+    toast.info(t('dashboard.startMirrorMsg'));
   };
 
   const handleFileManager = () => {
-    message.info(t('dashboard.openFileManagerMsg'));
+    toast.info(t('dashboard.openFileManagerMsg'));
   };
 
   const getSyncStatusIcon = (status?: string) => {
     switch (status) {
       case 'syncing':
-        return <SyncOutlined spin />;
+        return <RefreshCw className="h-4 w-4 animate-spin" />;
       case 'success':
-        return <CheckCircleOutlined style={{ color: '#52c41a' }} />;
+        return <CheckCircle2 className="h-4 w-4 text-success" />;
       case 'error':
-        return <ExclamationCircleOutlined style={{ color: '#ff4d4f' }} />;
+        return <AlertCircle className="h-4 w-4 text-error" />;
       default:
-        return <ClockCircleOutlined style={{ color: '#d9d9d9' }} />;
+        return <Clock className="h-4 w-4 text-gray-300" />;
     }
   };
 
@@ -173,16 +160,15 @@ export const Dashboard: React.FC = () => {
 
   if (!connectedDevice) {
     return (
-      <div style={{ textAlign: 'center', padding: '100px 20px' }}>
-        <Empty
-          image={Empty.PRESENTED_IMAGE_SIMPLE}
-          description={
-            <Space direction="vertical" size="large">
-              <Title level={3}>{t('common.connectDeviceTitle')}</Title>
-              <Text type="secondary">{t('dashboard.connectDeviceDesc')}</Text>
-            </Space>
-          }
-        />
+      <div className="text-center py-24 px-5">
+        <div className="text-center py-12 text-gray-400">
+          <div className="flex flex-col items-center gap-6">
+            <h3 className="text-[var(--font-size-title)] font-semibold text-gray-900">
+              {t('common.connectDeviceTitle')}
+            </h3>
+            <span className="text-gray-500">{t('dashboard.connectDeviceDesc')}</span>
+          </div>
+        </div>
       </div>
     );
   }
@@ -192,208 +178,210 @@ export const Dashboard: React.FC = () => {
     : 0;
 
   return (
-    <Spin spinning={loading}>
-      <div style={{ padding: '24px' }}>
-        <Title level={2}>{t('dashboard.title')}</Title>
+    <div className="p-[var(--page-padding)] relative">
+      {loading && (
+        <div className="absolute inset-0 bg-white/50 flex items-center justify-center z-10">
+          <RefreshCw className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      )}
 
-        {/* 设备信息卡片 / Device Info Card */}
-        <Card
-          style={{ marginBottom: 24 }}
-          title={
-            <Space>
-              <AndroidOutlined style={{ fontSize: 24, color: '#3ddc84' }} />
-              <span>{connectedDevice.displayName || connectedDevice.model}</span>
-            </Space>
-          }
-          extra={
-            <Badge
-              status="success"
-              text={t('dashboard.connected')}
-              style={{ color: '#52c41a' }}
-            />
-          }
-        >
-          <Row gutter={[16, 16]}>
-            <Col span={6}>
-              <Statistic
-                title={t('dashboard.model')}
-                value={connectedDevice.model}
-                valueStyle={{ fontSize: 16 }}
-              />
-            </Col>
-            <Col span={6}>
-              <Statistic
-                title={t('dashboard.android')}
-                value={connectedDevice.androidVersion || 'N/A'}
-                valueStyle={{ fontSize: 16 }}
-              />
-            </Col>
-            <Col span={6}>
-              <Space>
-                <ThunderboltOutlined style={{ fontSize: 20, color: '#52c41a' }} />
-                <Statistic
-                  title={t('dashboard.battery')}
-                  value={connectedDevice.batteryLevel || 0}
-                  suffix="%"
-                  valueStyle={{ fontSize: 16 }}
-                />
-              </Space>
-            </Col>
-            <Col span={6}>
-              <Text type="secondary">{t('dashboard.serial')}</Text>
-              <div>
-                <Text code copyable style={{ fontSize: 12 }}>
-                  {connectedDevice.serial}
-                </Text>
-              </div>
-            </Col>
-          </Row>
+      <h2 className="text-[var(--font-size-title)] font-semibold mb-6">{t('dashboard.title')}</h2>
 
-          <Divider />
-
-          <div>
-            <div style={{ marginBottom: 8 }}>
-              <Space>
-                <Text strong>{t('dashboard.storage')}</Text>
-                <Text type="secondary">
-                  {formatFileSize(connectedDevice.storageUsed)} /{' '}
-                  {formatFileSize(connectedDevice.storageTotal)}
-                </Text>
-              </Space>
-            </div>
-            <Progress
-              percent={Math.round(storagePercent)}
-              status={storagePercent > 90 ? 'exception' : 'normal'}
-            />
+      {/* 设备信息卡片 / Device Info Card */}
+      <div className="rounded-[var(--border-radius)] border border-border bg-white p-[var(--card-padding)] mb-[var(--card-gap)]">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <Smartphone className="h-6 w-6" style={{ color: '#3ddc84' }} />
+            <span className="font-semibold text-[var(--font-size-base)]">
+              {connectedDevice.displayName || connectedDevice.model}
+            </span>
           </div>
-        </Card>
+          <div className="flex items-center gap-2">
+            <span className="inline-block h-2 w-2 rounded-full bg-success"></span>
+            <span className="text-success text-[var(--font-size-sm)]">{t('dashboard.connected')}</span>
+          </div>
+        </div>
 
-        {/* 数据统计卡片 / Stats Cards */}
-        <Row gutter={16} style={{ marginBottom: 24 }}>
-          <Col xs={24} sm={8}>
-            <Card>
-              <Statistic
-                title={t('dashboard.contacts')}
-                value={stats.contactCount}
-                prefix={<ContactsOutlined />}
-                valueStyle={{ color: '#1890ff' }}
-              />
-            </Card>
-          </Col>
-          <Col xs={24} sm={8}>
-            <Card>
-              <Statistic
-                title={t('dashboard.messages')}
-                value={stats.messageCount}
-                prefix={<MessageOutlined />}
-                valueStyle={{ color: '#52c41a' }}
-              />
-            </Card>
-          </Col>
-          <Col xs={24} sm={8}>
-            <Card>
-              <Statistic
-                title={t('dashboard.callLogs')}
-                value={stats.callLogCount}
-                prefix={<PhoneOutlined />}
-                valueStyle={{ color: '#faad14' }}
-              />
-            </Card>
-          </Col>
-        </Row>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+          <div>
+            <div className="text-gray-500 text-[var(--font-size-xs)] mb-1">{t('dashboard.model')}</div>
+            <div className="text-[var(--font-size-base)] font-semibold">{connectedDevice.model}</div>
+          </div>
+          <div>
+            <div className="text-gray-500 text-[var(--font-size-xs)] mb-1">{t('dashboard.android')}</div>
+            <div className="text-[var(--font-size-base)] font-semibold">
+              {connectedDevice.androidVersion || 'N/A'}
+            </div>
+          </div>
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <Zap className="h-5 w-5 text-success" />
+              <span className="text-gray-500 text-[var(--font-size-xs)]">{t('dashboard.battery')}</span>
+            </div>
+            <div className="text-[var(--font-size-base)] font-semibold">
+              {connectedDevice.batteryLevel || 0}%
+            </div>
+          </div>
+          <div>
+            <div className="text-gray-500 text-[var(--font-size-xs)] mb-1">{t('dashboard.serial')}</div>
+            <div>
+              <code className="bg-gray-100 px-1.5 py-0.5 rounded text-[var(--font-size-xs)]">
+                {connectedDevice.serial}
+              </code>
+            </div>
+          </div>
+        </div>
 
-        {/* 快捷操作 / Quick Actions */}
-        <Card title={t('dashboard.quickActions')} style={{ marginBottom: 24 }}>
-          <Space size="middle" wrap>
-            <Button
-              type="primary"
-              icon={<SyncOutlined />}
-              size="large"
-              loading={syncing}
-              onClick={handleSyncAll}
-            >
-              {t('dashboard.syncAll')}
-            </Button>
-            <Button
-              icon={<DesktopOutlined />}
-              size="large"
-              onClick={handleScreenMirror}
-            >
-              {t('dashboard.startMirror')}
-            </Button>
-            <Button
-              icon={<FolderOutlined />}
-              size="large"
-              onClick={handleFileManager}
-            >
-              {t('dashboard.openFileManager')}
-            </Button>
-          </Space>
-        </Card>
+        <hr className="border-border my-4" />
 
-        <Row gutter={16}>
-          {/* 同步状态 / Sync Status */}
-          <Col xs={24} lg={12}>
-            <Card title={t('dashboard.syncStatus')} style={{ marginBottom: 24 }}>
-              <Space direction="vertical" style={{ width: '100%' }} size="middle">
-                {['contacts', 'messages', 'call_logs', 'folders'].map((type) => {
-                  const status = syncStatuses?.[type] as (SyncStatus & { status?: string; lastSync?: string }) | undefined;
-                  const labelKey = `dashboard.${type === 'call_logs' ? 'callLogs' : type === 'folders' ? 'folderSync' : type}`;
-                  return (
-                    <div
-                      key={type}
-                      style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                      }}
-                    >
-                      <Space>
-                        {getSyncStatusIcon(status?.status)}
-                        <Text strong>{t(labelKey)}</Text>
-                      </Space>
-                      <Space>
-                        <Text type="secondary" style={{ fontSize: 12 }}>
-                          {status?.lastSync
-                            ? formatRelativeTime(status.lastSync)
-                            : t('dashboard.neverSynced')}
-                        </Text>
-                        <Tag color={status?.status === 'success' ? 'success' : 'default'}>
-                          {getSyncStatusText(status?.status)}
-                        </Tag>
-                      </Space>
-                    </div>
-                  );
-                })}
-              </Space>
-            </Card>
-          </Col>
-
-          {/* 最近活动 / Recent Activity */}
-          <Col xs={24} lg={12}>
-            <Card title={t('dashboard.recentActivity')} style={{ marginBottom: 24 }}>
-              {activities.length > 0 ? (
-                <Timeline
-                  items={activities.map((activity) => ({
-                    color: activity.status === 'success' ? 'green' : 'red',
-                    children: (
-                      <div>
-                        <Text strong>{activity.action}</Text>
-                        <br />
-                        <Text type="secondary" style={{ fontSize: 12 }}>
-                          {formatRelativeTime(activity.timestamp)}
-                        </Text>
-                      </div>
-                    ),
-                  }))}
-                />
-              ) : (
-                <Empty description={t('dashboard.noActivity')} image={Empty.PRESENTED_IMAGE_SIMPLE} />
-              )}
-            </Card>
-          </Col>
-        </Row>
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <span className="font-semibold text-[var(--font-size-base)]">{t('dashboard.storage')}</span>
+            <span className="text-gray-500 text-[var(--font-size-sm)]">
+              {formatFileSize(connectedDevice.storageUsed)} /{' '}
+              {formatFileSize(connectedDevice.storageTotal)}
+            </span>
+          </div>
+          <Progress
+            value={Math.round(storagePercent)}
+            className={cn(storagePercent > 90 && 'bg-error')}
+          />
+        </div>
       </div>
-    </Spin>
+
+      {/* 数据统计卡片 / Stats Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-[var(--card-gap)]">
+        <div className="rounded-[var(--border-radius)] border border-border bg-white p-[var(--card-padding)]">
+          <div className="text-gray-500 text-[var(--font-size-xs)] mb-1">{t('dashboard.contacts')}</div>
+          <div className="flex items-center gap-2">
+            <Users className="h-5 w-5 text-primary" />
+            <div className="text-lg font-semibold text-primary">{stats.contactCount}</div>
+          </div>
+        </div>
+        <div className="rounded-[var(--border-radius)] border border-border bg-white p-[var(--card-padding)]">
+          <div className="text-gray-500 text-[var(--font-size-xs)] mb-1">{t('dashboard.messages')}</div>
+          <div className="flex items-center gap-2">
+            <MessageSquare className="h-5 w-5 text-success" />
+            <div className="text-lg font-semibold text-success">{stats.messageCount}</div>
+          </div>
+        </div>
+        <div className="rounded-[var(--border-radius)] border border-border bg-white p-[var(--card-padding)]">
+          <div className="text-gray-500 text-[var(--font-size-xs)] mb-1">{t('dashboard.callLogs')}</div>
+          <div className="flex items-center gap-2">
+            <Phone className="h-5 w-5 text-warning" />
+            <div className="text-lg font-semibold text-warning">{stats.callLogCount}</div>
+          </div>
+        </div>
+      </div>
+
+      {/* 快捷操作 / Quick Actions */}
+      <div className="rounded-[var(--border-radius)] border border-border bg-white p-[var(--card-padding)] mb-[var(--card-gap)]">
+        <div className="font-semibold text-[var(--font-size-base)] mb-3">{t('dashboard.quickActions')}</div>
+        <div className="flex items-center gap-3 flex-wrap">
+          <Button
+            variant="primary"
+            size="lg"
+            loading={syncing}
+            onClick={handleSyncAll}
+          >
+            <RefreshCw className="h-4 w-4 mr-2" />
+            {t('dashboard.syncAll')}
+          </Button>
+          <Button
+            variant="outline"
+            size="lg"
+            onClick={handleScreenMirror}
+          >
+            <Monitor className="h-4 w-4 mr-2" />
+            {t('dashboard.startMirror')}
+          </Button>
+          <Button
+            variant="outline"
+            size="lg"
+            onClick={handleFileManager}
+          >
+            <Folder className="h-4 w-4 mr-2" />
+            {t('dashboard.openFileManager')}
+          </Button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* 同步状态 / Sync Status */}
+        <div className="rounded-[var(--border-radius)] border border-border bg-white p-[var(--card-padding)]">
+          <div className="font-semibold text-[var(--font-size-base)] mb-3">{t('dashboard.syncStatus')}</div>
+          <div className="flex flex-col gap-3">
+            {['contacts', 'messages', 'call_logs', 'folders'].map((type) => {
+              const status = syncStatuses?.[type] as (SyncStatus & { status?: string; lastSync?: string }) | undefined;
+              const labelKey = `dashboard.${type === 'call_logs' ? 'callLogs' : type === 'folders' ? 'folderSync' : type}`;
+              return (
+                <div
+                  key={type}
+                  className="flex items-center justify-between py-2"
+                >
+                  <div className="flex items-center gap-2">
+                    {getSyncStatusIcon(status?.status)}
+                    <span className="font-semibold text-[var(--font-size-sm)]">{t(labelKey)}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-gray-500 text-[var(--font-size-xs)]">
+                      {status?.lastSync
+                        ? formatRelativeTime(status.lastSync)
+                        : t('dashboard.neverSynced')}
+                    </span>
+                    <span
+                      className={cn(
+                        'inline-flex items-center px-2 py-0.5 rounded text-xs font-medium',
+                        status?.status === 'success'
+                          ? 'bg-green-50 text-green-700'
+                          : 'bg-gray-50 text-gray-700'
+                      )}
+                    >
+                      {getSyncStatusText(status?.status)}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* 最近活动 / Recent Activity */}
+        <div className="rounded-[var(--border-radius)] border border-border bg-white p-[var(--card-padding)]">
+          <div className="font-semibold text-[var(--font-size-base)] mb-3">{t('dashboard.recentActivity')}</div>
+          {activities.length > 0 ? (
+            <div className="relative pl-6">
+              {activities.map((activity, index) => (
+                <div key={activity.id} className="relative pb-6 last:pb-0">
+                  {index !== activities.length - 1 && (
+                    <span
+                      className="absolute left-[-18px] top-2 h-full w-0.5 bg-gray-200"
+                      aria-hidden="true"
+                    />
+                  )}
+                  <div className="relative flex items-start">
+                    <span
+                      className={cn(
+                        'absolute left-[-22px] top-1.5 h-2 w-2 rounded-full',
+                        activity.status === 'success' ? 'bg-success' : 'bg-error'
+                      )}
+                    />
+                    <div className="flex-1">
+                      <span className="font-semibold text-[var(--font-size-sm)]">{activity.action}</span>
+                      <br />
+                      <span className="text-gray-500 text-[var(--font-size-xs)]">
+                        {formatRelativeTime(activity.timestamp)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-12 text-gray-400">{t('dashboard.noActivity')}</div>
+          )}
+        </div>
+      </div>
+    </div>
   );
 };

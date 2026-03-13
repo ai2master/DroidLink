@@ -483,6 +483,8 @@
     "customAdb": "カスタムパス",
     "adbCustomPath": "ADB実行ファイルのパス",
     "scrcpySource": "scrcpyソース",
+    "bundledScrcpy": "内蔵 scrcpy（推奨）",
+    "bundledScrcpyDesc": "アプリ内蔵のscrcpyを使用、追加インストール不要",
     "systemScrcpy": "システムscrcpy",
     "customScrcpy": "カスタムパス",
     "scrcpyCustomPath": "scrcpy実行ファイルのパス",
@@ -491,7 +493,12 @@
     "invalidToolPath": "無効なパスまたはツールが利用できません",
     "bundled": "内蔵",
     "system": "システム",
-    "custom": "カスタム"
+    "custom": "カスタム",
+    "displayDensity": "表示密度",
+    "densityCompact": "コンパクト",
+    "densityComfortable": "ゆったり",
+    "densityCompactDesc": "間隔が狭く、キーボードとマウスに最適",
+    "densityComfortableDesc": "間隔が広く、タッチスクリーンに最適"
   },
   "companion": {
     "title": "コンパニオンアプリをインストール",

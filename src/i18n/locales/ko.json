@@ -483,6 +483,8 @@
     "customAdb": "사용자 지정 경로",
     "adbCustomPath": "ADB 실행 파일 경로",
     "scrcpySource": "scrcpy 소스",
+    "bundledScrcpy": "내장 scrcpy (권장)",
+    "bundledScrcpyDesc": "앱에 포함된 scrcpy 사용, 추가 설치 불필요",
     "systemScrcpy": "시스템 scrcpy",
     "customScrcpy": "사용자 지정 경로",
     "scrcpyCustomPath": "scrcpy 실행 파일 경로",
@@ -491,7 +493,12 @@
     "invalidToolPath": "유효하지 않은 경로 또는 도구를 사용할 수 없습니다",
     "bundled": "내장",
     "system": "시스템",
-    "custom": "사용자 지정"
+    "custom": "사용자 지정",
+    "displayDensity": "표시 밀도",
+    "densityCompact": "컴팩트",
+    "densityComfortable": "여유",
+    "densityCompactDesc": "더 좁은 간격, 키보드와 마우스에 적합",
+    "densityComfortableDesc": "더 넓은 간격, 터치스크린에 적합"
   },
   "companion": {
     "title": "컴패니언 앱 설치",

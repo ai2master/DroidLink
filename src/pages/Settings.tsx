@@ -1,18 +1,26 @@
 import React, { useEffect, useState } from 'react';
 import {
-  Card, Form, Switch, InputNumber, Button, Space, Typography, message,
-  Divider, Spin, Descriptions, Badge, Tag, Select, Radio, Input, Tooltip,
-} from 'antd';
-import {
-  SettingOutlined, CheckCircleOutlined, CloseCircleOutlined,
-  SaveOutlined, GlobalOutlined, ToolOutlined, FolderOpenOutlined,
-} from '@ant-design/icons';
+  Settings as SettingIcon,
+  CheckCircle2,
+  XCircle,
+  Save,
+  Globe,
+  Wrench,
+  FolderOpen,
+} from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { supportedLanguages } from '../i18n';
 import { tauriInvoke } from '../utils/tauri';
 import { getVersion } from '@tauri-apps/api/app';
-
-const { Title, Text } = Typography;
+import { useStore } from '../stores/useStore';
+import { Button } from '../components/ui/button';
+import { Switch } from '../components/ui/switch';
+import { Input } from '../components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
+import { RadioGroup, RadioGroupItem } from '../components/ui/radio-group';
+import { Tooltip, TooltipContent, TooltipTrigger } from '../components/ui/tooltip';
+import { useToast } from '../components/ui/toast';
+import { cn } from '../utils/cn';
 
 interface SettingsData {
   autoSync: boolean;
@@ -50,7 +58,10 @@ interface SystemInfo {
 
 export const Settings: React.FC = () => {
   const { t, i18n } = useTranslation();
-  const [form] = Form.useForm();
+  const toast = useToast();
+  const density = useStore((s) => s.density);
+  const setDensity = useStore((s) => s.setDensity);
+
   const [settings, setSettings] = useState<SettingsData>({
     autoSync: false,
     syncContacts: true,
@@ -74,7 +85,7 @@ export const Settings: React.FC = () => {
   const [toolSources, setToolSources] = useState<ToolSources>({ adb: [], scrcpy: [] });
   const [adbSource, setAdbSource] = useState('bundled');
   const [adbCustomPath, setAdbCustomPath] = useState('');
-  const [scrcpySource, setScrcpySource] = useState('system');
+  const [scrcpySource, setScrcpySource] = useState('bundled');
   const [scrcpyCustomPath, setScrcpyCustomPath] = useState('');
 
   useEffect(() => {
@@ -91,8 +102,8 @@ export const Settings: React.FC = () => {
     setLoading(true);
     try {
       const data = await tauriInvoke<Record<string, string>>('get_settings');
-      setSettings(data as any);
-      form.setFieldsValue(data);
+      const settingsData = data as any;
+      setSettings(settingsData);
       // 读取工具路径设置 / Load tool path settings
       if (data.adb_source) setAdbSource(data.adb_source);
       if (data.adb_custom_path) setAdbCustomPath(data.adb_custom_path);
@@ -100,7 +111,7 @@ export const Settings: React.FC = () => {
       if (data.scrcpy_custom_path) setScrcpyCustomPath(data.scrcpy_custom_path);
     } catch (error) {
       console.error('Failed to load settings:', error);
-      message.error(t('common.error'));
+      toast.error(t('common.error'));
     } finally {
       setLoading(false);
     }
@@ -138,9 +149,7 @@ export const Settings: React.FC = () => {
   const handleSave = async () => {
     setSaving(true);
     try {
-      const values = form.getFieldsValue();
-      await tauriInvoke('set_settings', { settings: values });
-      setSettings(values);
+      await tauriInvoke('set_settings', { settings });
 
       // 更新工具路径 / Update tool paths
       await tauriInvoke('update_tool_paths', {
@@ -154,9 +163,9 @@ export const Settings: React.FC = () => {
       await loadSystemInfo();
 
       setChanged(false);
-      message.success(t('common.success'));
+      toast.success(t('common.success'));
     } catch (error) {
-      message.error(t('common.error'));
+      toast.error(t('common.error'));
     } finally {
       setSaving(false);
     }
@@ -167,12 +176,12 @@ export const Settings: React.FC = () => {
     try {
       const valid = await tauriInvoke<boolean>('validate_tool_path', { tool, path });
       if (valid) {
-        message.success(t('settings.pathValid'));
+        toast.success(t('settings.pathValid'));
       } else {
-        message.warning(t('settings.invalidToolPath'));
+        toast.warning(t('settings.invalidToolPath'));
       }
     } catch (error) {
-      message.error(t('settings.invalidToolPath'));
+      toast.error(t('settings.invalidToolPath'));
     }
   };
 
@@ -183,220 +192,471 @@ export const Settings: React.FC = () => {
 
   const renderStatusBadge = (available: boolean) => {
     return available ? (
-      <Badge status="success" text={
-        <Space><CheckCircleOutlined style={{ color: '#52c41a' }} /><Text>{t('common.yes')}</Text></Space>
-      } />
+      <div className="flex items-center gap-2">
+        <span className="inline-block h-2 w-2 rounded-full bg-success"></span>
+        <div className="flex items-center gap-1">
+          <CheckCircle2 className="h-4 w-4 text-success" />
+          <span>{t('common.yes')}</span>
+        </div>
+      </div>
     ) : (
-      <Badge status="error" text={
-        <Space><CloseCircleOutlined style={{ color: '#ff4d4f' }} /><Text>{t('common.no')}</Text></Space>
-      } />
+      <div className="flex items-center gap-2">
+        <span className="inline-block h-2 w-2 rounded-full bg-error"></span>
+        <div className="flex items-center gap-1">
+          <XCircle className="h-4 w-4 text-error" />
+          <span>{t('common.no')}</span>
+        </div>
+      </div>
     );
   };
 
   return (
-    <div style={{ padding: '24px' }}>
-      <Card>
-        <Space direction="vertical" size="large" style={{ width: '100%' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
-            <Title level={2} style={{ margin: 0 }}>
-              <SettingOutlined /> {t('settings.title')}
-            </Title>
+    <div className="p-[var(--page-padding)] relative">
+      {loading && (
+        <div className="absolute inset-0 bg-white/50 flex items-center justify-center z-10">
+          <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
+        </div>
+      )}
+
+      <div className="rounded-[var(--border-radius)] border border-border bg-white p-[var(--card-padding)]">
+        <div className="flex flex-col gap-6">
+          <div className="flex items-center justify-between flex-wrap gap-4">
+            <h2 className="text-[var(--font-size-title)] font-semibold flex items-center gap-2 m-0">
+              <SettingIcon className="h-6 w-6" /> {t('settings.title')}
+            </h2>
             {changed && (
-              <Button type="primary" icon={<SaveOutlined />} loading={saving} onClick={handleSave}>
+              <Button variant="primary" loading={saving} onClick={handleSave}>
+                <Save className="h-4 w-4 mr-2" />
                 {t('common.save')}
               </Button>
             )}
           </div>
 
-          <Spin spinning={loading}>
-            {/* 语言设置 / Language settings */}
-            <Card type="inner" title={<><GlobalOutlined style={{ marginRight: 8 }} />{t('common.language')}</>} style={{ marginBottom: 16 }}>
-              <Select
-                value={i18n.language?.split('-')[0] || 'zh'}
-                onChange={changeLanguage}
-                style={{ width: 300 }}
-                options={supportedLanguages.map((lang) => ({
-                  value: lang.code,
-                  label: `${lang.nativeName} (${lang.name})`,
-                }))}
+          {/* 语言设置 / Language settings */}
+          <div className="rounded-[var(--border-radius)] border border-border bg-white p-[var(--card-padding)]">
+            <div className="font-semibold text-[var(--font-size-base)] mb-3 flex items-center gap-2">
+              <Globe className="h-5 w-5" />
+              {t('common.language')}
+            </div>
+            <Select value={i18n.language?.split('-')[0] || 'zh'} onValueChange={changeLanguage}>
+              <SelectTrigger className="w-[300px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {supportedLanguages.map((lang) => (
+                  <SelectItem key={lang.code} value={lang.code}>
+                    {lang.nativeName} ({lang.name})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* 显示密度设置 / Display density settings */}
+          <div className="rounded-[var(--border-radius)] border border-border bg-white p-[var(--card-padding)]">
+            <div className="font-semibold text-[var(--font-size-base)] mb-3">
+              {t('settings.displayDensity')}
+            </div>
+            <RadioGroup value={density} onValueChange={(val) => setDensity(val as 'compact' | 'comfortable')}>
+              <div className="flex flex-col gap-3">
+                <div className="flex items-center gap-2">
+                  <RadioGroupItem value="compact" id="density-compact" />
+                  <label htmlFor="density-compact" className="text-[var(--font-size-sm)] cursor-pointer">
+                    {t('settings.densityCompact')}
+                  </label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <RadioGroupItem value="comfortable" id="density-comfortable" />
+                  <label htmlFor="density-comfortable" className="text-[var(--font-size-sm)] cursor-pointer">
+                    {t('settings.densityComfortable')}
+                  </label>
+                </div>
+              </div>
+            </RadioGroup>
+          </div>
+
+          {/* 同步设置 / Sync settings */}
+          <div className="rounded-[var(--border-radius)] border border-border bg-white p-[var(--card-padding)]">
+            <div className="font-semibold text-[var(--font-size-base)] mb-3">{t('settings.syncInterval')}</div>
+            <div className="flex flex-col gap-4">
+              <div className="flex items-center justify-between py-2">
+                <label className="text-[var(--font-size-sm)]">{t('settings.autoSync')}</label>
+                <Switch
+                  checked={settings.autoSync}
+                  onCheckedChange={(checked) => {
+                    setSettings((prev) => ({ ...prev, autoSync: checked }));
+                    setChanged(true);
+                  }}
+                />
+              </div>
+              <div className="flex items-center justify-between py-2">
+                <label className="text-[var(--font-size-sm)]">{t('contacts.title')}</label>
+                <Switch
+                  checked={settings.syncContacts}
+                  onCheckedChange={(checked) => {
+                    setSettings((prev) => ({ ...prev, syncContacts: checked }));
+                    setChanged(true);
+                  }}
+                />
+              </div>
+              <div className="flex items-center justify-between py-2">
+                <label className="text-[var(--font-size-sm)]">{t('messages.title')}</label>
+                <Switch
+                  checked={settings.syncMessages}
+                  onCheckedChange={(checked) => {
+                    setSettings((prev) => ({ ...prev, syncMessages: checked }));
+                    setChanged(true);
+                  }}
+                />
+              </div>
+              <div className="flex items-center justify-between py-2">
+                <label className="text-[var(--font-size-sm)]">{t('callLogs.title')}</label>
+                <Switch
+                  checked={settings.syncCallLogs}
+                  onCheckedChange={(checked) => {
+                    setSettings((prev) => ({ ...prev, syncCallLogs: checked }));
+                    setChanged(true);
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* 版本历史 / Version history */}
+          <div className="rounded-[var(--border-radius)] border border-border bg-white p-[var(--card-padding)]">
+            <div className="font-semibold text-[var(--font-size-base)] mb-3">{t('versionHistory.title')}</div>
+            <div className="flex items-center justify-between py-2">
+              <label className="text-[var(--font-size-sm)]">{t('folderSync.retentionDays')}</label>
+              <Input
+                type="number"
+                min={7}
+                max={365}
+                value={settings.retentionDays}
+                onChange={(e) => {
+                  setSettings((prev) => ({ ...prev, retentionDays: parseInt(e.target.value) || 30 }));
+                  setChanged(true);
+                }}
+                className="w-32"
               />
-            </Card>
+            </div>
+          </div>
 
-            <Form form={form} layout="vertical" initialValues={settings} onValuesChange={() => setChanged(true)}>
-              {/* 同步设置 / Sync settings */}
-              <Card type="inner" title={t('settings.syncInterval')} style={{ marginBottom: 16 }}>
-                <Form.Item label={t('settings.autoSync')} name="autoSync" valuePropName="checked">
-                  <Switch />
-                </Form.Item>
-                <Form.Item label={t('contacts.title')} name="syncContacts" valuePropName="checked">
-                  <Switch />
-                </Form.Item>
-                <Form.Item label={t('messages.title')} name="syncMessages" valuePropName="checked">
-                  <Switch />
-                </Form.Item>
-                <Form.Item label={t('callLogs.title')} name="syncCallLogs" valuePropName="checked">
-                  <Switch />
-                </Form.Item>
-              </Card>
-
-              {/* 版本历史 / Version history */}
-              <Card type="inner" title={t('versionHistory.title')} style={{ marginBottom: 16 }}>
-                <Form.Item label={t('folderSync.retentionDays')} name="retentionDays">
-                  <InputNumber min={7} max={365} style={{ width: '100%' }} />
-                </Form.Item>
-              </Card>
-
-              {/* scrcpy 设置 / scrcpy settings */}
-              <Card type="inner" title="scrcpy" style={{ marginBottom: 16 }}>
-                <Form.Item label={t('screenMirror.maxResolution')} name="scrcpyMaxSize">
-                  <InputNumber min={720} max={2560} step={10} style={{ width: '100%' }} addonAfter="px" />
-                </Form.Item>
-                <Form.Item label={t('screenMirror.bitRate')} name="scrcpyBitRate">
-                  <InputNumber
-                    min={1000000} max={50000000} step={1000000} style={{ width: '100%' }}
-                    formatter={(value) => `${((value || 0) / 1000000).toFixed(1)} Mbps`}
-                    parser={(value) => parseFloat(value?.replace(' Mbps', '') || '0') * 1000000 as any}
+          {/* scrcpy 设置 / scrcpy settings */}
+          <div className="rounded-[var(--border-radius)] border border-border bg-white p-[var(--card-padding)]">
+            <div className="font-semibold text-[var(--font-size-base)] mb-3">scrcpy</div>
+            <div className="flex flex-col gap-4">
+              <div className="flex items-center justify-between py-2">
+                <label className="text-[var(--font-size-sm)]">{t('screenMirror.maxResolution')}</label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="number"
+                    min={720}
+                    max={2560}
+                    step={10}
+                    value={settings.scrcpyMaxSize}
+                    onChange={(e) => {
+                      setSettings((prev) => ({ ...prev, scrcpyMaxSize: parseInt(e.target.value) || 1920 }));
+                      setChanged(true);
+                    }}
+                    className="w-32"
                   />
-                </Form.Item>
-              </Card>
-            </Form>
+                  <span className="text-[var(--font-size-sm)] text-gray-500">px</span>
+                </div>
+              </div>
+              <div className="flex items-center justify-between py-2">
+                <label className="text-[var(--font-size-sm)]">{t('screenMirror.bitRate')}</label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="number"
+                    min={1}
+                    max={50}
+                    step={1}
+                    value={settings.scrcpyBitRate / 1000000}
+                    onChange={(e) => {
+                      setSettings((prev) => ({ ...prev, scrcpyBitRate: (parseFloat(e.target.value) || 8) * 1000000 }));
+                      setChanged(true);
+                    }}
+                    className="w-32"
+                  />
+                  <span className="text-[var(--font-size-sm)] text-gray-500">Mbps</span>
+                </div>
+              </div>
+            </div>
+          </div>
 
-            {/* 工具路径配置 / Tool paths configuration */}
-            <Card type="inner" title={<><ToolOutlined style={{ marginRight: 8 }} />{t('settings.toolPaths')}</>} style={{ marginBottom: 16 }}>
-              <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-                <div>
-                  <Text strong style={{ display: 'block', marginBottom: 8 }}>{t('settings.adbSource')}</Text>
-                  <Radio.Group
-                    value={adbSource}
-                    onChange={(e) => { setAdbSource(e.target.value); setChanged(true); }}
-                  >
-                    <Space direction="vertical">
-                      <Radio value="bundled" disabled={!toolSources.adb.includes('bundled')}>
-                        {t('settings.bundledAdb')}
-                        <Text type="secondary" style={{ marginLeft: 8, fontSize: 12 }}>
+          {/* 工具路径配置 / Tool paths configuration */}
+          <div className="rounded-[var(--border-radius)] border border-border bg-white p-[var(--card-padding)]">
+            <div className="font-semibold text-[var(--font-size-base)] mb-3 flex items-center gap-2">
+              <Wrench className="h-5 w-5" />
+              {t('settings.toolPaths')}
+            </div>
+            <div className="flex flex-col gap-4">
+              <div>
+                <span className="font-semibold text-[var(--font-size-sm)] block mb-2">{t('settings.adbSource')}</span>
+                <RadioGroup
+                  value={adbSource}
+                  onValueChange={(val) => {
+                    setAdbSource(val);
+                    setChanged(true);
+                  }}
+                >
+                  <div className="flex flex-col gap-3">
+                    <div className="flex items-start gap-2">
+                      <RadioGroupItem
+                        value="bundled"
+                        id="adb-bundled"
+                        disabled={!toolSources.adb.includes('bundled')}
+                      />
+                      <div className="flex flex-col">
+                        <label htmlFor="adb-bundled" className="text-[var(--font-size-sm)] cursor-pointer">
+                          {t('settings.bundledAdb')}
+                        </label>
+                        <span className="text-gray-500 text-[var(--font-size-xs)]">
                           {t('settings.bundledAdbDesc')}
-                        </Text>
-                      </Radio>
-                      <Radio value="system" disabled={!toolSources.adb.includes('system')}>
-                        {t('settings.systemAdb')}
-                        <Text type="secondary" style={{ marginLeft: 8, fontSize: 12 }}>
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <RadioGroupItem
+                        value="system"
+                        id="adb-system"
+                        disabled={!toolSources.adb.includes('system')}
+                      />
+                      <div className="flex flex-col">
+                        <label htmlFor="adb-system" className="text-[var(--font-size-sm)] cursor-pointer">
+                          {t('settings.systemAdb')}
+                        </label>
+                        <span className="text-gray-500 text-[var(--font-size-xs)]">
                           {t('settings.systemAdbDesc')}
-                        </Text>
-                      </Radio>
-                      <Radio value="custom">
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <RadioGroupItem value="custom" id="adb-custom" />
+                      <label htmlFor="adb-custom" className="text-[var(--font-size-sm)] cursor-pointer">
                         {t('settings.customAdb')}
-                      </Radio>
-                    </Space>
-                  </Radio.Group>
-                  {adbSource === 'custom' && (
-                    <Space.Compact style={{ width: '100%', marginTop: 8 }}>
-                      <Input
-                        value={adbCustomPath}
-                        onChange={(e) => { setAdbCustomPath(e.target.value); setChanged(true); }}
-                        placeholder={t('settings.adbCustomPath')}
-                        style={{ flex: 1 }}
-                      />
-                      <Tooltip title={t('settings.validatePath')}>
+                      </label>
+                    </div>
+                  </div>
+                </RadioGroup>
+                {adbSource === 'custom' && (
+                  <div className="flex items-center gap-2 mt-2">
+                    <Input
+                      value={adbCustomPath}
+                      onChange={(e) => {
+                        setAdbCustomPath(e.target.value);
+                        setChanged(true);
+                      }}
+                      placeholder={t('settings.adbCustomPath')}
+                      className="flex-1"
+                    />
+                    <Tooltip>
+                      <TooltipTrigger asChild>
                         <Button
-                          icon={<CheckCircleOutlined />}
+                          variant="outline"
+                          size="icon"
                           onClick={() => handleValidatePath('adb', adbCustomPath)}
-                        />
-                      </Tooltip>
-                    </Space.Compact>
-                  )}
-                </div>
-
-                <Divider style={{ margin: '8px 0' }} />
-
-                <div>
-                  <Text strong style={{ display: 'block', marginBottom: 8 }}>{t('settings.scrcpySource')}</Text>
-                  <Radio.Group
-                    value={scrcpySource}
-                    onChange={(e) => { setScrcpySource(e.target.value); setChanged(true); }}
-                  >
-                    <Space direction="vertical">
-                      <Radio value="system" disabled={!toolSources.scrcpy.includes('system')}>
-                        {t('settings.systemScrcpy')}
-                      </Radio>
-                      <Radio value="custom">
-                        {t('settings.customScrcpy')}
-                      </Radio>
-                    </Space>
-                  </Radio.Group>
-                  {scrcpySource === 'custom' && (
-                    <Space.Compact style={{ width: '100%', marginTop: 8 }}>
-                      <Input
-                        value={scrcpyCustomPath}
-                        onChange={(e) => { setScrcpyCustomPath(e.target.value); setChanged(true); }}
-                        placeholder={t('settings.scrcpyCustomPath')}
-                        style={{ flex: 1 }}
-                      />
-                      <Tooltip title={t('settings.validatePath')}>
-                        <Button
-                          icon={<CheckCircleOutlined />}
-                          onClick={() => handleValidatePath('scrcpy', scrcpyCustomPath)}
-                        />
-                      </Tooltip>
-                    </Space.Compact>
-                  )}
-                </div>
-              </Space>
-            </Card>
-
-            {/* ADB 信息 / ADB info */}
-            <Card type="inner" title={t('settings.adbInfo')} style={{ marginBottom: 16 }}>
-              <Descriptions bordered column={1} size="small">
-                <Descriptions.Item label={t('common.status')}>
-                  {renderStatusBadge(systemInfo.adbAvailable)}
-                </Descriptions.Item>
-                {systemInfo.adbInfo && (
-                  <>
-                    <Descriptions.Item label={t('settings.adbPath')}>
-                      <Text code copyable>{systemInfo.adbInfo.adb_path}</Text>
-                    </Descriptions.Item>
-                    <Descriptions.Item label={t('settings.adbPort')}>
-                      <Tag>{systemInfo.adbInfo.port}</Tag>
-                    </Descriptions.Item>
-                    <Descriptions.Item label={t('settings.adbSource')}>
-                      {systemInfo.adbInfo.source === 'bundled' && <Tag color="blue">{t('settings.bundled')}</Tag>}
-                      {systemInfo.adbInfo.source === 'system' && <Tag color="green">{t('settings.system')}</Tag>}
-                      {systemInfo.adbInfo.source === 'custom' && <Tag color="orange">{t('settings.custom')}</Tag>}
-                    </Descriptions.Item>
-                    <Descriptions.Item label={t('settings.adbReused')}>
-                      {systemInfo.adbInfo.reused_server ? <Tag color="green">{t('common.yes')}</Tag> : <Tag>{t('common.no')}</Tag>}
-                    </Descriptions.Item>
-                    <Descriptions.Item label={t('settings.adbVersion')}>
-                      <Text code>{systemInfo.adbInfo.version}</Text>
-                    </Descriptions.Item>
-                  </>
+                        >
+                          <CheckCircle2 className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>{t('settings.validatePath')}</TooltipContent>
+                    </Tooltip>
+                  </div>
                 )}
-              </Descriptions>
-            </Card>
+              </div>
 
-            {/* 关于 / About */}
-            <Card type="inner" title={t('settings.about')}>
-              <Descriptions bordered column={1} size="small">
-                <Descriptions.Item label="scrcpy">
+              <hr className="border-border my-2" />
+
+              <div>
+                <span className="font-semibold text-[var(--font-size-sm)] block mb-2">{t('settings.scrcpySource')}</span>
+                <RadioGroup
+                  value={scrcpySource}
+                  onValueChange={(val) => {
+                    setScrcpySource(val);
+                    setChanged(true);
+                  }}
+                >
+                  <div className="flex flex-col gap-3">
+                    <div className="flex items-start gap-2">
+                      <RadioGroupItem
+                        value="bundled"
+                        id="scrcpy-bundled"
+                        disabled={!toolSources.scrcpy.includes('bundled')}
+                      />
+                      <div className="flex flex-col">
+                        <label htmlFor="scrcpy-bundled" className="text-[var(--font-size-sm)] cursor-pointer">
+                          {t('settings.bundledScrcpy')}
+                        </label>
+                        <span className="text-gray-500 text-[var(--font-size-xs)]">
+                          {t('settings.bundledScrcpyDesc')}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <RadioGroupItem
+                        value="system"
+                        id="scrcpy-system"
+                        disabled={!toolSources.scrcpy.includes('system')}
+                      />
+                      <label htmlFor="scrcpy-system" className="text-[var(--font-size-sm)] cursor-pointer">
+                        {t('settings.systemScrcpy')}
+                      </label>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <RadioGroupItem value="custom" id="scrcpy-custom" />
+                      <label htmlFor="scrcpy-custom" className="text-[var(--font-size-sm)] cursor-pointer">
+                        {t('settings.customScrcpy')}
+                      </label>
+                    </div>
+                  </div>
+                </RadioGroup>
+                {scrcpySource === 'custom' && (
+                  <div className="flex items-center gap-2 mt-2">
+                    <Input
+                      value={scrcpyCustomPath}
+                      onChange={(e) => {
+                        setScrcpyCustomPath(e.target.value);
+                        setChanged(true);
+                      }}
+                      placeholder={t('settings.scrcpyCustomPath')}
+                      className="flex-1"
+                    />
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          onClick={() => handleValidatePath('scrcpy', scrcpyCustomPath)}
+                        >
+                          <CheckCircle2 className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>{t('settings.validatePath')}</TooltipContent>
+                    </Tooltip>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* ADB 信息 / ADB info */}
+          <div className="rounded-[var(--border-radius)] border border-border bg-white p-[var(--card-padding)]">
+            <div className="font-semibold text-[var(--font-size-base)] mb-3">{t('settings.adbInfo')}</div>
+            <dl className="grid grid-cols-1 gap-3">
+              <div className="flex items-center justify-between py-2 border-b border-border last:border-b-0">
+                <dt className="text-[var(--font-size-sm)] text-gray-600">{t('common.status')}</dt>
+                <dd>{renderStatusBadge(systemInfo.adbAvailable)}</dd>
+              </div>
+              {systemInfo.adbInfo && (
+                <>
+                  <div className="flex items-center justify-between py-2 border-b border-border last:border-b-0">
+                    <dt className="text-[var(--font-size-sm)] text-gray-600">{t('settings.adbPath')}</dt>
+                    <dd>
+                      <code className="bg-gray-100 px-1.5 py-0.5 rounded text-[var(--font-size-xs)]">
+                        {systemInfo.adbInfo.adb_path}
+                      </code>
+                    </dd>
+                  </div>
+                  <div className="flex items-center justify-between py-2 border-b border-border last:border-b-0">
+                    <dt className="text-[var(--font-size-sm)] text-gray-600">{t('settings.adbPort')}</dt>
+                    <dd>
+                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-50 text-gray-700">
+                        {systemInfo.adbInfo.port}
+                      </span>
+                    </dd>
+                  </div>
+                  <div className="flex items-center justify-between py-2 border-b border-border last:border-b-0">
+                    <dt className="text-[var(--font-size-sm)] text-gray-600">{t('settings.adbSource')}</dt>
+                    <dd>
+                      {systemInfo.adbInfo.source === 'bundled' && (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-50 text-blue-700">
+                          {t('settings.bundled')}
+                        </span>
+                      )}
+                      {systemInfo.adbInfo.source === 'system' && (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-50 text-green-700">
+                          {t('settings.system')}
+                        </span>
+                      )}
+                      {systemInfo.adbInfo.source === 'custom' && (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-50 text-yellow-700">
+                          {t('settings.custom')}
+                        </span>
+                      )}
+                    </dd>
+                  </div>
+                  <div className="flex items-center justify-between py-2 border-b border-border last:border-b-0">
+                    <dt className="text-[var(--font-size-sm)] text-gray-600">{t('settings.adbReused')}</dt>
+                    <dd>
+                      {systemInfo.adbInfo.reused_server ? (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-50 text-green-700">
+                          {t('common.yes')}
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-50 text-gray-700">
+                          {t('common.no')}
+                        </span>
+                      )}
+                    </dd>
+                  </div>
+                  <div className="flex items-center justify-between py-2 border-b border-border last:border-b-0">
+                    <dt className="text-[var(--font-size-sm)] text-gray-600">{t('settings.adbVersion')}</dt>
+                    <dd>
+                      <code className="bg-gray-100 px-1.5 py-0.5 rounded text-[var(--font-size-xs)]">
+                        {systemInfo.adbInfo.version}
+                      </code>
+                    </dd>
+                  </div>
+                </>
+              )}
+            </dl>
+          </div>
+
+          {/* 关于 / About */}
+          <div className="rounded-[var(--border-radius)] border border-border bg-white p-[var(--card-padding)]">
+            <div className="font-semibold text-[var(--font-size-base)] mb-3">{t('settings.about')}</div>
+            <dl className="grid grid-cols-1 gap-3 mb-4">
+              <div className="flex items-center justify-between py-2 border-b border-border last:border-b-0">
+                <dt className="text-[var(--font-size-sm)] text-gray-600">scrcpy</dt>
+                <dd>
                   {systemInfo.scrcpyVersion ? (
-                    <Space><Tag color="success">{systemInfo.scrcpyVersion}</Tag>{renderStatusBadge(true)}</Space>
-                  ) : renderStatusBadge(false)}
-                </Descriptions.Item>
-                <Descriptions.Item label={t('settings.dataPath')}>
-                  <Text code copyable>{systemInfo.dataPath}</Text>
-                </Descriptions.Item>
-                <Descriptions.Item label={t('settings.version')}>
-                  <Tag color="blue">v{systemInfo.appVersion}</Tag>
-                </Descriptions.Item>
-              </Descriptions>
-              <Divider />
-              <Space direction="vertical">
-                <Text strong>DroidLink</Text>
-                <Text type="secondary">{t('app.subtitle')}</Text>
-              </Space>
-            </Card>
-          </Spin>
-        </Space>
-      </Card>
+                    <div className="flex items-center gap-2">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-50 text-green-700">
+                        {systemInfo.scrcpyVersion}
+                      </span>
+                      {renderStatusBadge(true)}
+                    </div>
+                  ) : (
+                    renderStatusBadge(false)
+                  )}
+                </dd>
+              </div>
+              <div className="flex items-center justify-between py-2 border-b border-border last:border-b-0">
+                <dt className="text-[var(--font-size-sm)] text-gray-600">{t('settings.dataPath')}</dt>
+                <dd>
+                  <code className="bg-gray-100 px-1.5 py-0.5 rounded text-[var(--font-size-xs)]">
+                    {systemInfo.dataPath}
+                  </code>
+                </dd>
+              </div>
+              <div className="flex items-center justify-between py-2 border-b border-border last:border-b-0">
+                <dt className="text-[var(--font-size-sm)] text-gray-600">{t('settings.version')}</dt>
+                <dd>
+                  <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-50 text-blue-700">
+                    v{systemInfo.appVersion}
+                  </span>
+                </dd>
+              </div>
+            </dl>
+            <hr className="border-border my-4" />
+            <div className="flex flex-col gap-1">
+              <span className="font-semibold text-[var(--font-size-base)]">DroidLink</span>
+              <span className="text-gray-500 text-[var(--font-size-sm)]">{t('app.subtitle')}</span>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };

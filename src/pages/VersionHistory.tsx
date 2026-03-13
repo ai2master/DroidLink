@@ -1,37 +1,19 @@
 import React, { useEffect, useState } from 'react';
 import {
-  Card,
-  Tabs,
-  Timeline,
-  Button,
-  Space,
-  Typography,
-  message,
-  Empty,
-  Spin,
-  Modal,
-  DatePicker,
-  Descriptions,
-  Tag,
-  Divider,
-  Checkbox,
-  Alert,
-} from 'antd';
-import {
-  HistoryOutlined,
-  RollbackOutlined,
-  DeleteOutlined,
-  EyeOutlined,
-  SwapOutlined,
-} from '@ant-design/icons';
+  History, Undo2, Trash2, Eye, ArrowLeftRight,
+} from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { tauriInvoke } from '../utils/tauri';
 import { formatDate } from '../utils/format';
 import { VersionPreview } from '../components/VersionPreview';
 import { VersionDiffView } from '../components/VersionDiffView';
-import dayjs, { Dayjs } from 'dayjs';
-
-const { Title, Text } = Typography;
+import { Button } from '../components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../components/ui/dialog';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '../components/ui/tabs';
+import { useToast } from '../components/ui/toast';
+import { useConfirm } from '../components/ui/confirm-dialog';
+import { Badge } from '../components/ui/badge';
+import { cn } from '../utils/cn';
 
 interface Version {
   id: string;
@@ -76,6 +58,8 @@ type DataType = 'contacts' | 'messages' | 'call_logs' | 'folders';
 
 export const VersionHistory: React.FC = () => {
   const { t } = useTranslation();
+  const toast = useToast();
+  const { confirm } = useConfirm();
   const [versions, setVersions] = useState<Record<DataType, Version[]>>({
     contacts: [],
     messages: [],
@@ -90,10 +74,8 @@ export const VersionHistory: React.FC = () => {
   const [selectedVersion, setSelectedVersion] = useState<VersionDetail | null>(null);
   const [selectedDataType, setSelectedDataType] = useState<string>('contacts');
   const [loadingDetail, setLoadingDetail] = useState(false);
-  const [beforeDate, setBeforeDate] = useState<Dayjs | null>(null);
+  const [beforeDate, setBeforeDate] = useState('');
   const [cleaning, setCleaning] = useState(false);
-
-  // 对比模式状态 / Compare mode state
   const [compareMode, setCompareMode] = useState(false);
   const [selectedForCompare, setSelectedForCompare] = useState<string[]>([]);
   const [compareResult, setCompareResult] = useState<CompareResult | null>(null);
@@ -106,13 +88,11 @@ export const VersionHistory: React.FC = () => {
   const loadVersions = async (dataType: DataType) => {
     setLoading(true);
     try {
-      const data = await tauriInvoke<Version[]>('get_version_history', {
-        dataType,
-      });
+      const data = await tauriInvoke<Version[]>('get_version_history', { dataType });
       setVersions((prev) => ({ ...prev, [dataType]: data || [] }));
     } catch (error) {
       console.error('Failed to load version history:', error);
-      message.error(t('versionHistory.loadFailed'));
+      toast.error(t('versionHistory.loadFailed'));
     } finally {
       setLoading(false);
     }
@@ -121,32 +101,27 @@ export const VersionHistory: React.FC = () => {
   const loadVersionDetail = async (versionId: string) => {
     setLoadingDetail(true);
     try {
-      const detail = await tauriInvoke<VersionDetail>('get_version_detail', {
-        versionId,
-      });
+      const detail = await tauriInvoke<VersionDetail>('get_version_detail', { versionId });
       setSelectedVersion(detail);
       setSelectedDataType(activeTab);
       setDetailModalVisible(true);
     } catch (error) {
       console.error('Failed to load version detail:', error);
-      message.error(t('versionHistory.loadDetailFailed'));
+      toast.error(t('versionHistory.loadDetailFailed'));
     } finally {
       setLoadingDetail(false);
     }
   };
 
   const handleRestore = (versionId: string, description: string) => {
-    Modal.confirm({
+    confirm({
       title: t('versionHistory.restoreConfirmTitle'),
       content: (
         <div>
           <p>{t('versionHistory.restoreConfirm', { description })}</p>
-          <Alert
-            type="info"
-            showIcon
-            message={t('versionHistory.restoreNote')}
-            style={{ marginTop: 8 }}
-          />
+          <div className="flex gap-2 p-3 rounded-[var(--border-radius)] bg-blue-50 border border-blue-200 text-sm mt-2">
+            <span className="text-blue-800">{t('versionHistory.restoreNote')}</span>
+          </div>
         </div>
       ),
       okText: t('versionHistory.restoreAsNew'),
@@ -154,10 +129,10 @@ export const VersionHistory: React.FC = () => {
       onOk: async () => {
         try {
           await tauriInvoke('restore_version', { versionId });
-          message.success(t('versionHistory.restored'));
+          toast.success(t('versionHistory.restored'));
           loadVersions(activeTab);
         } catch (error) {
-          message.error(t('versionHistory.restoreFailed'));
+          toast.error(t('versionHistory.restoreFailed'));
         }
       },
     });
@@ -167,7 +142,6 @@ export const VersionHistory: React.FC = () => {
     setSelectedForCompare((prev) => {
       if (checked) {
         if (prev.length >= 2) {
-          // Replace the oldest selection
           return [prev[1], versionId];
         }
         return [...prev, versionId];
@@ -178,7 +152,7 @@ export const VersionHistory: React.FC = () => {
 
   const handleCompare = async () => {
     if (selectedForCompare.length !== 2) {
-      message.warning(t('versionHistory.selectTwoVersions'));
+      toast.warning(t('versionHistory.selectTwoVersions'));
       return;
     }
     setLoadingCompare(true);
@@ -191,7 +165,7 @@ export const VersionHistory: React.FC = () => {
       setCompareModalVisible(true);
     } catch (error) {
       console.error('Failed to compare versions:', error);
-      message.error(t('versionHistory.compareFailed'));
+      toast.error(t('versionHistory.compareFailed'));
     } finally {
       setLoadingCompare(false);
     }
@@ -199,20 +173,20 @@ export const VersionHistory: React.FC = () => {
 
   const handleCleanup = async () => {
     if (!beforeDate) {
-      message.warning(t('versionHistory.selectDate'));
+      toast.warning(t('versionHistory.selectDate'));
       return;
     }
     setCleaning(true);
     try {
       const count = await tauriInvoke<number>('delete_old_versions', {
-        beforeDate: beforeDate.toISOString(),
+        beforeDate: new Date(beforeDate).toISOString(),
       });
-      message.success(t('versionHistory.cleaned', { count }));
+      toast.success(t('versionHistory.cleaned', { count }));
       setCleanupModalVisible(false);
-      setBeforeDate(null);
+      setBeforeDate('');
       loadVersions(activeTab);
     } catch (error) {
-      message.error(t('versionHistory.cleanFailed'));
+      toast.error(t('versionHistory.cleanFailed'));
     } finally {
       setCleaning(false);
     }
@@ -221,7 +195,7 @@ export const VersionHistory: React.FC = () => {
   const getActionColor = (action: string) => {
     const actionLower = action.toLowerCase();
     if (actionLower.includes('create') || actionLower.includes('add') || actionLower.includes('新增') || actionLower.includes('创建')) return 'success';
-    if (actionLower.includes('update') || actionLower.includes('modify') || actionLower.includes('修改') || actionLower.includes('更新')) return 'processing';
+    if (actionLower.includes('update') || actionLower.includes('modify') || actionLower.includes('修改') || actionLower.includes('更新')) return 'info';
     if (actionLower.includes('delete') || actionLower.includes('remove') || actionLower.includes('删除')) return 'error';
     if (actionLower.includes('restore') || actionLower.includes('恢复')) return 'warning';
     return 'default';
@@ -229,74 +203,77 @@ export const VersionHistory: React.FC = () => {
 
   const renderTimeline = (versionList: Version[]) => {
     if (versionList.length === 0) {
-      return (
-        <Empty
-          description={t('versionHistory.noVersions')}
-          image={Empty.PRESENTED_IMAGE_SIMPLE}
-        />
-      );
+      return <div className="text-center py-12 text-gray-400">{t('versionHistory.noVersions')}</div>;
     }
 
     return (
-      <Timeline
-        mode="left"
-        items={versionList.map((version) => ({
-          color: getActionColor(version.action),
-          label: (
-            <Text type="secondary" style={{ fontSize: 12 }}>
+      <div className="flex flex-col gap-3">
+        {versionList.map((version) => (
+          <div key={version.id} className="flex gap-4">
+            <div className="text-xs text-gray-500 w-32 text-right pt-1">
               {formatDate(version.timestamp)}
-            </Text>
-          ),
-          children: (
-            <Card size="small" style={{ marginBottom: 8 }}>
-              <Space direction="vertical" style={{ width: '100%' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <Space>
+            </div>
+            <div className="relative flex-1">
+              <div className="absolute left-0 top-0 bottom-0 w-px bg-border" />
+              <div
+                className={cn(
+                  "absolute left-0 top-2 w-2 h-2 rounded-full -translate-x-[3.5px]",
+                  getActionColor(version.action) === 'success' && "bg-green-500",
+                  getActionColor(version.action) === 'info' && "bg-blue-500",
+                  getActionColor(version.action) === 'error' && "bg-red-500",
+                  getActionColor(version.action) === 'warning' && "bg-yellow-500",
+                  getActionColor(version.action) === 'default' && "bg-gray-400"
+                )}
+              />
+              <div className="ml-6 rounded-[var(--border-radius)] border border-border bg-white p-3">
+                <div className="flex justify-between items-center mb-2">
+                  <div className="flex items-center gap-2">
                     {compareMode && (
-                      <Checkbox
+                      <input
+                        type="checkbox"
                         checked={selectedForCompare.includes(version.id)}
                         onChange={(e) => handleCompareToggle(version.id, e.target.checked)}
+                        className="w-4 h-4"
                       />
                     )}
-                    <Tag color={getActionColor(version.action)}>
+                    <Badge variant={getActionColor(version.action)}>
                       {version.action}
-                    </Tag>
-                    <Text strong>{version.description}</Text>
-                  </Space>
-                  <Space>
+                    </Badge>
+                    <span className="font-semibold">{version.description}</span>
+                  </div>
+                  <div className="flex gap-1">
                     <Button
-                      type="link"
-                      size="small"
-                      icon={<EyeOutlined />}
+                      variant="ghost"
+                      size="sm"
                       onClick={() => loadVersionDetail(version.id)}
                     >
+                      <Eye size={14} />
                       {t('versionHistory.viewDetail')}
                     </Button>
                     <Button
-                      type="link"
-                      size="small"
-                      icon={<RollbackOutlined />}
+                      variant="ghost"
+                      size="sm"
                       onClick={() => handleRestore(version.id, version.description)}
                     >
+                      <Undo2 size={14} />
                       {t('versionHistory.restore')}
                     </Button>
-                  </Space>
+                  </div>
                 </div>
-                <Text type="secondary" style={{ fontSize: 12 }}>
+                <div className="text-xs text-gray-500">
                   {t('versionHistory.sourcePrefix', { source: version.source })}
-                </Text>
-              </Space>
-            </Card>
-          ),
-        }))}
-      />
+                </div>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
     );
   };
 
   const renderDetailModal = () => {
     if (!selectedVersion) return null;
 
-    // Parse before/after data from the version detail
     const beforeData = selectedVersion.before
       ? (typeof selectedVersion.before === 'string' ? JSON.parse(selectedVersion.before) : selectedVersion.before)
       : null;
@@ -305,81 +282,69 @@ export const VersionHistory: React.FC = () => {
       : null;
 
     return (
-      <Modal
-        title={t('versionHistory.detail')}
-        open={detailModalVisible}
-        onCancel={() => {
-          setDetailModalVisible(false);
-          setSelectedVersion(null);
-        }}
-        footer={[
-          <Button
-            key="close"
-            onClick={() => {
-              setDetailModalVisible(false);
-              setSelectedVersion(null);
-            }}
-          >
-            {t('common.close')}
-          </Button>,
-          <Button
-            key="restore"
-            type="primary"
-            icon={<RollbackOutlined />}
-            onClick={() => {
-              handleRestore(selectedVersion.id, selectedVersion.description);
-              setDetailModalVisible(false);
-              setSelectedVersion(null);
-            }}
-          >
-            {t('versionHistory.restoreAsNew')}
-          </Button>,
-        ]}
-        width={800}
-      >
-        <Spin spinning={loadingDetail}>
-          <Descriptions bordered column={1} size="small">
-            <Descriptions.Item label={t('versionHistory.operation')}>
-              <Tag color={getActionColor(selectedVersion.action)}>
-                {selectedVersion.action}
-              </Tag>
-            </Descriptions.Item>
-            <Descriptions.Item label={t('versionHistory.description')}>
-              {selectedVersion.description}
-            </Descriptions.Item>
-            <Descriptions.Item label={t('versionHistory.time')}>
-              {formatDate(selectedVersion.timestamp)}
-            </Descriptions.Item>
-          </Descriptions>
+      <Dialog open={detailModalVisible} onOpenChange={setDetailModalVisible}>
+        <DialogContent className="max-w-[800px]">
+          <DialogHeader>
+            <DialogTitle>{t('versionHistory.detail')}</DialogTitle>
+          </DialogHeader>
+          {loadingDetail ? (
+            <div className="text-center py-12 text-gray-400">{t('common.loading')}</div>
+          ) : (
+            <div className="space-y-4">
+              <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 border border-border rounded-[var(--border-radius)] p-3 text-sm">
+                <dt className="text-gray-500 font-medium">{t('versionHistory.operation')}</dt>
+                <dd><Badge variant={getActionColor(selectedVersion.action)}>{selectedVersion.action}</Badge></dd>
+                <dt className="text-gray-500 font-medium">{t('versionHistory.description')}</dt>
+                <dd>{selectedVersion.description}</dd>
+                <dt className="text-gray-500 font-medium">{t('versionHistory.time')}</dt>
+                <dd>{formatDate(selectedVersion.timestamp)}</dd>
+              </dl>
 
-          {selectedVersion.changes && selectedVersion.changes.length > 0 && (
-            <>
-              <Divider>{t('versionHistory.changes')}</Divider>
-              <Space direction="vertical" style={{ width: '100%' }}>
-                {selectedVersion.changes.map((change, index) => (
-                  <Text key={index} style={{ fontSize: 13 }}>
-                    {change}
-                  </Text>
-                ))}
-              </Space>
-            </>
-          )}
+              {selectedVersion.changes && selectedVersion.changes.length > 0 && (
+                <>
+                  <div className="font-semibold text-sm border-t border-border pt-3">{t('versionHistory.changes')}</div>
+                  <div className="flex flex-col gap-1">
+                    {selectedVersion.changes.map((change, index) => (
+                      <div key={index} className="text-sm">{change}</div>
+                    ))}
+                  </div>
+                </>
+              )}
 
-          {beforeData && (
-            <>
-              <Divider>{t('versionHistory.before')}</Divider>
-              <VersionPreview dataType={selectedDataType} data={beforeData} />
-            </>
-          )}
+              {beforeData && (
+                <>
+                  <div className="font-semibold text-sm border-t border-border pt-3">{t('versionHistory.before')}</div>
+                  <VersionPreview dataType={selectedDataType} data={beforeData} />
+                </>
+              )}
 
-          {afterData && (
-            <>
-              <Divider>{t('versionHistory.after')}</Divider>
-              <VersionPreview dataType={selectedDataType} data={afterData} />
-            </>
+              {afterData && (
+                <>
+                  <div className="font-semibold text-sm border-t border-border pt-3">{t('versionHistory.after')}</div>
+                  <VersionPreview dataType={selectedDataType} data={afterData} />
+                </>
+              )}
+            </div>
           )}
-        </Spin>
-      </Modal>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDetailModalVisible(false)}>
+              {t('common.close')}
+            </Button>
+            <Button
+              variant="primary"
+              onClick={() => {
+                if (selectedVersion) {
+                  handleRestore(selectedVersion.id, selectedVersion.description);
+                  setDetailModalVisible(false);
+                }
+              }}
+            >
+              <Undo2 size={16} />
+              {t('versionHistory.restoreAsNew')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     );
   };
 
@@ -387,69 +352,61 @@ export const VersionHistory: React.FC = () => {
     if (!compareResult) return null;
 
     return (
-      <Modal
-        title={t('versionHistory.compareVersions')}
-        open={compareModalVisible}
-        onCancel={() => {
-          setCompareModalVisible(false);
-          setCompareResult(null);
-        }}
-        footer={[
-          <Button
-            key="close"
-            onClick={() => {
-              setCompareModalVisible(false);
-              setCompareResult(null);
-            }}
-          >
-            {t('common.close')}
-          </Button>,
-        ]}
-        width={900}
-      >
-        <VersionDiffView
-          dataType={compareResult.versionA.dataType}
-          versionA={compareResult.versionA.data}
-          versionB={compareResult.versionB.data}
-          timestampA={compareResult.versionA.timestamp}
-          timestampB={compareResult.versionB.timestamp}
-          actionA={compareResult.versionA.action}
-          actionB={compareResult.versionB.action}
-        />
-      </Modal>
+      <Dialog open={compareModalVisible} onOpenChange={setCompareModalVisible}>
+        <DialogContent className="max-w-[900px]">
+          <DialogHeader>
+            <DialogTitle>{t('versionHistory.compareVersions')}</DialogTitle>
+          </DialogHeader>
+          <VersionDiffView
+            dataType={compareResult.versionA.dataType}
+            versionA={compareResult.versionA.data}
+            versionB={compareResult.versionB.data}
+            timestampA={compareResult.versionA.timestamp}
+            timestampB={compareResult.versionB.timestamp}
+            actionA={compareResult.versionA.action}
+            actionB={compareResult.versionB.action}
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCompareModalVisible(false)}>
+              {t('common.close')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     );
   };
 
   const renderCleanupModal = () => (
-    <Modal
-      title={t('versionHistory.deleteOld')}
-      open={cleanupModalVisible}
-      onCancel={() => {
-        setCleanupModalVisible(false);
-        setBeforeDate(null);
-      }}
-      onOk={handleCleanup}
-      confirmLoading={cleaning}
-      okText={t('common.clean')}
-      okType="danger"
-      cancelText={t('common.cancel')}
-    >
-      <Space direction="vertical" style={{ width: '100%' }} size="large">
-        <Text>{t('versionHistory.cleanupDesc')}</Text>
-        <div>
-          <Text strong>{t('versionHistory.selectDateLabel')}</Text>
-          <DatePicker
-            value={beforeDate}
-            onChange={setBeforeDate}
-            style={{ width: '100%', marginTop: 8 }}
-            placeholder={t('versionHistory.datePickerPlaceholder')}
-          />
+    <Dialog open={cleanupModalVisible} onOpenChange={setCleanupModalVisible}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{t('versionHistory.deleteOld')}</DialogTitle>
+        </DialogHeader>
+        <div className="flex flex-col gap-4">
+          <div className="text-sm text-gray-600">{t('versionHistory.cleanupDesc')}</div>
+          <div>
+            <div className="mb-2 font-medium text-sm">{t('versionHistory.selectDateLabel')}</div>
+            <input
+              type="date"
+              value={beforeDate}
+              onChange={(e) => setBeforeDate(e.target.value)}
+              className="w-full p-2 border border-border rounded-[var(--border-radius)]"
+            />
+          </div>
+          <div className="text-sm text-yellow-600 font-medium">
+            {t('versionHistory.cleanupWarning')}
+          </div>
         </div>
-        <Text type="warning">
-          {t('versionHistory.cleanupWarning')}
-        </Text>
-      </Space>
-    </Modal>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setCleanupModalVisible(false)}>
+            {t('common.cancel')}
+          </Button>
+          <Button variant="destructive" onClick={handleCleanup} loading={cleaning}>
+            {t('common.clean')}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 
   const tabItems = [
@@ -460,89 +417,80 @@ export const VersionHistory: React.FC = () => {
   ];
 
   return (
-    <div style={{ padding: '24px' }}>
-      <Card>
-        <Space
-          direction="vertical"
-          size="large"
-          style={{ width: '100%', marginBottom: 16 }}
-        >
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              flexWrap: 'wrap',
-              gap: 16,
-            }}
-          >
-            <Title level={2} style={{ margin: 0 }}>
-              <HistoryOutlined /> {t('versionHistory.title')}
-            </Title>
-            <Space wrap>
+    <div style={{ padding: 'var(--page-padding)' }}>
+      <div className="rounded-[var(--border-radius)] border border-border bg-white p-[var(--card-padding)]">
+        <div className="flex flex-col gap-4 mb-4">
+          <div className="flex justify-between items-center flex-wrap gap-4">
+            <h2 className="text-[var(--font-size-title)] font-semibold flex items-center gap-2">
+              <History size={20} />
+              {t('versionHistory.title')}
+            </h2>
+            <div className="flex flex-wrap gap-2">
               <Button
-                type={compareMode ? 'primary' : 'default'}
-                icon={<SwapOutlined />}
+                variant={compareMode ? 'primary' : 'outline'}
                 onClick={() => {
                   setCompareMode(!compareMode);
                   setSelectedForCompare([]);
                 }}
               >
+                <ArrowLeftRight size={16} />
                 {t('versionHistory.compare')}
               </Button>
               {compareMode && selectedForCompare.length === 2 && (
                 <Button
-                  type="primary"
-                  icon={<SwapOutlined />}
+                  variant="primary"
                   loading={loadingCompare}
                   onClick={handleCompare}
                 >
+                  <ArrowLeftRight size={16} />
                   {t('versionHistory.compareVersions')}
                 </Button>
               )}
               <Button
-                danger
-                icon={<DeleteOutlined />}
+                variant="destructive"
                 onClick={() => setCleanupModalVisible(true)}
               >
+                <Trash2 size={16} />
                 {t('versionHistory.deleteOld')}
               </Button>
-            </Space>
+            </div>
           </div>
 
           {compareMode && (
-            <Alert
-              type="info"
-              showIcon
-              message={t('versionHistory.selectTwoVersions')}
-              description={
-                selectedForCompare.length > 0
-                  ? `${selectedForCompare.length}/2 ${t('versionHistory.selected')}`
-                  : undefined
-              }
-            />
+            <div className="flex gap-2 p-3 rounded-[var(--border-radius)] bg-blue-50 border border-blue-200 text-sm">
+              <span className="text-blue-800">
+                {t('versionHistory.selectTwoVersions')}
+                {selectedForCompare.length > 0 && ` - ${selectedForCompare.length}/2 ${t('versionHistory.selected')}`}
+              </span>
+            </div>
           )}
-        </Space>
+        </div>
 
-        <Tabs
-          activeKey={activeTab}
-          onChange={(key) => {
-            setActiveTab(key as DataType);
-            setSelectedForCompare([]);
-          }}
-          items={tabItems.map((item) => ({
-            key: item.key,
-            label: item.label,
-            children: (
-              <Spin spinning={loading}>
-                <div style={{ padding: '24px 0' }}>
+        <Tabs value={activeTab} onValueChange={(v) => {
+          setActiveTab(v as DataType);
+          setSelectedForCompare([]);
+        }}>
+          <TabsList>
+            {tabItems.map((item) => (
+              <TabsTrigger key={item.key} value={item.key}>
+                {item.label}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+
+          {tabItems.map((item) => (
+            <TabsContent key={item.key} value={item.key}>
+              {loading ? (
+                <div className="text-center py-12 text-gray-400">{t('common.loading')}</div>
+              ) : (
+                <div className="py-6">
                   {renderTimeline(versions[item.key as DataType])}
                 </div>
-              </Spin>
-            ),
-          }))}
-        />
-      </Card>
+              )}
+            </TabsContent>
+          ))}
+        </Tabs>
+      </div>
 
       {renderDetailModal()}
       {renderCompareModal()}

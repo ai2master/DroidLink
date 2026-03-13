@@ -1,23 +1,24 @@
 import { useState, useEffect } from 'react';
 import {
-  Button, Card, Space, Switch, InputNumber, Descriptions, message, Empty,
-  Tag, Alert, Slider, Input, Radio, Select, Divider,
-} from 'antd';
-import {
-  PlayCircleOutlined, PauseOutlined, SendOutlined, DeleteOutlined,
-  EnterOutlined, ClearOutlined, EditOutlined, SwapOutlined,
-} from '@ant-design/icons';
+  Play, Pause, Send, Trash2, CornerDownLeft, Eraser, Pen,
+} from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { tauriInvoke } from '../utils/tauri';
 import { useStore } from '../stores/useStore';
+import { Button } from '../components/ui/button';
+import { Input, Textarea } from '../components/ui/input';
+import { Switch } from '../components/ui/switch';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../components/ui/select';
+import { Slider } from '../components/ui/slider';
+import { useToast } from '../components/ui/toast';
+import { Badge } from '../components/ui/badge';
+import { cn } from '../utils/cn';
 
-const { TextArea } = Input;
-
-// 输入模式 / Input mode
 type InputMode = 'droidlink_ime' | 'keyboard_passthrough';
 
 export default function ScreenMirror() {
   const { t } = useTranslation();
+  const toast = useToast();
   const device = useStore((s) => s.connectedDevice);
   const [running, setRunning] = useState(false);
   const [scrcpyVersion, setScrcpyVersion] = useState('');
@@ -34,13 +35,11 @@ export default function ScreenMirror() {
     stayAwake: true,
     turnScreenOff: false,
     noControl: false,
-    // 触摸屏选项 / Touch screen options
     forwardAllClicks: true,
     noMouseHover: false,
     otgMode: false,
   });
 
-  // 输入模式和状态 / Input mode and state
   const [inputMode, setInputMode] = useState<InputMode>('droidlink_ime');
   const [textInput, setTextInput] = useState('');
   const [passthroughInput, setPassthroughInput] = useState('');
@@ -110,9 +109,9 @@ export default function ScreenMirror() {
         },
       });
       setRunning(true);
-      message.success(t('screenMirror.startMirror'));
+      toast.success(t('screenMirror.startMirror'));
     } catch (err: any) {
-      message.error(`${t('common.error')}: ${err}`);
+      toast.error(`${t('common.error')}: ${err}`);
     }
   };
 
@@ -121,23 +120,20 @@ export default function ScreenMirror() {
     try {
       await tauriInvoke('stop_scrcpy', { serial: device.serial });
       setRunning(false);
-      message.success(t('screenMirror.stopMirror'));
+      toast.success(t('screenMirror.stopMirror'));
     } catch (err: any) {
-      message.error(`${t('common.error')}: ${err}`);
+      toast.error(`${t('common.error')}: ${err}`);
     }
   };
-
-  // ========== DroidLink IME 模式函数 ==========
-  // ========== DroidLink IME mode functions ==========
 
   const sendText = async () => {
     if (!device || !textInput) return;
     try {
       await tauriInvoke('send_text_to_device', { serial: device.serial, text: textInput });
-      message.success(t('screenMirror.sendText'));
+      toast.success(t('screenMirror.sendText'));
       setTextInput('');
     } catch (err: any) {
-      message.error(`${t('common.error')}: ${err}`);
+      toast.error(`${t('common.error')}: ${err}`);
     }
   };
 
@@ -146,7 +142,7 @@ export default function ScreenMirror() {
     try {
       await tauriInvoke('send_backspace_to_device', { serial: device.serial, count });
     } catch (err: any) {
-      message.error(`${t('common.error')}: ${err}`);
+      toast.error(`${t('common.error')}: ${err}`);
     }
   };
 
@@ -155,7 +151,7 @@ export default function ScreenMirror() {
     try {
       await tauriInvoke('send_enter_to_device', { serial: device.serial });
     } catch (err: any) {
-      message.error(`${t('common.error')}: ${err}`);
+      toast.error(`${t('common.error')}: ${err}`);
     }
   };
 
@@ -166,9 +162,9 @@ export default function ScreenMirror() {
       setImeEnabled(true);
       setImeStatus(imeId);
       setCurrentIme(imeId);
-      message.success(t('screenMirror.enableDroidLinkIME'));
+      toast.success(t('screenMirror.enableDroidLinkIME'));
     } catch (err: any) {
-      message.error(`${t('common.error')}: ${err}`);
+      toast.error(`${t('common.error')}: ${err}`);
     }
   };
 
@@ -179,23 +175,20 @@ export default function ScreenMirror() {
       setImeEnabled(false);
       setImeStatus('');
       loadDeviceImes();
-      message.success(t('screenMirror.restoreDefaultIME'));
+      toast.success(t('screenMirror.restoreDefaultIME'));
     } catch (err: any) {
-      message.error(`${t('common.error')}: ${err}`);
+      toast.error(`${t('common.error')}: ${err}`);
     }
   };
-
-  // ========== 键盘直通模式函数 ==========
-  // ========== Keyboard passthrough mode functions ==========
 
   const sendPassthroughText = async () => {
     if (!device || !passthroughInput) return;
     try {
       await tauriInvoke('passthrough_text', { serial: device.serial, text: passthroughInput });
-      message.success(t('screenMirror.sendText'));
+      toast.success(t('screenMirror.sendText'));
       setPassthroughInput('');
     } catch (err: any) {
-      message.error(`${t('common.error')}: ${err}`);
+      toast.error(`${t('common.error')}: ${err}`);
     }
   };
 
@@ -204,7 +197,7 @@ export default function ScreenMirror() {
     try {
       await tauriInvoke('passthrough_keyevent', { serial: device.serial, keyCode });
     } catch (err: any) {
-      message.error(`${t('common.error')}: ${err}`);
+      toast.error(`${t('common.error')}: ${err}`);
     }
   };
 
@@ -213,9 +206,9 @@ export default function ScreenMirror() {
     try {
       await tauriInvoke('switch_ime', { serial: device.serial, imeId });
       setCurrentIme(imeId);
-      message.success(t('screenMirror.switchIME'));
+      toast.success(t('screenMirror.switchIME'));
     } catch (err: any) {
-      message.error(`${t('common.error')}: ${err}`);
+      toast.error(`${t('common.error')}: ${err}`);
     }
   };
 
@@ -224,7 +217,7 @@ export default function ScreenMirror() {
       <>
         <div className="page-header"><h2>{t('screenMirror.title')}</h2></div>
         <div className="page-body" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
-          <Empty description={t('common.connectDevice')} />
+          <div className="text-center py-12 text-gray-400">{t('common.connectDevice')}</div>
         </div>
       </>
     );
@@ -233,266 +226,320 @@ export default function ScreenMirror() {
   return (
     <>
       <div className="page-header">
-        <Space>
+        <div className="flex items-center gap-2">
           <h2>{t('screenMirror.title')}</h2>
-          <Tag color={running ? 'success' : 'default'}>{running ? t('common.running') : t('common.stopped')}</Tag>
-        </Space>
-        <Space>
+          <Badge variant={running ? 'success' : 'default'}>{running ? t('common.running') : t('common.stopped')}</Badge>
+        </div>
+        <div className="flex items-center gap-2">
           {running ? (
-            <Button danger icon={<PauseOutlined />} onClick={stopMirror}>{t('screenMirror.stopMirror')}</Button>
+            <Button variant="destructive" onClick={stopMirror}>
+              <Pause size={16} />
+              {t('screenMirror.stopMirror')}
+            </Button>
           ) : (
-            <Button type="primary" icon={<PlayCircleOutlined />} onClick={startMirror} disabled={!scrcpyAvailable}>
+            <Button variant="primary" onClick={startMirror} disabled={!scrcpyAvailable}>
+              <Play size={16} />
               {t('screenMirror.startMirror')}
             </Button>
           )}
-        </Space>
+        </div>
       </div>
       <div className="page-body">
         {!scrcpyAvailable && (
-          <Alert
-            type="warning" showIcon
-            message={t('screenMirror.scrcpyNotFound')}
-            description={t('screenMirror.scrcpyInstallHint')}
-            style={{ marginBottom: 16 }}
-          />
+          <div className="flex gap-2 p-3 rounded-[var(--border-radius)] bg-yellow-50 border border-yellow-200 text-[var(--font-size-sm)] mb-4">
+            <span className="text-yellow-800">
+              <strong>{t('screenMirror.scrcpyNotFound')}</strong><br />
+              {t('screenMirror.scrcpyInstallHint')}
+            </span>
+          </div>
         )}
         {scrcpyAvailable && (
-          <Alert type="info" showIcon
-            message={t('screenMirror.scrcpyVersion', { version: scrcpyVersion })}
-            style={{ marginBottom: 16 }} />
+          <div className="flex gap-2 p-3 rounded-[var(--border-radius)] bg-blue-50 border border-blue-200 text-[var(--font-size-sm)] mb-4">
+            <span className="text-blue-800">{t('screenMirror.scrcpyVersion', { version: scrcpyVersion })}</span>
+          </div>
         )}
 
-        {/* ========== 输入模式选择 / Input mode selection ========== */}
-        <Card
-          title={<Space><EditOutlined /><span>{t('screenMirror.inputMode')}</span></Space>}
-          size="small"
-          style={{ marginBottom: 16 }}
-        >
-          <Radio.Group
-            value={inputMode}
-            onChange={(e) => setInputMode(e.target.value)}
-            style={{ marginBottom: 16 }}
-          >
-            <Radio.Button value="droidlink_ime">
+        <div className="rounded-[var(--border-radius)] border border-border bg-white p-[var(--card-padding)] mb-[var(--card-gap)]">
+          <div className="font-semibold text-[var(--font-size-base)] mb-3 flex items-center gap-2">
+            <Pen size={16} />
+            {t('screenMirror.inputMode')}
+          </div>
+          <div className="flex gap-2 mb-4">
+            <button
+              onClick={() => setInputMode('droidlink_ime')}
+              className={cn(
+                "px-4 py-2 rounded-[var(--border-radius)] border transition-colors",
+                inputMode === 'droidlink_ime'
+                  ? "bg-blue-500 text-white border-blue-500"
+                  : "bg-white text-gray-700 border-border hover:bg-gray-50"
+              )}
+            >
               {t('screenMirror.inputModeDroidLink')}
-            </Radio.Button>
-            <Radio.Button value="keyboard_passthrough">
+            </button>
+            <button
+              onClick={() => setInputMode('keyboard_passthrough')}
+              className={cn(
+                "px-4 py-2 rounded-[var(--border-radius)] border transition-colors",
+                inputMode === 'keyboard_passthrough'
+                  ? "bg-blue-500 text-white border-blue-500"
+                  : "bg-white text-gray-700 border-border hover:bg-gray-50"
+              )}
+            >
               {t('screenMirror.inputModePassthrough')}
-            </Radio.Button>
-          </Radio.Group>
+            </button>
+          </div>
 
-          {/* DroidLink IME 模式 / DroidLink IME mode */}
           {inputMode === 'droidlink_ime' && (
-            <Space direction="vertical" style={{ width: '100%' }} size="middle">
-              <Alert type="info" showIcon
-                message={t('screenMirror.inputModeDroidLinkDesc')} />
+            <div className="flex flex-col gap-4">
+              <div className="flex gap-2 p-3 rounded-[var(--border-radius)] bg-blue-50 border border-blue-200 text-[var(--font-size-sm)]">
+                <span className="text-blue-800">{t('screenMirror.inputModeDroidLinkDesc')}</span>
+              </div>
 
               <div>
-                <Space style={{ marginBottom: 8 }}>
+                <div className="flex items-center gap-2 mb-2">
                   {!imeEnabled ? (
-                    <Button type="primary" icon={<EditOutlined />} onClick={setupIME}>
+                    <Button variant="primary" onClick={setupIME}>
+                      <Pen size={16} />
                       {t('screenMirror.enableDroidLinkIME')}
                     </Button>
                   ) : (
-                    <Button icon={<EditOutlined />} onClick={restoreIME}>
+                    <Button onClick={restoreIME}>
+                      <Pen size={16} />
                       {t('screenMirror.restoreDefaultIME')}
                     </Button>
                   )}
-                  {imeEnabled && <Tag color="success">{t('screenMirror.imeEnabled')}</Tag>}
-                </Space>
+                  {imeEnabled && <Badge variant="success">{t('screenMirror.imeEnabled')}</Badge>}
+                </div>
                 {imeStatus && (
-                  <div style={{ fontSize: 12, color: '#666', marginTop: 4 }}>
+                  <div className="text-xs text-gray-500">
                     {t('screenMirror.currentIME')}: {imeStatus}
                   </div>
                 )}
               </div>
 
-              <TextArea
+              <Textarea
                 value={textInput}
                 onChange={(e) => setTextInput(e.target.value)}
                 placeholder={t('screenMirror.inputPlaceholder')}
                 rows={3}
                 disabled={!imeEnabled}
-                onPressEnter={(e) => { if (e.ctrlKey || e.metaKey) sendText(); }}
+                onKeyDown={(e) => { if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') sendText(); }}
               />
-              <div style={{ fontSize: 12, color: '#999' }}>{t('screenMirror.ctrlEnterHint')}</div>
+              <div className="text-xs text-gray-500">{t('screenMirror.ctrlEnterHint')}</div>
 
-              <Space wrap>
-                <Button type="primary" icon={<SendOutlined />} onClick={sendText} disabled={!imeEnabled || !textInput}>
+              <div className="flex flex-wrap gap-2">
+                <Button variant="primary" onClick={sendText} disabled={!imeEnabled || !textInput}>
+                  <Send size={16} />
                   {t('screenMirror.sendText')}
                 </Button>
-                <Button icon={<DeleteOutlined />} onClick={() => sendBackspace(1)} disabled={!imeEnabled}>
+                <Button onClick={() => sendBackspace(1)} disabled={!imeEnabled}>
+                  <Trash2 size={16} />
                   {t('screenMirror.backspace')}
                 </Button>
-                <Button icon={<EnterOutlined />} onClick={sendEnter} disabled={!imeEnabled}>
+                <Button onClick={sendEnter} disabled={!imeEnabled}>
+                  <CornerDownLeft size={16} />
                   {t('screenMirror.enter')}
                 </Button>
-                <Button icon={<ClearOutlined />} onClick={() => setTextInput('')} disabled={!textInput}>
+                <Button onClick={() => setTextInput('')} disabled={!textInput}>
+                  <Eraser size={16} />
                   {t('common.clear')}
                 </Button>
-              </Space>
-            </Space>
+              </div>
+            </div>
           )}
 
-          {/* 键盘直通模式 / Keyboard passthrough mode */}
           {inputMode === 'keyboard_passthrough' && (
-            <Space direction="vertical" style={{ width: '100%' }} size="middle">
-              <Alert type="info" showIcon
-                message={t('screenMirror.inputModePassthroughDesc')} />
+            <div className="flex flex-col gap-4">
+              <div className="flex gap-2 p-3 rounded-[var(--border-radius)] bg-blue-50 border border-blue-200 text-[var(--font-size-sm)]">
+                <span className="text-blue-800">{t('screenMirror.inputModePassthroughDesc')}</span>
+              </div>
 
-              {/* 手机输入法选择 / Phone IME selection */}
               {deviceImes.length > 0 && (
                 <div>
-                  <div style={{ marginBottom: 4, fontWeight: 500 }}>{t('screenMirror.switchIME')}</div>
-                  <Select
-                    value={currentIme}
-                    onChange={switchDeviceIme}
-                    style={{ width: '100%' }}
-                    options={deviceImes.map((ime) => ({
-                      value: ime,
-                      label: ime.split('/').pop() || ime,
-                    }))}
-                  />
-                  <div style={{ fontSize: 12, color: '#999', marginTop: 4 }}>
+                  <div className="mb-2 font-medium text-[var(--font-size-sm)]">{t('screenMirror.switchIME')}</div>
+                  <Select value={currentIme} onValueChange={switchDeviceIme}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {deviceImes.map((ime) => (
+                        <SelectItem key={ime} value={ime}>
+                          {ime.split('/').pop() || ime}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <div className="text-xs text-gray-500 mt-1">
                     {t('screenMirror.currentIME')}: {currentIme}
                   </div>
                 </div>
               )}
 
-              <TextArea
+              <Textarea
                 value={passthroughInput}
                 onChange={(e) => setPassthroughInput(e.target.value)}
                 placeholder={t('screenMirror.passthroughPlaceholder')}
                 rows={3}
-                onPressEnter={(e) => { if (e.ctrlKey || e.metaKey) sendPassthroughText(); }}
+                onKeyDown={(e) => { if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') sendPassthroughText(); }}
               />
 
-              <Space wrap>
-                <Button type="primary" icon={<SendOutlined />} onClick={sendPassthroughText} disabled={!passthroughInput}>
+              <div className="flex flex-wrap gap-2">
+                <Button variant="primary" onClick={sendPassthroughText} disabled={!passthroughInput}>
+                  <Send size={16} />
                   {t('screenMirror.sendText')}
                 </Button>
-                <Button icon={<DeleteOutlined />} onClick={() => sendPassthroughKey(67)}>
+                <Button onClick={() => sendPassthroughKey(67)}>
+                  <Trash2 size={16} />
                   {t('screenMirror.backspace')}
                 </Button>
-                <Button icon={<EnterOutlined />} onClick={() => sendPassthroughKey(66)}>
+                <Button onClick={() => sendPassthroughKey(66)}>
+                  <CornerDownLeft size={16} />
                   {t('screenMirror.enter')}
                 </Button>
                 <Button onClick={() => sendPassthroughKey(62)}>Space</Button>
-                <Button icon={<ClearOutlined />} onClick={() => setPassthroughInput('')} disabled={!passthroughInput}>
+                <Button onClick={() => setPassthroughInput('')} disabled={!passthroughInput}>
+                  <Eraser size={16} />
                   {t('common.clear')}
                 </Button>
-              </Space>
-            </Space>
+              </div>
+            </div>
           )}
-        </Card>
+        </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-          {/* 视频设置 / Video settings */}
-          <Card title={t('screenMirror.videoSettings')} size="small">
-            <Space direction="vertical" style={{ width: '100%' }} size="middle">
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div className="grid grid-cols-2 gap-[var(--card-gap)]">
+          <div className="rounded-[var(--border-radius)] border border-border bg-white p-[var(--card-padding)]">
+            <div className="font-semibold text-[var(--font-size-base)] mb-3">{t('screenMirror.videoSettings')}</div>
+            <div className="flex flex-col gap-4">
+              <div className="flex justify-between items-center">
                 <span>{t('screenMirror.maxResolution')}</span>
-                <InputNumber value={options.maxSize} onChange={(v) => setOptions((o) => ({ ...o, maxSize: v || 0 }))}
-                  min={0} max={3840} step={120} addonAfter="px" style={{ width: 150 }} disabled={running} />
+                <Input
+                  type="number"
+                  value={options.maxSize}
+                  onChange={(e) => setOptions((o) => ({ ...o, maxSize: Number(e.target.value) || 0 }))}
+                  min={0}
+                  max={3840}
+                  step={120}
+                  disabled={running}
+                  className="w-32"
+                />
               </div>
               <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <div className="flex justify-between mb-1">
                   <span>{t('screenMirror.bitRate')}</span>
                   <span>{options.bitRate} Mbps</span>
                 </div>
-                <Slider value={options.bitRate} onChange={(v) => setOptions((o) => ({ ...o, bitRate: v }))}
-                  min={1} max={32} disabled={running} />
+                <Slider
+                  value={options.bitRate}
+                  onChange={(v) => setOptions((o) => ({ ...o, bitRate: v }))}
+                  min={1}
+                  max={32}
+                  disabled={running}
+                />
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div className="flex justify-between items-center">
                 <span>{t('screenMirror.maxFps')}</span>
-                <InputNumber value={options.maxFps} onChange={(v) => setOptions((o) => ({ ...o, maxFps: v || 0 }))}
-                  min={0} max={120} addonAfter="fps" style={{ width: 150 }} disabled={running} />
+                <Input
+                  type="number"
+                  value={options.maxFps}
+                  onChange={(e) => setOptions((o) => ({ ...o, maxFps: Number(e.target.value) || 0 }))}
+                  min={0}
+                  max={120}
+                  disabled={running}
+                  className="w-32"
+                />
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div className="flex justify-between items-center">
                 <span>{t('screenMirror.disableAudio')}</span>
-                <Switch checked={options.noAudio} onChange={(v) => setOptions((o) => ({ ...o, noAudio: v }))} disabled={running} />
+                <Switch checked={options.noAudio} onCheckedChange={(v) => setOptions((o) => ({ ...o, noAudio: v }))} disabled={running} />
               </div>
-            </Space>
-          </Card>
+            </div>
+          </div>
 
-          {/* 窗口设置 / Window settings */}
-          <Card title={t('screenMirror.windowSettings')} size="small">
-            <Space direction="vertical" style={{ width: '100%' }} size="middle">
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div className="rounded-[var(--border-radius)] border border-border bg-white p-[var(--card-padding)]">
+            <div className="font-semibold text-[var(--font-size-base)] mb-3">{t('screenMirror.windowSettings')}</div>
+            <div className="flex flex-col gap-4">
+              <div className="flex justify-between items-center">
                 <span>{t('screenMirror.borderless')}</span>
-                <Switch checked={options.borderless} onChange={(v) => setOptions((o) => ({ ...o, borderless: v }))} disabled={running} />
+                <Switch checked={options.borderless} onCheckedChange={(v) => setOptions((o) => ({ ...o, borderless: v }))} disabled={running} />
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div className="flex justify-between items-center">
                 <span>{t('screenMirror.alwaysOnTop')}</span>
-                <Switch checked={options.alwaysOnTop} onChange={(v) => setOptions((o) => ({ ...o, alwaysOnTop: v }))} disabled={running} />
+                <Switch checked={options.alwaysOnTop} onCheckedChange={(v) => setOptions((o) => ({ ...o, alwaysOnTop: v }))} disabled={running} />
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div className="flex justify-between items-center">
                 <span>{t('screenMirror.fullscreen')}</span>
-                <Switch checked={options.fullscreen} onChange={(v) => setOptions((o) => ({ ...o, fullscreen: v }))} disabled={running} />
+                <Switch checked={options.fullscreen} onCheckedChange={(v) => setOptions((o) => ({ ...o, fullscreen: v }))} disabled={running} />
               </div>
-            </Space>
-          </Card>
+            </div>
+          </div>
 
-          {/* 触摸屏设置 / Touch screen settings */}
-          <Card title={t('screenMirror.touchSettings')} size="small">
-            <Space direction="vertical" style={{ width: '100%' }} size="middle">
-              <Alert type="info" showIcon message={t('screenMirror.touchInfoDesc')} style={{ padding: '4px 8px', fontSize: 12 }} />
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div className="rounded-[var(--border-radius)] border border-border bg-white p-[var(--card-padding)]">
+            <div className="font-semibold text-[var(--font-size-base)] mb-3">{t('screenMirror.touchSettings')}</div>
+            <div className="flex flex-col gap-4">
+              <div className="flex gap-2 p-2 rounded-[var(--border-radius)] bg-blue-50 border border-blue-200 text-xs">
+                <span className="text-blue-800">{t('screenMirror.touchInfoDesc')}</span>
+              </div>
+              <div className="flex justify-between items-start">
                 <div>
                   <div>{t('screenMirror.forwardAllClicks')}</div>
-                  <div style={{ fontSize: 12, color: '#999' }}>{t('screenMirror.forwardAllClicksDesc')}</div>
+                  <div className="text-xs text-gray-500">{t('screenMirror.forwardAllClicksDesc')}</div>
                 </div>
-                <Switch checked={options.forwardAllClicks} onChange={(v) => setOptions((o) => ({ ...o, forwardAllClicks: v }))} disabled={running} />
+                <Switch checked={options.forwardAllClicks} onCheckedChange={(v) => setOptions((o) => ({ ...o, forwardAllClicks: v }))} disabled={running} />
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div className="flex justify-between items-start">
                 <div>
                   <div>{t('screenMirror.noMouseHover')}</div>
-                  <div style={{ fontSize: 12, color: '#999' }}>{t('screenMirror.noMouseHoverDesc')}</div>
+                  <div className="text-xs text-gray-500">{t('screenMirror.noMouseHoverDesc')}</div>
                 </div>
-                <Switch checked={options.noMouseHover} onChange={(v) => setOptions((o) => ({ ...o, noMouseHover: v }))} disabled={running} />
+                <Switch checked={options.noMouseHover} onCheckedChange={(v) => setOptions((o) => ({ ...o, noMouseHover: v }))} disabled={running} />
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div className="flex justify-between items-start">
                 <div>
                   <div>{t('screenMirror.otgMode')}</div>
-                  <div style={{ fontSize: 12, color: '#999' }}>{t('screenMirror.otgModeDesc')}</div>
+                  <div className="text-xs text-gray-500">{t('screenMirror.otgModeDesc')}</div>
                 </div>
-                <Switch checked={options.otgMode} onChange={(v) => setOptions((o) => ({ ...o, otgMode: v }))} disabled={running} />
+                <Switch checked={options.otgMode} onCheckedChange={(v) => setOptions((o) => ({ ...o, otgMode: v }))} disabled={running} />
               </div>
-            </Space>
-          </Card>
+            </div>
+          </div>
 
-          {/* 设备控制 / Device control */}
-          <Card title={t('screenMirror.deviceControl')} size="small">
-            <Space direction="vertical" style={{ width: '100%' }} size="middle">
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div className="rounded-[var(--border-radius)] border border-border bg-white p-[var(--card-padding)]">
+            <div className="font-semibold text-[var(--font-size-base)] mb-3">{t('screenMirror.deviceControl')}</div>
+            <div className="flex flex-col gap-4">
+              <div className="flex justify-between items-center">
                 <span>{t('screenMirror.showTouches')}</span>
-                <Switch checked={options.showTouches} onChange={(v) => setOptions((o) => ({ ...o, showTouches: v }))} disabled={running} />
+                <Switch checked={options.showTouches} onCheckedChange={(v) => setOptions((o) => ({ ...o, showTouches: v }))} disabled={running} />
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div className="flex justify-between items-center">
                 <span>{t('screenMirror.stayAwake')}</span>
-                <Switch checked={options.stayAwake} onChange={(v) => setOptions((o) => ({ ...o, stayAwake: v }))} disabled={running} />
+                <Switch checked={options.stayAwake} onCheckedChange={(v) => setOptions((o) => ({ ...o, stayAwake: v }))} disabled={running} />
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div className="flex justify-between items-center">
                 <span>{t('screenMirror.turnScreenOff')}</span>
-                <Switch checked={options.turnScreenOff} onChange={(v) => setOptions((o) => ({ ...o, turnScreenOff: v }))} disabled={running} />
+                <Switch checked={options.turnScreenOff} onCheckedChange={(v) => setOptions((o) => ({ ...o, turnScreenOff: v }))} disabled={running} />
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div className="flex justify-between items-center">
                 <span>{t('screenMirror.viewOnly')}</span>
-                <Switch checked={options.noControl} onChange={(v) => setOptions((o) => ({ ...o, noControl: v }))} disabled={running} />
+                <Switch checked={options.noControl} onCheckedChange={(v) => setOptions((o) => ({ ...o, noControl: v }))} disabled={running} />
               </div>
-            </Space>
-          </Card>
+            </div>
+          </div>
 
-          {/* 设备信息 / Device info */}
-          <Card title={t('screenMirror.deviceInfo')} size="small">
-            <Descriptions column={1} size="small">
-              <Descriptions.Item label={t('dashboard.device')}>{device.displayName}</Descriptions.Item>
-              <Descriptions.Item label={t('dashboard.model')}>{device.model}</Descriptions.Item>
-              <Descriptions.Item label={t('dashboard.android')}>{device.androidVersion}</Descriptions.Item>
-              <Descriptions.Item label={t('dashboard.serial')}>{device.serial}</Descriptions.Item>
-              <Descriptions.Item label={t('dashboard.battery')}>{device.batteryLevel}%</Descriptions.Item>
-            </Descriptions>
-          </Card>
+          <div className="rounded-[var(--border-radius)] border border-border bg-white p-[var(--card-padding)]">
+            <div className="font-semibold text-[var(--font-size-base)] mb-3">{t('screenMirror.deviceInfo')}</div>
+            <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-[var(--font-size-sm)]">
+              <dt className="text-gray-500">{t('dashboard.device')}</dt>
+              <dd>{device.displayName}</dd>
+              <dt className="text-gray-500">{t('dashboard.model')}</dt>
+              <dd>{device.model}</dd>
+              <dt className="text-gray-500">{t('dashboard.android')}</dt>
+              <dd>{device.androidVersion}</dd>
+              <dt className="text-gray-500">{t('dashboard.serial')}</dt>
+              <dd>{device.serial}</dd>
+              <dt className="text-gray-500">{t('dashboard.battery')}</dt>
+              <dd>{device.batteryLevel}%</dd>
+            </dl>
+          </div>
         </div>
       </div>
     </>

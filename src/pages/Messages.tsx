@@ -1,40 +1,27 @@
 import React, { useEffect, useState } from 'react';
 import {
-  Layout,
-  List,
-  Input,
-  Button,
-  Space,
-  Card,
-  Typography,
-  message,
-  Empty,
-  Spin,
-  Avatar,
-  Badge,
-  Dropdown,
-  Modal,
-  Timeline,
-  Tag,
-} from 'antd';
-import {
-  SearchOutlined,
-  ExportOutlined,
-  SyncOutlined,
-  UserOutlined,
-  HistoryOutlined,
-  EyeOutlined,
-  RollbackOutlined,
-} from '@ant-design/icons';
+  Search,
+  Download,
+  RefreshCw,
+  User,
+  History,
+  Eye,
+  Undo2,
+  RotateCw,
+} from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { tauriInvoke } from '../utils/tauri';
 import { useStore } from '../stores/useStore';
 import { formatDate, formatRelativeTime } from '../utils/format';
 import { VersionPreview } from '../components/VersionPreview';
-
-const { Sider, Content } = Layout;
-const { Title, Text } = Typography;
-const { Search } = Input;
+import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogBody } from '../components/ui/dialog';
+import { useToast } from '../components/ui/toast';
+import { useConfirm } from '../components/ui/confirm-dialog';
+import { Badge } from '../components/ui/badge';
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '../components/ui/dropdown-menu';
+import { cn } from '../utils/cn';
 
 interface Conversation {
   threadId: string;
@@ -69,6 +56,8 @@ interface Version {
 export const Messages: React.FC = () => {
   const { t } = useTranslation();
   const { connectedDevice } = useStore();
+  const toast = useToast();
+  const { confirm } = useConfirm();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [filteredConversations, setFilteredConversations] = useState<Conversation[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -78,7 +67,8 @@ export const Messages: React.FC = () => {
   const [syncing, setSyncing] = useState(false);
   const [searchText, setSearchText] = useState('');
   const [exporting, setExporting] = useState(false);
-  // 版本历史 / Version history
+
+  // Version history
   const [versionModalVisible, setVersionModalVisible] = useState(false);
   const [versionHistory, setVersionHistory] = useState<Version[]>([]);
   const [loadingVersions, setLoadingVersions] = useState(false);
@@ -105,7 +95,7 @@ export const Messages: React.FC = () => {
       setConversations(data || []);
     } catch (error) {
       console.error('Failed to load conversations:', error);
-      message.error(t('messages.loadFailed'));
+      toast.error(t('messages.loadFailed'));
     } finally {
       setLoading(false);
     }
@@ -138,7 +128,7 @@ export const Messages: React.FC = () => {
       setMessages(data || []);
     } catch (error) {
       console.error('Failed to load messages:', error);
-      message.error(t('messages.loadMessagesFailed'));
+      toast.error(t('messages.loadMessagesFailed'));
     } finally {
       setLoadingMessages(false);
     }
@@ -152,10 +142,10 @@ export const Messages: React.FC = () => {
         serial: connectedDevice.serial,
         dataType: 'messages',
       });
-      message.success(t('messages.syncStarted'));
+      toast.success(t('messages.syncStarted'));
       setTimeout(loadConversations, 2000);
     } catch (error) {
-      message.error(t('common.syncFailed'));
+      toast.error(t('common.syncFailed'));
     } finally {
       setSyncing(false);
     }
@@ -170,9 +160,9 @@ export const Messages: React.FC = () => {
         format,
         outputPath: `messages_export_${Date.now()}.${format}`,
       });
-      message.success(t('messages.exportSuccess', { path }));
+      toast.success(t('messages.exportSuccess', { path }));
     } catch (error) {
-      message.error(t('common.exportFailed'));
+      toast.error(t('common.exportFailed'));
     } finally {
       setExporting(false);
     }
@@ -187,7 +177,7 @@ export const Messages: React.FC = () => {
       });
       setVersionHistory(history || []);
     } catch (error) {
-      message.error(t('versionHistory.loadFailed'));
+      toast.error(t('versionHistory.loadFailed'));
     } finally {
       setLoadingVersions(false);
     }
@@ -199,12 +189,12 @@ export const Messages: React.FC = () => {
       setSelectedVersionDetail(detail);
       setDetailModalVisible(true);
     } catch (error) {
-      message.error(t('versionHistory.loadDetailFailed'));
+      toast.error(t('versionHistory.loadDetailFailed'));
     }
   };
 
   const handleRestoreVersion = (versionId: string, description: string) => {
-    Modal.confirm({
+    confirm({
       title: t('versionHistory.restoreConfirmTitle'),
       content: t('versionHistory.restoreConfirm', { description }),
       okText: t('versionHistory.restoreAsNew'),
@@ -212,10 +202,10 @@ export const Messages: React.FC = () => {
       onOk: async () => {
         try {
           await tauriInvoke('restore_version', { versionId });
-          message.success(t('versionHistory.restored'));
+          toast.success(t('versionHistory.restored'));
           loadConversations();
         } catch (error) {
-          message.error(t('versionHistory.restoreFailed'));
+          toast.error(t('versionHistory.restoreFailed'));
         }
       },
     });
@@ -224,17 +214,37 @@ export const Messages: React.FC = () => {
   const getActionColor = (action: string) => {
     const a = action.toLowerCase();
     if (a.includes('create') || a.includes('add')) return 'success';
-    if (a.includes('update') || a.includes('modify')) return 'processing';
+    if (a.includes('update') || a.includes('modify')) return 'warning';
     if (a.includes('delete') || a.includes('remove')) return 'error';
     if (a.includes('restore')) return 'warning';
     return 'default';
   };
 
-  const exportMenuItems = [
-    { key: 'json', label: t('common.jsonFormat') },
-    { key: 'csv', label: t('common.csvFormat') },
-    { key: 'txt', label: t('common.txtFormat') },
-  ];
+  const getActionBadgeClass = (color: string) => {
+    switch (color) {
+      case 'success':
+        return 'bg-green-50 text-green-700';
+      case 'warning':
+        return 'bg-blue-50 text-blue-700';
+      case 'error':
+        return 'bg-red-50 text-red-700';
+      default:
+        return 'bg-gray-50 text-gray-700';
+    }
+  };
+
+  const getActionDotClass = (color: string) => {
+    switch (color) {
+      case 'success':
+        return 'bg-green-500';
+      case 'warning':
+        return 'bg-blue-500';
+      case 'error':
+        return 'bg-red-500';
+      default:
+        return 'bg-gray-400';
+    }
+  };
 
   const selectedConversation = conversations.find(
     (conv) => conv.threadId === selectedThreadId
@@ -242,247 +252,296 @@ export const Messages: React.FC = () => {
 
   if (!connectedDevice) {
     return (
-      <div style={{ textAlign: 'center', padding: '100px 20px' }}>
-        <Empty
-          image={Empty.PRESENTED_IMAGE_SIMPLE}
-          description={
-            <Space direction="vertical" size="large">
-              <Title level={3}>{t('common.connectDeviceTitle')}</Title>
-              <Text type="secondary">{t('messages.connectDeviceDesc')}</Text>
-            </Space>
-          }
-        />
+      <div className="flex items-center justify-center" style={{ padding: '100px 20px' }}>
+        <div className="text-center py-12 text-gray-400">
+          <h3 className="text-[var(--font-size-lg)] font-semibold mb-2 text-gray-900">
+            {t('common.connectDeviceTitle')}
+          </h3>
+          <p className="text-[var(--font-size-base)]">{t('messages.connectDeviceDesc')}</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div style={{ padding: '24px' }}>
-      <Card>
-        <Space
-          direction="vertical"
-          size="large"
-          style={{ width: '100%', marginBottom: 16 }}
-        >
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              flexWrap: 'wrap',
-              gap: 16,
-            }}
-          >
-            <Title level={2} style={{ margin: 0 }}>
-              {t('messages.title')}
-            </Title>
-            <Space wrap>
-              <Search
-                placeholder={t('messages.searchPlaceholder')}
-                value={searchText}
-                onChange={(e) => setSearchText(e.target.value)}
-                style={{ width: 300 }}
-                allowClear
-              />
-              <Dropdown
-                menu={{
-                  items: exportMenuItems,
-                  onClick: ({ key }) => handleExport(key),
-                }}
-              >
-                <Button icon={<ExportOutlined />} loading={exporting}>
+    <div style={{ padding: 'var(--page-padding)' }}>
+      <div className="rounded-[var(--border-radius)] border border-border bg-white p-[var(--card-padding)]">
+        <div className="flex justify-between items-center flex-wrap gap-4 mb-[var(--section-gap)]">
+          <h2 className="text-[var(--font-size-title)] font-semibold m-0">
+            {t('messages.title')}
+          </h2>
+          <div className="flex flex-wrap gap-2">
+            <Input
+              placeholder={t('messages.searchPlaceholder')}
+              icon={Search}
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
+              className="w-[300px]"
+            />
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" loading={exporting}>
+                  <Download className="w-4 h-4 mr-2" />
                   {t('common.export')}
                 </Button>
-              </Dropdown>
-              <Button
-                icon={<HistoryOutlined />}
-                onClick={handleShowVersionHistory}
-              >
-                {t('versionHistory.title')}
-              </Button>
-              <Button
-                icon={<SyncOutlined />}
-                loading={syncing}
-                onClick={handleSync}
-              >
-                {t('common.sync')}
-              </Button>
-            </Space>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuItem onClick={() => handleExport('json')}>
+                  {t('common.jsonFormat')}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleExport('csv')}>
+                  {t('common.csvFormat')}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleExport('txt')}>
+                  {t('common.txtFormat')}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <Button variant="outline" onClick={handleShowVersionHistory}>
+              <History className="w-4 h-4 mr-2" />
+              {t('versionHistory.title')}
+            </Button>
+            <Button variant="outline" loading={syncing} onClick={handleSync}>
+              <RefreshCw className="w-4 h-4 mr-2" />
+              {t('common.sync')}
+            </Button>
           </div>
-        </Space>
+        </div>
 
-        <Layout style={{ background: '#fff', minHeight: 600 }}>
-          <Sider width={350} style={{ background: '#fafafa', borderRight: '1px solid #f0f0f0' }}>
-            <Spin spinning={loading}>
-              <List
-                dataSource={filteredConversations}
-                renderItem={(conv) => (
-                  <List.Item
+        <div className="flex bg-white min-h-[600px]">
+          {/* Conversation list sidebar */}
+          <div className="w-[350px] bg-gray-50 border-r border-border shrink-0">
+            {loading ? (
+              <div className="flex items-center justify-center py-20">
+                <RotateCw className="w-6 h-6 animate-spin text-gray-400" />
+              </div>
+            ) : (
+              <div>
+                {filteredConversations.map((conv) => (
+                  <div
                     key={conv.threadId}
                     onClick={() => loadMessages(conv.threadId)}
-                    style={{
-                      cursor: 'pointer',
-                      backgroundColor:
-                        selectedThreadId === conv.threadId ? '#e6f7ff' : 'transparent',
-                      padding: '12px 16px',
-                    }}
+                    className={cn(
+                      "cursor-pointer p-3 border-b border-border hover:bg-gray-100 transition-colors",
+                      selectedThreadId === conv.threadId && "bg-blue-50"
+                    )}
                   >
-                    <List.Item.Meta
-                      avatar={
-                        <Badge count={conv.unreadCount || 0} offset={[-5, 5]}>
-                          <Avatar icon={<UserOutlined />} />
-                        </Badge>
-                      }
-                      title={
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <Text strong>{conv.contactName || conv.address}</Text>
-                          <Text type="secondary" style={{ fontSize: 12 }}>
+                    <div className="flex gap-3 items-start">
+                      <div className="relative">
+                        <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center shrink-0">
+                          <User className="w-5 h-5 text-gray-500" />
+                        </div>
+                        {conv.unreadCount && conv.unreadCount > 0 ? (
+                          <Badge variant="error" className="absolute -top-1 -right-1 min-w-[20px] h-5 flex items-center justify-center text-xs">
+                            {conv.unreadCount}
+                          </Badge>
+                        ) : null}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex justify-between items-center mb-1">
+                          <span className="font-semibold text-[var(--font-size-base)] truncate">
+                            {conv.contactName || conv.address}
+                          </span>
+                          <span className="text-gray-400 text-xs shrink-0 ml-2">
                             {formatRelativeTime(conv.lastMessageDate)}
-                          </Text>
+                          </span>
                         </div>
-                      }
-                      description={
-                        <div>
-                          <Text ellipsis type="secondary" style={{ fontSize: 13, display: 'block' }}>
-                            {conv.lastMessage}
-                          </Text>
-                          <Text type="secondary" style={{ fontSize: 12 }}>
-                            {t('messages.messageCount', { count: conv.messageCount })}
-                          </Text>
-                        </div>
-                      }
-                    />
-                  </List.Item>
+                        <p className="text-gray-500 text-[var(--font-size-sm)] truncate mb-1">
+                          {conv.lastMessage}
+                        </p>
+                        <span className="text-gray-400 text-xs">
+                          {t('messages.messageCount', { count: conv.messageCount })}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {filteredConversations.length === 0 && (
+                  <div className="text-center py-12 text-gray-400">
+                    {searchText ? t('messages.noMatch') : t('messages.noData')}
+                  </div>
                 )}
-                locale={{
-                  emptyText: (
-                    <Empty
-                      description={searchText ? t('messages.noMatch') : t('messages.noData')}
-                      image={Empty.PRESENTED_IMAGE_SIMPLE}
-                    />
-                  ),
-                }}
-              />
-            </Spin>
-          </Sider>
+              </div>
+            )}
+          </div>
 
-          <Content style={{ padding: '16px', background: '#fff' }}>
+          {/* Message content area */}
+          <div className="flex-1 p-4 bg-white">
             {selectedThreadId ? (
-              <Spin spinning={loadingMessages}>
-                <div>
-                  <div style={{ padding: '12px', borderBottom: '1px solid #f0f0f0', marginBottom: 16 }}>
-                    <Title level={4} style={{ margin: 0 }}>
+              loadingMessages ? (
+                <div className="flex items-center justify-center h-full">
+                  <RotateCw className="w-6 h-6 animate-spin text-gray-400" />
+                </div>
+              ) : (
+                <div className="flex flex-col h-full">
+                  <div className="p-3 border-b border-border mb-4">
+                    <h4 className="text-[var(--font-size-base)] font-semibold m-0">
                       {selectedConversation?.contactName || selectedConversation?.address}
-                    </Title>
+                    </h4>
                     {selectedConversation?.contactName && (
-                      <Text type="secondary">{selectedConversation.address}</Text>
+                      <p className="text-gray-400 text-[var(--font-size-sm)] mt-1">
+                        {selectedConversation.address}
+                      </p>
                     )}
                   </div>
 
-                  <div style={{ height: 480, overflowY: 'auto', padding: '0 16px' }}>
+                  <div className="flex-1 overflow-y-auto px-4" style={{ maxHeight: '480px' }}>
                     {messages.length > 0 ? (
-                      <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+                      <div className="space-y-3">
                         {messages.map((msg) => {
                           const isSent = msg.type === 2;
                           return (
-                            <div key={msg.id} style={{ display: 'flex', justifyContent: isSent ? 'flex-end' : 'flex-start' }}>
-                              <div style={{
-                                maxWidth: '70%', padding: '10px 14px', borderRadius: '12px',
-                                backgroundColor: isSent ? '#1890ff' : '#f0f0f0',
-                                color: isSent ? '#fff' : '#000',
-                              }}>
-                                <div style={{ wordBreak: 'break-word' }}>{msg.body}</div>
-                                <div style={{ marginTop: 4, fontSize: 11, opacity: 0.8, textAlign: 'right' }}>
+                            <div
+                              key={msg.id}
+                              className={cn("flex", isSent ? "justify-end" : "justify-start")}
+                            >
+                              <div
+                                className={cn(
+                                  "max-w-[70%] px-3 py-2 rounded-xl",
+                                  isSent
+                                    ? "bg-blue-500 text-white"
+                                    : "bg-gray-100 text-gray-900"
+                                )}
+                              >
+                                <div className="break-words text-[var(--font-size-base)]">
+                                  {msg.body}
+                                </div>
+                                <div
+                                  className={cn(
+                                    "mt-1 text-xs text-right",
+                                    isSent ? "opacity-80" : "opacity-60"
+                                  )}
+                                >
                                   {formatDate(msg.date)}
                                 </div>
                               </div>
                             </div>
                           );
                         })}
-                      </Space>
+                      </div>
                     ) : (
-                      <Empty description={t('messages.noMessages')} image={Empty.PRESENTED_IMAGE_SIMPLE} />
+                      <div className="text-center py-12 text-gray-400">
+                        {t('messages.noMessages')}
+                      </div>
                     )}
                   </div>
                 </div>
-              </Spin>
+              )
             ) : (
-              <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Empty description={t('messages.selectConversation')} image={Empty.PRESENTED_IMAGE_SIMPLE} />
+              <div className="h-full flex items-center justify-center">
+                <div className="text-center py-12 text-gray-400">
+                  {t('messages.selectConversation')}
+                </div>
               </div>
             )}
-          </Content>
-        </Layout>
-      </Card>
+          </div>
+        </div>
+      </div>
 
-      {/* 版本历史弹窗 / Version history modal */}
-      <Modal
-        title={<><HistoryOutlined /> {t('versionHistory.title')} - {t('versionHistory.messages')}</>}
-        open={versionModalVisible}
-        onCancel={() => setVersionModalVisible(false)}
-        footer={[<Button key="close" onClick={() => setVersionModalVisible(false)}>{t('common.close')}</Button>]}
-        width={700}
-      >
-        <Spin spinning={loadingVersions}>
-          {versionHistory.length === 0 ? (
-            <Empty description={t('versionHistory.noVersions')} image={Empty.PRESENTED_IMAGE_SIMPLE} />
-          ) : (
-            <Timeline
-              items={versionHistory.map((v) => ({
-                color: getActionColor(v.action),
-                children: (
-                  <Card size="small" style={{ marginBottom: 4 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <Space>
-                        <Tag color={getActionColor(v.action)}>{v.action}</Tag>
-                        <Text>{v.description}</Text>
-                        <Text type="secondary" style={{ fontSize: 12 }}>{formatDate(v.created_at)}</Text>
-                      </Space>
-                      <Space size={4}>
-                        <Button type="link" size="small" icon={<EyeOutlined />}
-                          onClick={() => handleViewVersionDetail(v.id)} />
-                        <Button type="link" size="small" icon={<RollbackOutlined />}
-                          onClick={() => handleRestoreVersion(v.id, v.description || '')} />
-                      </Space>
+      {/* Version history modal */}
+      <Dialog open={versionModalVisible} onOpenChange={setVersionModalVisible}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>
+              <div className="flex items-center gap-2">
+                <History className="w-5 h-5" />
+                {t('versionHistory.title')} - {t('versionHistory.messages')}
+              </div>
+            </DialogTitle>
+          </DialogHeader>
+          <DialogBody>
+            {loadingVersions ? (
+              <div className="flex items-center justify-center py-20">
+                <RotateCw className="w-6 h-6 animate-spin text-gray-400" />
+              </div>
+            ) : versionHistory.length === 0 ? (
+              <div className="text-center py-12 text-gray-400">
+                {t('versionHistory.noVersions')}
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {versionHistory.map((v) => {
+                  const color = getActionColor(v.action);
+                  return (
+                    <div key={v.id} className="flex gap-3">
+                      <div className={cn("w-2 h-2 mt-2 rounded-full shrink-0", getActionDotClass(color))} />
+                      <div className="flex-1">
+                        <div className="rounded-[var(--border-radius)] border border-border bg-white p-3 text-[var(--font-size-sm)]">
+                          <div className="flex justify-between items-center">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className={cn("inline-flex items-center px-2 py-0.5 rounded text-xs font-medium", getActionBadgeClass(color))}>
+                                {v.action}
+                              </span>
+                              <span>{v.description}</span>
+                              <span className="text-gray-400 text-xs">{formatDate(v.created_at)}</span>
+                            </div>
+                            <div className="flex gap-1">
+                              <Button variant="ghost" size="sm" onClick={() => handleViewVersionDetail(v.id)}>
+                                <Eye className="w-4 h-4" />
+                              </Button>
+                              <Button variant="ghost" size="sm" onClick={() => handleRestoreVersion(v.id, v.description || '')}>
+                                <Undo2 className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
                     </div>
-                  </Card>
-                ),
-              }))}
-            />
-          )}
-        </Spin>
-      </Modal>
+                  );
+                })}
+              </div>
+            )}
+          </DialogBody>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setVersionModalVisible(false)}>
+              {t('common.close')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-      {/* 版本详情弹窗 / Version detail modal */}
-      <Modal
-        title={t('versionHistory.detail')}
-        open={detailModalVisible}
-        onCancel={() => { setDetailModalVisible(false); setSelectedVersionDetail(null); }}
-        width={800}
-        footer={[<Button key="close" onClick={() => { setDetailModalVisible(false); setSelectedVersionDetail(null); }}>{t('common.close')}</Button>]}
-      >
-        {selectedVersionDetail && (() => {
-          const record = selectedVersionDetail.record || selectedVersionDetail;
-          const beforeData = record.data_before ? (typeof record.data_before === 'string' ? JSON.parse(record.data_before) : record.data_before) : null;
-          const afterData = record.data_after ? (typeof record.data_after === 'string' ? JSON.parse(record.data_after) : record.data_after) : null;
-          return (
-            <>
-              {beforeData && (
+      {/* Version detail modal */}
+      <Dialog open={detailModalVisible} onOpenChange={setDetailModalVisible}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>{t('versionHistory.detail')}</DialogTitle>
+          </DialogHeader>
+          <DialogBody>
+            {selectedVersionDetail && (() => {
+              const record = selectedVersionDetail.record || selectedVersionDetail;
+              const beforeData = record.data_before ? (typeof record.data_before === 'string' ? JSON.parse(record.data_before) : record.data_before) : null;
+              const afterData = record.data_after ? (typeof record.data_after === 'string' ? JSON.parse(record.data_after) : record.data_after) : null;
+              return (
                 <>
-                  <Title level={5}>{t('versionHistory.before')}</Title>
-                  <VersionPreview dataType="messages" data={beforeData} />
+                  {beforeData && (
+                    <>
+                      <h5 className="text-[var(--font-size-base)] font-semibold mb-2">{t('versionHistory.before')}</h5>
+                      <VersionPreview dataType="messages" data={beforeData} />
+                    </>
+                  )}
+                  {afterData && (
+                    <>
+                      <h5 className="text-[var(--font-size-base)] font-semibold mb-2 mt-4">{t('versionHistory.after')}</h5>
+                      <VersionPreview dataType="messages" data={afterData} />
+                    </>
+                  )}
                 </>
-              )}
-              {afterData && (
-                <>
-                  <Title level={5} style={{ marginTop: 16 }}>{t('versionHistory.after')}</Title>
-                  <VersionPreview dataType="messages" data={afterData} />
-                </>
-              )}
-            </>
-          );
-        })()}
-      </Modal>
+              );
+            })()}
+          </DialogBody>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setDetailModalVisible(false);
+                setSelectedVersionDetail(null);
+              }}
+            >
+              {t('common.close')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

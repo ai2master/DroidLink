@@ -483,6 +483,8 @@
     "customAdb": "مسار مخصص",
     "adbCustomPath": "مسار ملف ADB التنفيذي",
     "scrcpySource": "مصدر scrcpy",
+    "bundledScrcpy": "scrcpy مدمج (موصى به)",
+    "bundledScrcpyDesc": "استخدم scrcpy المدمج، لا حاجة لتثبيت إضافي",
     "systemScrcpy": "scrcpy النظام",
     "customScrcpy": "مسار مخصص",
     "scrcpyCustomPath": "مسار ملف scrcpy التنفيذي",
@@ -491,7 +493,12 @@
     "invalidToolPath": "مسار غير صالح أو الأداة غير متوفرة",
     "bundled": "مدمج",
     "system": "النظام",
-    "custom": "مخصص"
+    "custom": "مخصص",
+    "displayDensity": "كثافة العرض",
+    "densityCompact": "مضغوط",
+    "densityComfortable": "مريح",
+    "densityCompactDesc": "مسافات أضيق، مثالي للوحة المفاتيح والفأرة",
+    "densityComfortableDesc": "مسافات أوسع، مثالي للشاشات اللمسية"
   },
   "companion": {
     "title": "تثبيت التطبيق المساعد",

@@ -22,6 +22,8 @@ export interface SyncStatus {
   message?: string;
 }
 
+export type Density = 'compact' | 'comfortable';
+
 interface AppStore {
   // Device state
   connectedDevice: DeviceInfo | null;
@@ -43,7 +45,19 @@ interface AppStore {
   // Clipboard
   clipboardContent: string;
   setClipboardContent: (content: string) => void;
+
+  // Display density
+  density: Density;
+  setDensity: (density: Density) => void;
 }
+
+const getInitialDensity = (): Density => {
+  try {
+    return (localStorage.getItem('droidlink-density') as Density) || 'compact';
+  } catch {
+    return 'compact';
+  }
+};
 
 export const useStore = create<AppStore>((set) => ({
   connectedDevice: null,
@@ -68,4 +82,11 @@ export const useStore = create<AppStore>((set) => ({
 
   clipboardContent: '',
   setClipboardContent: (content) => set({ clipboardContent: content }),
+
+  density: getInitialDensity(),
+  setDensity: (density) => {
+    localStorage.setItem('droidlink-density', density);
+    document.documentElement.setAttribute('data-density', density);
+    set({ density });
+  },
 }));

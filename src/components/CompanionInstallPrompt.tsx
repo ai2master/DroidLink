@@ -1,16 +1,22 @@
 import React, { useState } from 'react';
-import { Modal, Button, Space, Typography, Steps, Alert, Spin, Result } from 'antd';
 import {
-  AndroidOutlined,
-  CheckCircleOutlined,
-  LoadingOutlined,
-  WarningOutlined,
-  MobileOutlined,
-} from '@ant-design/icons';
+  Smartphone,
+  CheckCircle2,
+  Loader2,
+  AlertTriangle,
+} from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { tauriInvoke } from '../utils/tauri';
-
-const { Text, Title, Paragraph } = Typography;
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  DialogBody,
+} from './ui/dialog';
+import { Button } from './ui/button';
 
 interface CompanionInstallPromptProps {
   visible: boolean;
@@ -69,122 +75,175 @@ export const CompanionInstallPrompt: React.FC<CompanionInstallPromptProps> = ({
   const renderContent = () => {
     if (installResult === 'success') {
       return (
-        <Result
-          status="success"
-          title={t('companion.installSuccess')}
-          subTitle={t('companion.installSuccessDesc')}
-        />
+        <div className="flex flex-col items-center justify-center py-8 space-y-4">
+          <div className="flex items-center justify-center w-16 h-16 rounded-full bg-green-100">
+            <CheckCircle2 className="w-10 h-10 text-green-600" />
+          </div>
+          <h3 className="text-xl font-semibold text-gray-900">{t('companion.installSuccess')}</h3>
+          <p className="text-sm text-gray-500 text-center">{t('companion.installSuccessDesc')}</p>
+        </div>
       );
     }
 
     return (
-      <Space direction="vertical" size="large" style={{ width: '100%' }}>
-        <Alert
-          type="info"
-          showIcon
-          icon={<MobileOutlined />}
-          message={t('companion.detected', { device: deviceName })}
-          description={t('companion.notInstalled')}
-        />
-
-        <div>
-          <Title level={5}>{t('companion.whyNeeded')}</Title>
-          <Paragraph>
-            <ul style={{ paddingLeft: 20 }}>
-              <li>{t('companion.reason1')}</li>
-              <li>{t('companion.reason2')}</li>
-              <li>{t('companion.reason3')}</li>
-              <li>{t('companion.reason4')}</li>
-            </ul>
-          </Paragraph>
+      <div className="space-y-6">
+        {/* Info Alert */}
+        <div className="flex gap-3 p-4 rounded-lg bg-blue-50 border border-blue-200">
+          <Smartphone className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+          <div className="flex-1 space-y-1">
+            <div className="text-sm font-medium text-blue-900">
+              {t('companion.detected', { device: deviceName })}
+            </div>
+            <div className="text-sm text-blue-700">
+              {t('companion.notInstalled')}
+            </div>
+          </div>
         </div>
 
+        {/* Why Needed Section */}
         <div>
-          <Title level={5}>{t('companion.howItWorks')}</Title>
-          <Steps
-            direction="vertical"
-            size="small"
-            current={installing ? 1 : 0}
-            items={[
-              {
-                title: t('companion.step1Title'),
-                description: t('companion.step1Desc'),
-                icon: <AndroidOutlined />,
-              },
-              {
-                title: t('companion.step2Title'),
-                description: t('companion.step2Desc'),
-                icon: installing ? <LoadingOutlined /> : undefined,
-              },
-              {
-                title: t('companion.step3Title'),
-                description: t('companion.step3Desc'),
-                icon: <CheckCircleOutlined />,
-              },
-            ]}
-          />
+          <h4 className="text-base font-semibold text-gray-900 mb-3">{t('companion.whyNeeded')}</h4>
+          <ul className="space-y-2 text-sm text-gray-700">
+            <li className="flex gap-2">
+              <span className="text-gray-400">•</span>
+              <span>{t('companion.reason1')}</span>
+            </li>
+            <li className="flex gap-2">
+              <span className="text-gray-400">•</span>
+              <span>{t('companion.reason2')}</span>
+            </li>
+            <li className="flex gap-2">
+              <span className="text-gray-400">•</span>
+              <span>{t('companion.reason3')}</span>
+            </li>
+            <li className="flex gap-2">
+              <span className="text-gray-400">•</span>
+              <span>{t('companion.reason4')}</span>
+            </li>
+          </ul>
         </div>
 
-        <Alert
-          type="warning"
-          showIcon
-          icon={<WarningOutlined />}
-          message={t('companion.permissionNote')}
-          description={t('companion.permissionNoteDesc')}
-        />
+        {/* How It Works Section */}
+        <div>
+          <h4 className="text-base font-semibold text-gray-900 mb-3">{t('companion.howItWorks')}</h4>
+          <div className="space-y-4">
+            {/* Step 1 */}
+            <div className="flex gap-3">
+              <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gray-100 flex-shrink-0">
+                <Smartphone className="w-4 h-4 text-gray-600" />
+              </div>
+              <div className="flex-1 pt-1">
+                <div className="text-sm font-medium text-gray-900">{t('companion.step1Title')}</div>
+                <div className="text-sm text-gray-600 mt-1">{t('companion.step1Desc')}</div>
+              </div>
+            </div>
 
+            {/* Step 2 */}
+            <div className="flex gap-3">
+              <div className={`flex items-center justify-center w-8 h-8 rounded-full flex-shrink-0 ${installing ? 'bg-blue-100' : 'bg-gray-100'}`}>
+                {installing ? (
+                  <Loader2 className="w-4 h-4 text-blue-600 animate-spin" />
+                ) : (
+                  <span className="text-sm font-medium text-gray-600">2</span>
+                )}
+              </div>
+              <div className="flex-1 pt-1">
+                <div className="text-sm font-medium text-gray-900">{t('companion.step2Title')}</div>
+                <div className="text-sm text-gray-600 mt-1">{t('companion.step2Desc')}</div>
+              </div>
+            </div>
+
+            {/* Step 3 */}
+            <div className="flex gap-3">
+              <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gray-100 flex-shrink-0">
+                <CheckCircle2 className="w-4 h-4 text-gray-600" />
+              </div>
+              <div className="flex-1 pt-1">
+                <div className="text-sm font-medium text-gray-900">{t('companion.step3Title')}</div>
+                <div className="text-sm text-gray-600 mt-1">{t('companion.step3Desc')}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Warning Alert */}
+        <div className="flex gap-3 p-4 rounded-lg bg-amber-50 border border-amber-200">
+          <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+          <div className="flex-1 space-y-1">
+            <div className="text-sm font-medium text-amber-900">
+              {t('companion.permissionNote')}
+            </div>
+            <div className="text-sm text-amber-700">
+              {t('companion.permissionNoteDesc')}
+            </div>
+          </div>
+        </div>
+
+        {/* Error Alert */}
         {installResult === 'error' && (
-          <Alert
-            type="error"
-            showIcon
-            message={t('companion.installFailed')}
-            description={errorMessage}
-          />
+          <div className="flex gap-3 p-4 rounded-lg bg-red-50 border border-red-200">
+            <AlertTriangle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+            <div className="flex-1 space-y-1">
+              <div className="text-sm font-medium text-red-900">
+                {t('companion.installFailed')}
+              </div>
+              <div className="text-sm text-red-700">
+                {errorMessage}
+              </div>
+            </div>
+          </div>
         )}
-      </Space>
+      </div>
     );
   };
 
   return (
-    <Modal
-      title={
-        <Space>
-          <AndroidOutlined style={{ color: '#3ddc84' }} />
-          {t('companion.title')}
-        </Space>
-      }
-      open={visible}
-      onCancel={handleClose}
-      width={600}
-      maskClosable={!installing}
-      closable={!installing}
-      footer={
-        installResult === 'success'
-          ? [
-              <Button key="ok" type="primary" onClick={handleClose}>
-                {t('common.confirm')}
-              </Button>,
-            ]
-          : [
-              <Button key="skip" onClick={handleClose} disabled={installing}>
+    <Dialog open={visible} onOpenChange={(open) => !open && !installing && handleClose()}>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Smartphone className="w-5 h-5" style={{ color: '#3ddc84' }} />
+            {t('companion.title')}
+          </DialogTitle>
+        </DialogHeader>
+
+        <DialogBody>
+          {installing && installResult !== 'success' ? (
+            <div className="space-y-4">
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
+              </div>
+              <p className="text-center text-sm text-gray-600">{t('companion.installing')}</p>
+              {renderContent()}
+            </div>
+          ) : (
+            renderContent()
+          )}
+        </DialogBody>
+
+        <DialogFooter>
+          {installResult === 'success' ? (
+            <Button variant="primary" onClick={handleClose}>
+              {t('common.confirm')}
+            </Button>
+          ) : (
+            <>
+              <Button variant="outline" onClick={handleClose} disabled={installing}>
                 {t('companion.skipForNow')}
-              </Button>,
+              </Button>
               <Button
-                key="install"
-                type="primary"
-                icon={installing ? <LoadingOutlined /> : <AndroidOutlined />}
+                variant="primary"
                 loading={installing}
                 onClick={handleInstall}
               >
+                {!installing && <Smartphone className="w-4 h-4" />}
                 {t('companion.install')}
-              </Button>,
-            ]
-      }
-    >
-      <Spin spinning={installing} tip={t('companion.installing')}>
-        {renderContent()}
-      </Spin>
-    </Modal>
+              </Button>
+            </>
+          )}
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 };
 

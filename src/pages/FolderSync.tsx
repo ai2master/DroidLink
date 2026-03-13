@@ -1,24 +1,23 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
-  Button, Card, Space, Table, Tag, Modal, Input, Select, message, Empty,
-  Tooltip, Progress, Popconfirm, Alert, Descriptions, InputNumber, Collapse,
-  Typography, Statistic, Row, Col, Divider,
-} from 'antd';
-import {
-  SyncOutlined, PlusOutlined, DeleteOutlined, PlayCircleOutlined,
-  SwapOutlined, ArrowRightOutlined, ArrowLeftOutlined, FolderOpenOutlined,
-  SettingOutlined, WarningOutlined, ThunderboltOutlined, ClockCircleOutlined,
-  FileTextOutlined, ClearOutlined, InfoCircleOutlined,
-} from '@ant-design/icons';
+  RefreshCw, Plus, Trash2, Play, ArrowLeftRight, ArrowRight, ArrowLeft, FolderOpen,
+  Settings, AlertTriangle, Zap, Clock, FileText, Eraser, Info,
+} from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { tauriInvoke, tauriListen } from '../utils/tauri';
 import { useStore } from '../stores/useStore';
 import { formatDate, formatRelativeTime } from '../utils/format';
 import { open } from '@tauri-apps/plugin-dialog';
-
-const { Text } = Typography;
-const { TextArea } = Input;
-const { Panel } = Collapse;
+import { Button } from '../components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../components/ui/dialog';
+import { Input, Textarea } from '../components/ui/input';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../components/ui/select';
+import { useToast } from '../components/ui/toast';
+import { useConfirm } from '../components/ui/confirm-dialog';
+import { Tooltip, TooltipTrigger, TooltipContent } from '../components/ui/tooltip';
+import { Badge } from '../components/ui/badge';
+import { Progress } from '../components/ui/progress';
+import { cn } from '../utils/cn';
 
 interface SyncPair {
   id: string;
@@ -84,6 +83,8 @@ function formatDurationMs(ms: number): string {
 
 export default function FolderSync() {
   const { t } = useTranslation();
+  const toast = useToast();
+  const { confirm } = useConfirm();
   const device = useStore((s) => s.connectedDevice);
   const [pairs, setPairs] = useState<SyncPair[]>([]);
   const [loading, setLoading] = useState(false);
@@ -94,29 +95,23 @@ export default function FolderSync() {
   const [progress, setProgress] = useState<Record<string, SyncProgress>>({});
   const [syncing, setSyncing] = useState<Set<string>>(new Set());
   const [lastResults, setLastResults] = useState<Record<string, SyncResultData>>({});
-
   const [transferInfo, setTransferInfo] = useState<TransferInfo | null>(null);
   const [loadingInfo, setLoadingInfo] = useState(false);
-
-  // 忽略规则编辑器 / Ignore patterns editor
   const [ignoreVisible, setIgnoreVisible] = useState(false);
   const [ignoreContent, setIgnoreContent] = useState('');
   const [ignoreLocalPath, setIgnoreLocalPath] = useState('');
-
-  // 版本清理 / Version cleanup
   const [cleanupVisible, setCleanupVisible] = useState(false);
   const [cleanupPath, setCleanupPath] = useState('');
   const [retentionDays, setRetentionDays] = useState(30);
   const [cleaningUp, setCleaningUp] = useState(false);
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
 
-  // 方向标签 / Direction labels
   const directionLabel: Record<string, { text: string; icon: React.ReactNode; color: string }> = {
-    bidirectional: { text: t('folderSync.bidirectional'), icon: <SwapOutlined />, color: 'blue' },
-    push: { text: t('folderSync.pushToPhone'), icon: <ArrowRightOutlined />, color: 'green' },
-    pull: { text: t('folderSync.pullToPC'), icon: <ArrowLeftOutlined />, color: 'orange' },
+    bidirectional: { text: t('folderSync.bidirectional'), icon: <ArrowLeftRight size={14} />, color: 'default' },
+    push: { text: t('folderSync.pushToPhone'), icon: <ArrowRight size={14} />, color: 'success' },
+    pull: { text: t('folderSync.pullToPC'), icon: <ArrowLeft size={14} />, color: 'warning' },
   };
 
-  // 冲突策略 / Conflict policies
   const conflictPolicies = [
     { value: 'keep_both', label: t('folderSync.keepBoth') },
     { value: 'local_wins', label: t('folderSync.localWins') },
@@ -130,7 +125,7 @@ export default function FolderSync() {
       const result = await tauriInvoke<SyncPair[]>('get_folder_sync_pairs');
       setPairs(result);
     } catch (err: any) {
-      message.error(t('folderSync.loadFailed', { error: err }));
+      toast.error(t('folderSync.loadFailed', { error: err }));
     } finally {
       setLoading(false);
     }
@@ -163,7 +158,7 @@ export default function FolderSync() {
         if (data.type === 'completed' && data.result) {
           const r = data.result;
           setLastResults((prev) => ({ ...prev, [data.pairId]: r }));
-          message.success(
+          toast.success(
             t('folderSync.syncComplete', {
               pushed: r.pushed,
               pulled: r.pulled,
@@ -172,7 +167,7 @@ export default function FolderSync() {
           );
         }
         if (data.type === 'error') {
-          message.error(t('folderSync.syncFailed', { error: data.message }));
+          toast.error(t('folderSync.syncFailed', { error: data.message }));
         }
         loadPairs();
       }
@@ -186,7 +181,7 @@ export default function FolderSync() {
 
   const handleAdd = async () => {
     if (!newPair.localPath || !newPair.remotePath || !device) {
-      message.warning(t('folderSync.fillComplete'));
+      toast.warning(t('folderSync.fillComplete'));
       return;
     }
     try {
@@ -199,23 +194,31 @@ export default function FolderSync() {
           conflictPolicy: newPair.conflictPolicy,
         },
       });
-      message.success(t('folderSync.pairAdded'));
+      toast.success(t('folderSync.pairAdded'));
       setAddVisible(false);
       setNewPair({ localPath: '', remotePath: '/sdcard/', direction: 'bidirectional', conflictPolicy: 'keep_both' });
       loadPairs();
     } catch (err: any) {
-      message.error(t('folderSync.addFailed', { error: err }));
+      toast.error(t('folderSync.addFailed', { error: err }));
     }
   };
 
   const handleRemove = async (id: string) => {
-    try {
-      await tauriInvoke('remove_folder_sync_pair', { pairId: id });
-      message.success(t('folderSync.deleted'));
-      loadPairs();
-    } catch (err: any) {
-      message.error(t('folderSync.removeFailed', { error: err }));
-    }
+    confirm({
+      title: t('folderSync.deleteConfirm'),
+      okText: t('common.delete'),
+      cancelText: t('common.cancel'),
+      danger: true,
+      onOk: async () => {
+        try {
+          await tauriInvoke('remove_folder_sync_pair', { pairId: id });
+          toast.success(t('folderSync.deleted'));
+          loadPairs();
+        } catch (err: any) {
+          toast.error(t('folderSync.removeFailed', { error: err }));
+        }
+      },
+    });
   };
 
   const handleSync = async (id: string) => {
@@ -223,7 +226,7 @@ export default function FolderSync() {
     try {
       await tauriInvoke('trigger_folder_sync', { pairId: id });
     } catch (err: any) {
-      message.error(t('folderSync.syncFailed', { error: err }));
+      toast.error(t('folderSync.syncFailed', { error: err }));
       setSyncing((prev) => {
         const next = new Set(prev);
         next.delete(id);
@@ -268,10 +271,10 @@ export default function FolderSync() {
     try {
       const ignorePath = ignoreLocalPath.replace(/\/$/, '') + '/.droidlinkignore';
       await tauriInvoke('write_text_file', { path: ignorePath, content: ignoreContent });
-      message.success(t('folderSync.ignoreRulesSaved'));
+      toast.success(t('folderSync.ignoreRulesSaved'));
       setIgnoreVisible(false);
     } catch (err: any) {
-      message.error(t('folderSync.saveFailed', { error: err }));
+      toast.error(t('folderSync.saveFailed', { error: err }));
     }
   };
 
@@ -282,10 +285,10 @@ export default function FolderSync() {
         localPath: cleanupPath,
         retentionDays,
       });
-      message.success(t('folderSync.cleaned', { count }));
+      toast.success(t('folderSync.cleaned', { count }));
       setCleanupVisible(false);
     } catch (err: any) {
-      message.error(t('folderSync.cleanFailed', { error: err }));
+      toast.error(t('folderSync.cleanFailed', { error: err }));
     } finally {
       setCleaningUp(false);
     }
@@ -296,339 +299,388 @@ export default function FolderSync() {
       <>
         <div className="page-header"><h2>{t('folderSync.title')}</h2></div>
         <div className="page-body" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
-          <Empty description={t('common.connectDevice')} />
+          <div className="text-center py-12 text-gray-400">{t('common.connectDevice')}</div>
         </div>
       </>
     );
   }
 
-  const columns = [
-    {
-      title: t('folderSync.localPath'),
-      dataIndex: 'local_path',
-      key: 'local_path',
-      ellipsis: true,
-      render: (path: string) => (
-        <Tooltip title={path}>
-          <Space>
-            <FolderOpenOutlined />
-            <span>{path}</span>
-          </Space>
-        </Tooltip>
-      ),
-    },
-    {
-      title: t('folderSync.direction'),
-      dataIndex: 'direction',
-      key: 'direction',
-      width: 140,
-      render: (dir: string) => {
-        const d = directionLabel[dir] || directionLabel.bidirectional;
-        return <Tag icon={d.icon} color={d.color}>{d.text}</Tag>;
-      },
-    },
-    {
-      title: t('folderSync.remotePath'),
-      dataIndex: 'remote_path',
-      key: 'remote_path',
-      ellipsis: true,
-    },
-    {
-      title: t('folderSync.lastSynced'),
-      dataIndex: 'last_synced',
-      key: 'last_synced',
-      width: 160,
-      render: (date: string | null) => date ? (
-        <Tooltip title={formatDate(date)}>{formatRelativeTime(date)}</Tooltip>
-      ) : <span style={{ color: '#bfbfbf' }}>{t('common.never')}</span>,
-    },
-    {
-      title: t('common.status'),
-      key: 'status',
-      width: 260,
-      render: (_: any, record: SyncPair) => {
-        const prog = progress[record.id];
-        if (syncing.has(record.id) && prog?.current != null && prog?.total != null) {
-          return (
-            <div>
-              <Progress percent={Math.round((prog.current / prog.total) * 100)} size="small" />
-              {prog.file && (
-                <Text type="secondary" style={{ fontSize: 11 }} ellipsis>
-                  {prog.action && <Tag color="blue" style={{ fontSize: 10, marginRight: 4 }}>{prog.action}</Tag>}
-                  {prog.file}
-                  {prog.bytes != null && prog.bytes > 0 && ` (${formatBytes(prog.bytes)})`}
-                </Text>
-              )}
-            </div>
-          );
-        }
-        if (syncing.has(record.id)) {
-          return <Tag icon={<SyncOutlined spin />} color="processing">{t('folderSync.syncing')}</Tag>;
-        }
-        const last = lastResults[record.id];
-        if (last) {
-          return (
-            <Tooltip title={`${formatBytes(last.bytes_pushed + last.bytes_pulled)} @ ${last.speed_mbps.toFixed(1)} MB/s, ${formatDurationMs(last.duration_ms)}`}>
-              <Tag color="success">
-                {t('folderSync.itemsSynced', { count: last.pushed + last.pulled + last.deleted_local + last.deleted_remote })}
-              </Tag>
-            </Tooltip>
-          );
-        }
-        return <Tag color="default">{t('common.ready')}</Tag>;
-      },
-    },
-    {
-      title: t('common.actions'),
-      key: 'action',
-      width: 160,
-      render: (_: any, record: SyncPair) => (
-        <Space size="small">
-          <Tooltip title={t('folderSync.syncNow')}>
-            <Button type="text" size="small" icon={<PlayCircleOutlined />} loading={syncing.has(record.id)} onClick={() => handleSync(record.id)} />
-          </Tooltip>
-          <Tooltip title={t('folderSync.ignoreRules')}>
-            <Button type="text" size="small" icon={<FileTextOutlined />} onClick={() => openIgnoreEditor(record.local_path)} />
-          </Tooltip>
-          <Tooltip title={t('folderSync.cleanVersions')}>
-            <Button type="text" size="small" icon={<ClearOutlined />} onClick={() => { setCleanupPath(record.local_path); setCleanupVisible(true); }} />
-          </Tooltip>
-          <Popconfirm title={t('folderSync.deleteConfirm')} onConfirm={() => handleRemove(record.id)} okText={t('common.delete')} cancelText={t('common.cancel')}>
-            <Button type="text" size="small" danger icon={<DeleteOutlined />} />
-          </Popconfirm>
-        </Space>
-      ),
-    },
-  ];
-
   return (
     <>
       <div className="page-header">
         <h2>{t('folderSync.title')}</h2>
-        <Space>
-          <Button type="primary" icon={<PlusOutlined />} onClick={() => setAddVisible(true)}>{t('folderSync.addPair')}</Button>
-        </Space>
+        <div className="flex items-center gap-2">
+          <Button variant="primary" onClick={() => setAddVisible(true)}>
+            <Plus size={16} />
+            {t('folderSync.addPair')}
+          </Button>
+        </div>
       </div>
       <div className="page-body">
-        {/* 传输信息卡片 / Transfer Info Card */}
         {transferInfo && (
-          <Card size="small" style={{ marginBottom: 16 }}>
-            <Row gutter={24}>
-              <Col span={5}>
-                <Statistic
-                  title={t('folderSync.transferInfo.usbSpeed')}
-                  value={transferInfo.usb_speed}
-                  prefix={<ThunderboltOutlined />}
-                  valueStyle={{ fontSize: 16 }}
-                />
-              </Col>
-              <Col span={5}>
-                <Statistic
-                  title={t('folderSync.transferInfo.estimatedSpeed')}
-                  value={transferInfo.estimated_speed}
-                  valueStyle={{ fontSize: 16 }}
-                />
-              </Col>
-              <Col span={5}>
-                <Statistic
-                  title={t('folderSync.transferInfo.filesystem')}
-                  value={transferInfo.filesystem}
-                  valueStyle={{ fontSize: 16 }}
-                />
-              </Col>
-              <Col span={5}>
-                <Statistic
-                  title={t('folderSync.transferInfo.maxFileSize')}
-                  value={transferInfo.max_file_size}
-                  valueStyle={{ fontSize: 16, color: transferInfo.has_fat32_limit ? '#ff4d4f' : undefined }}
-                />
-              </Col>
-              <Col span={4} style={{ display: 'flex', alignItems: 'center' }}>
+          <div className="rounded-[var(--border-radius)] border border-border bg-white p-[var(--card-padding)] mb-[var(--card-gap)]">
+            <div className="grid grid-cols-5 gap-4">
+              <div>
+                <div className="text-gray-500 text-[var(--font-size-xs)]">{t('folderSync.transferInfo.usbSpeed')}</div>
+                <div className="text-base font-semibold flex items-center gap-1">
+                  <Zap size={16} className="text-yellow-500" />
+                  {transferInfo.usb_speed}
+                </div>
+              </div>
+              <div>
+                <div className="text-gray-500 text-[var(--font-size-xs)]">{t('folderSync.transferInfo.estimatedSpeed')}</div>
+                <div className="text-base font-semibold">{transferInfo.estimated_speed}</div>
+              </div>
+              <div>
+                <div className="text-gray-500 text-[var(--font-size-xs)]">{t('folderSync.transferInfo.filesystem')}</div>
+                <div className="text-base font-semibold">{transferInfo.filesystem}</div>
+              </div>
+              <div>
+                <div className="text-gray-500 text-[var(--font-size-xs)]">{t('folderSync.transferInfo.maxFileSize')}</div>
+                <div className={cn("text-base font-semibold", transferInfo.has_fat32_limit && "text-red-500")}>
+                  {transferInfo.max_file_size}
+                </div>
+              </div>
+              <div className="flex items-center">
                 {transferInfo.has_fat32_limit && (
-                  <Alert
-                    type="warning"
-                    showIcon
-                    icon={<WarningOutlined />}
-                    message={t('folderSync.transferInfo.fat32Warning')}
-                    description={t('folderSync.transferInfo.fat32Desc')}
-                    style={{ padding: '4px 8px', fontSize: 11 }}
-                  />
+                  <div className="flex gap-2 p-2 rounded-[var(--border-radius)] bg-yellow-50 border border-yellow-200 text-[var(--font-size-xs)]">
+                    <AlertTriangle size={14} className="text-yellow-600 flex-shrink-0 mt-0.5" />
+                    <span className="text-yellow-800">{t('folderSync.transferInfo.fat32Warning')}</span>
+                  </div>
                 )}
-              </Col>
-            </Row>
-          </Card>
+              </div>
+            </div>
+          </div>
         )}
 
-        {/* 同步对表格 / Sync Pairs Table */}
-        <Table
-          dataSource={pairs}
-          columns={columns}
-          rowKey="id"
-          loading={loading}
-          pagination={false}
-          locale={{ emptyText: <Empty description={t('folderSync.noPairsHint')} /> }}
-          expandable={{
-            expandedRowRender: (record) => {
-              const last = lastResults[record.id];
-              if (!last) return <Text type="secondary">{t('folderSync.noStats')}</Text>;
-              return (
-                <Row gutter={16}>
-                  <Col span={3}><Statistic title={t('folderSync.pushed')} value={last.pushed} valueStyle={{ fontSize: 14 }} /></Col>
-                  <Col span={3}><Statistic title={t('folderSync.pulled')} value={last.pulled} valueStyle={{ fontSize: 14 }} /></Col>
-                  <Col span={3}><Statistic title={t('folderSync.localDeleted')} value={last.deleted_local} valueStyle={{ fontSize: 14 }} /></Col>
-                  <Col span={3}><Statistic title={t('folderSync.remoteDeleted')} value={last.deleted_remote} valueStyle={{ fontSize: 14 }} /></Col>
-                  <Col span={3}><Statistic title={t('folderSync.conflicts')} value={last.conflicts} valueStyle={{ fontSize: 14 }} /></Col>
-                  <Col span={3}><Statistic title={t('folderSync.pushVolume')} value={formatBytes(last.bytes_pushed)} valueStyle={{ fontSize: 14 }} /></Col>
-                  <Col span={3}><Statistic title={t('folderSync.pullVolume')} value={formatBytes(last.bytes_pulled)} valueStyle={{ fontSize: 14 }} /></Col>
-                  <Col span={3}><Statistic title={t('folderSync.speed')} value={`${last.speed_mbps.toFixed(1)} MB/s`} valueStyle={{ fontSize: 14 }} /></Col>
-                  {last.errors.length > 0 && (
-                    <Col span={24} style={{ marginTop: 8 }}>
-                      <Alert type="error" message={t('folderSync.errorsCount', { count: last.errors.length })} description={last.errors.join('\n')} />
-                    </Col>
-                  )}
-                </Row>
-              );
-            },
-            rowExpandable: (record) => !!lastResults[record.id],
-          }}
-        />
+        <table className="w-full text-left text-[var(--font-size-base)]">
+          <thead>
+            <tr className="border-b border-border bg-gray-50">
+              <th className="p-3 font-semibold">{t('folderSync.localPath')}</th>
+              <th className="p-3 font-semibold w-[140px]">{t('folderSync.direction')}</th>
+              <th className="p-3 font-semibold">{t('folderSync.remotePath')}</th>
+              <th className="p-3 font-semibold w-[160px]">{t('folderSync.lastSynced')}</th>
+              <th className="p-3 font-semibold w-[260px]">{t('common.status')}</th>
+              <th className="p-3 font-semibold w-[160px]">{t('common.actions')}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {loading ? (
+              <tr>
+                <td colSpan={6} className="text-center py-12 text-gray-400">{t('common.loading')}</td>
+              </tr>
+            ) : pairs.length === 0 ? (
+              <tr>
+                <td colSpan={6} className="text-center py-12 text-gray-400">{t('folderSync.noPairsHint')}</td>
+              </tr>
+            ) : (
+              pairs.map((record) => {
+                const prog = progress[record.id];
+                const d = directionLabel[record.direction] || directionLabel.bidirectional;
+                const last = lastResults[record.id];
+                const isExpanded = expandedRows.has(record.id);
 
-        {/* Syncthing 同步说明 / Syncthing-like features info */}
-        <Card size="small" style={{ marginTop: 16 }}>
-          <Collapse ghost>
-            <Panel header={<><InfoCircleOutlined style={{ marginRight: 8 }} />{t('folderSync.synthing.title')}</>} key="info">
-              <Descriptions column={1} size="small">
-                <Descriptions.Item label={t('folderSync.synthing.transport')}>{t('folderSync.synthing.transportDesc')}</Descriptions.Item>
-                <Descriptions.Item label={t('folderSync.synthing.ignore')}>{t('folderSync.synthing.ignoreDesc')}</Descriptions.Item>
-                <Descriptions.Item label={t('folderSync.synthing.versioning')}>{t('folderSync.synthing.versioningDesc')}</Descriptions.Item>
-                <Descriptions.Item label={t('folderSync.synthing.conflict')}>{t('folderSync.synthing.conflictDesc')}</Descriptions.Item>
-                <Descriptions.Item label={t('folderSync.synthing.incremental')}>{t('folderSync.synthing.incrementalDesc')}</Descriptions.Item>
-                <Descriptions.Item label={t('folderSync.synthing.largeFile')}>{t('folderSync.synthing.largeFileDesc')}</Descriptions.Item>
-              </Descriptions>
-            </Panel>
-          </Collapse>
-        </Card>
+                return (
+                  <React.Fragment key={record.id}>
+                    <tr className="border-b border-border hover:bg-gray-50">
+                      <td className="p-3">
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <div className="flex items-center gap-2 truncate max-w-xs">
+                              <FolderOpen size={16} />
+                              <span className="truncate">{record.local_path}</span>
+                            </div>
+                          </TooltipTrigger>
+                          <TooltipContent>{record.local_path}</TooltipContent>
+                        </Tooltip>
+                      </td>
+                      <td className="p-3">
+                        <Badge variant={d.color === 'blue' ? 'default' : d.color === 'green' ? 'success' : 'warning'}>
+                          <span className="flex items-center gap-1">
+                            {d.icon}
+                            {d.text}
+                          </span>
+                        </Badge>
+                      </td>
+                      <td className="p-3 truncate max-w-xs">{record.remote_path}</td>
+                      <td className="p-3">
+                        {record.last_synced ? (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="text-gray-600">{formatRelativeTime(record.last_synced)}</span>
+                            </TooltipTrigger>
+                            <TooltipContent>{formatDate(record.last_synced)}</TooltipContent>
+                          </Tooltip>
+                        ) : (
+                          <span className="text-gray-400">{t('common.never')}</span>
+                        )}
+                      </td>
+                      <td className="p-3">
+                        {syncing.has(record.id) && prog?.current != null && prog?.total != null ? (
+                          <div className="space-y-1">
+                            <Progress value={Math.round((prog.current / prog.total) * 100)} />
+                            {prog.file && (
+                              <div className="text-xs text-gray-500 truncate">
+                                {prog.action && <Badge variant="info" className="text-xs mr-1">{prog.action}</Badge>}
+                                {prog.file}
+                                {prog.bytes != null && prog.bytes > 0 && ` (${formatBytes(prog.bytes)})`}
+                              </div>
+                            )}
+                          </div>
+                        ) : syncing.has(record.id) ? (
+                          <Badge variant="info">
+                            <RefreshCw size={12} className="animate-spin mr-1" />
+                            {t('folderSync.syncing')}
+                          </Badge>
+                        ) : last ? (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Badge variant="success">
+                                {t('folderSync.itemsSynced', { count: last.pushed + last.pulled + last.deleted_local + last.deleted_remote })}
+                              </Badge>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              {formatBytes(last.bytes_pushed + last.bytes_pulled)} @ {last.speed_mbps.toFixed(1)} MB/s, {formatDurationMs(last.duration_ms)}
+                            </TooltipContent>
+                          </Tooltip>
+                        ) : (
+                          <Badge>{t('common.ready')}</Badge>
+                        )}
+                      </td>
+                      <td className="p-3">
+                        <div className="flex items-center gap-1">
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button variant="ghost" size="sm" loading={syncing.has(record.id)} onClick={() => handleSync(record.id)}>
+                                <Play size={16} />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>{t('folderSync.syncNow')}</TooltipContent>
+                          </Tooltip>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button variant="ghost" size="sm" onClick={() => openIgnoreEditor(record.local_path)}>
+                                <FileText size={16} />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>{t('folderSync.ignoreRules')}</TooltipContent>
+                          </Tooltip>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button variant="ghost" size="sm" onClick={() => { setCleanupPath(record.local_path); setCleanupVisible(true); }}>
+                                <Eraser size={16} />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>{t('folderSync.cleanVersions')}</TooltipContent>
+                          </Tooltip>
+                          <Button variant="ghost" size="sm" onClick={() => handleRemove(record.id)}>
+                            <Trash2 size={16} className="text-red-500" />
+                          </Button>
+                          {last && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setExpandedRows((prev) => {
+                                const next = new Set(prev);
+                                if (next.has(record.id)) next.delete(record.id);
+                                else next.add(record.id);
+                                return next;
+                              })}
+                            >
+                              {isExpanded ? '▲' : '▼'}
+                            </Button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                    {isExpanded && last && (
+                      <tr className="bg-gray-50">
+                        <td colSpan={6} className="p-4">
+                          <div className="grid grid-cols-8 gap-4">
+                            <div><div className="text-gray-500 text-xs">{t('folderSync.pushed')}</div><div className="text-sm font-semibold">{last.pushed}</div></div>
+                            <div><div className="text-gray-500 text-xs">{t('folderSync.pulled')}</div><div className="text-sm font-semibold">{last.pulled}</div></div>
+                            <div><div className="text-gray-500 text-xs">{t('folderSync.localDeleted')}</div><div className="text-sm font-semibold">{last.deleted_local}</div></div>
+                            <div><div className="text-gray-500 text-xs">{t('folderSync.remoteDeleted')}</div><div className="text-sm font-semibold">{last.deleted_remote}</div></div>
+                            <div><div className="text-gray-500 text-xs">{t('folderSync.conflicts')}</div><div className="text-sm font-semibold">{last.conflicts}</div></div>
+                            <div><div className="text-gray-500 text-xs">{t('folderSync.pushVolume')}</div><div className="text-sm font-semibold">{formatBytes(last.bytes_pushed)}</div></div>
+                            <div><div className="text-gray-500 text-xs">{t('folderSync.pullVolume')}</div><div className="text-sm font-semibold">{formatBytes(last.bytes_pulled)}</div></div>
+                            <div><div className="text-gray-500 text-xs">{t('folderSync.speed')}</div><div className="text-sm font-semibold">{last.speed_mbps.toFixed(1)} MB/s</div></div>
+                          </div>
+                          {last.errors.length > 0 && (
+                            <div className="flex gap-2 p-3 rounded-[var(--border-radius)] bg-red-50 border border-red-200 text-sm mt-3">
+                              <AlertTriangle size={16} className="text-red-600 flex-shrink-0 mt-0.5" />
+                              <div>
+                                <div className="font-semibold text-red-700">{t('folderSync.errorsCount', { count: last.errors.length })}</div>
+                                <div className="text-red-600 whitespace-pre-line mt-1">{last.errors.join('\n')}</div>
+                              </div>
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
+                );
+              })
+            )}
+          </tbody>
+        </table>
+
+        <div className="rounded-[var(--border-radius)] border border-border bg-white p-[var(--card-padding)] mt-[var(--card-gap)]">
+          <details>
+            <summary className="cursor-pointer font-semibold text-[var(--font-size-base)] flex items-center gap-2">
+              <Info size={16} />
+              {t('folderSync.synthing.title')}
+            </summary>
+            <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 mt-3 text-[var(--font-size-sm)]">
+              <dt className="text-gray-600 font-medium">{t('folderSync.synthing.transport')}</dt>
+              <dd className="text-gray-800">{t('folderSync.synthing.transportDesc')}</dd>
+              <dt className="text-gray-600 font-medium">{t('folderSync.synthing.ignore')}</dt>
+              <dd className="text-gray-800">{t('folderSync.synthing.ignoreDesc')}</dd>
+              <dt className="text-gray-600 font-medium">{t('folderSync.synthing.versioning')}</dt>
+              <dd className="text-gray-800">{t('folderSync.synthing.versioningDesc')}</dd>
+              <dt className="text-gray-600 font-medium">{t('folderSync.synthing.conflict')}</dt>
+              <dd className="text-gray-800">{t('folderSync.synthing.conflictDesc')}</dd>
+              <dt className="text-gray-600 font-medium">{t('folderSync.synthing.incremental')}</dt>
+              <dd className="text-gray-800">{t('folderSync.synthing.incrementalDesc')}</dd>
+              <dt className="text-gray-600 font-medium">{t('folderSync.synthing.largeFile')}</dt>
+              <dd className="text-gray-800">{t('folderSync.synthing.largeFileDesc')}</dd>
+            </dl>
+          </details>
+        </div>
       </div>
 
-      {/* 添加同步对弹窗 / Add Sync Pair Modal */}
-      <Modal
-        title={t('folderSync.addTitle')}
-        open={addVisible}
-        onOk={handleAdd}
-        onCancel={() => setAddVisible(false)}
-        okText={t('common.add')}
-        cancelText={t('common.cancel')}
-        width={560}
-      >
-        <Space direction="vertical" style={{ width: '100%' }} size="middle">
-          <div>
-            <div style={{ marginBottom: 4, fontWeight: 500 }}>{t('folderSync.localPath')}</div>
-            <Space.Compact style={{ width: '100%' }}>
-              <Input value={newPair.localPath} onChange={(e) => setNewPair((p) => ({ ...p, localPath: e.target.value }))} placeholder="/path/to/local/folder" />
-              <Button onClick={selectLocalPath}>{t('common.browse')}</Button>
-            </Space.Compact>
+      <Dialog open={addVisible} onOpenChange={setAddVisible}>
+        <DialogContent className="max-w-[560px]">
+          <DialogHeader>
+            <DialogTitle>{t('folderSync.addTitle')}</DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col gap-4">
+            <div>
+              <div className="mb-2 font-medium text-[var(--font-size-sm)]">{t('folderSync.localPath')}</div>
+              <div className="flex gap-2">
+                <Input
+                  value={newPair.localPath}
+                  onChange={(e) => setNewPair((p) => ({ ...p, localPath: e.target.value }))}
+                  placeholder="/path/to/local/folder"
+                  className="flex-1"
+                />
+                <Button onClick={selectLocalPath}>{t('common.browse')}</Button>
+              </div>
+            </div>
+            <div>
+              <div className="mb-2 font-medium text-[var(--font-size-sm)]">{t('folderSync.remotePath')}</div>
+              <Input
+                value={newPair.remotePath}
+                onChange={(e) => setNewPair((p) => ({ ...p, remotePath: e.target.value }))}
+                placeholder="/sdcard/folder"
+              />
+            </div>
+            <div>
+              <div className="mb-2 font-medium text-[var(--font-size-sm)]">{t('folderSync.direction')}</div>
+              <Select value={newPair.direction} onValueChange={(v) => setNewPair((p) => ({ ...p, direction: v }))}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="bidirectional">{t('folderSync.bidirectional')}</SelectItem>
+                  <SelectItem value="push">{t('folderSync.pushToPhone')}</SelectItem>
+                  <SelectItem value="pull">{t('folderSync.pullToPC')}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <div className="mb-2 font-medium text-[var(--font-size-sm)]">{t('folderSync.conflictPolicy')}</div>
+              <Select value={newPair.conflictPolicy} onValueChange={(v) => setNewPair((p) => ({ ...p, conflictPolicy: v }))}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {conflictPolicies.map((policy) => (
+                    <SelectItem key={policy.value} value={policy.value}>{policy.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <div className="text-xs text-gray-500 mt-1">{t('folderSync.conflictHint')}</div>
+            </div>
           </div>
-          <div>
-            <div style={{ marginBottom: 4, fontWeight: 500 }}>{t('folderSync.remotePath')}</div>
-            <Input value={newPair.remotePath} onChange={(e) => setNewPair((p) => ({ ...p, remotePath: e.target.value }))} placeholder="/sdcard/folder" />
-          </div>
-          <div>
-            <div style={{ marginBottom: 4, fontWeight: 500 }}>{t('folderSync.direction')}</div>
-            <Select
-              value={newPair.direction}
-              onChange={(v) => setNewPair((p) => ({ ...p, direction: v }))}
-              style={{ width: '100%' }}
-              options={[
-                { value: 'bidirectional', label: t('folderSync.bidirectional') },
-                { value: 'push', label: t('folderSync.pushToPhone') },
-                { value: 'pull', label: t('folderSync.pullToPC') },
-              ]}
-            />
-          </div>
-          <div>
-            <div style={{ marginBottom: 4, fontWeight: 500 }}>{t('folderSync.conflictPolicy')}</div>
-            <Select
-              value={newPair.conflictPolicy}
-              onChange={(v) => setNewPair((p) => ({ ...p, conflictPolicy: v }))}
-              style={{ width: '100%' }}
-              options={conflictPolicies}
-            />
-            <Text type="secondary" style={{ fontSize: 12, marginTop: 4, display: 'block' }}>
-              {t('folderSync.conflictHint')}
-            </Text>
-          </div>
-        </Space>
-      </Modal>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAddVisible(false)}>{t('common.cancel')}</Button>
+            <Button variant="primary" onClick={handleAdd}>{t('common.add')}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-      {/* 忽略规则编辑弹窗 / Ignore Patterns Editor Modal */}
-      <Modal
-        title={<><FileTextOutlined style={{ marginRight: 8 }} />{t('folderSync.editIgnoreRules')}</>}
-        open={ignoreVisible}
-        onOk={saveIgnoreFile}
-        onCancel={() => setIgnoreVisible(false)}
-        okText={t('common.save')}
-        cancelText={t('common.cancel')}
-        width={600}
-      >
-        <Alert
-          type="info"
-          showIcon
-          style={{ marginBottom: 12 }}
-          message={t('folderSync.ignoreRuleSyntax')}
-          description={
-            <ul style={{ margin: '4px 0', paddingLeft: 20, fontSize: 12 }}>
-              <li>{t('folderSync.ignoreRule1')}</li>
-              <li>{t('folderSync.ignoreRule2')}</li>
-              <li>{t('folderSync.ignoreRule3')}</li>
-              <li>{t('folderSync.ignoreRule4')}</li>
-            </ul>
-          }
-        />
-        <Text type="secondary" style={{ fontSize: 12, marginBottom: 8, display: 'block' }}>
-          {t('common.path')}: {ignoreLocalPath}/.droidlinkignore
-        </Text>
-        <TextArea
-          value={ignoreContent}
-          onChange={(e) => setIgnoreContent(e.target.value)}
-          rows={14}
-          style={{ fontFamily: 'monospace', fontSize: 13 }}
-          placeholder="*.tmp&#10;node_modules/&#10;.git/&#10;!important.txt"
-        />
-      </Modal>
+      <Dialog open={ignoreVisible} onOpenChange={setIgnoreVisible}>
+        <DialogContent className="max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>
+              <FileText size={16} className="inline mr-2" />
+              {t('folderSync.editIgnoreRules')}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="flex gap-2 p-3 rounded-[var(--border-radius)] bg-blue-50 border border-blue-200 text-sm">
+            <Info size={16} className="text-blue-600 flex-shrink-0 mt-0.5" />
+            <div>
+              <div className="font-semibold text-blue-700 mb-1">{t('folderSync.ignoreRuleSyntax')}</div>
+              <ul className="text-blue-600 pl-5 list-disc space-y-0.5 text-xs">
+                <li>{t('folderSync.ignoreRule1')}</li>
+                <li>{t('folderSync.ignoreRule2')}</li>
+                <li>{t('folderSync.ignoreRule3')}</li>
+                <li>{t('folderSync.ignoreRule4')}</li>
+              </ul>
+            </div>
+          </div>
+          <div className="text-xs text-gray-500 mb-2">
+            {t('common.path')}: {ignoreLocalPath}/.droidlinkignore
+          </div>
+          <Textarea
+            value={ignoreContent}
+            onChange={(e) => setIgnoreContent(e.target.value)}
+            rows={14}
+            className="font-mono text-xs"
+            placeholder="*.tmp&#10;node_modules/&#10;.git/&#10;!important.txt"
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIgnoreVisible(false)}>{t('common.cancel')}</Button>
+            <Button variant="primary" onClick={saveIgnoreFile}>{t('common.save')}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-      {/* 版本清理弹窗 / Version Cleanup Modal */}
-      <Modal
-        title={<><ClearOutlined style={{ marginRight: 8 }} />{t('folderSync.cleanVersionsTitle')}</>}
-        open={cleanupVisible}
-        onOk={handleCleanVersions}
-        onCancel={() => setCleanupVisible(false)}
-        okText={t('common.clean')}
-        cancelText={t('common.cancel')}
-        confirmLoading={cleaningUp}
-      >
-        <Alert
-          type="info"
-          showIcon
-          style={{ marginBottom: 16 }}
-          message={t('folderSync.cleanVersionsTitle')}
-          description={t('folderSync.versionExplain')}
-        />
-        <Text type="secondary" style={{ display: 'block', marginBottom: 8 }}>
-          {t('folderSync.syncPairPath', { path: cleanupPath })}
-        </Text>
-        <div style={{ marginBottom: 4, fontWeight: 500 }}>{t('folderSync.retentionDays')}</div>
-        <InputNumber
-          min={1}
-          max={365}
-          value={retentionDays}
-          onChange={(v) => setRetentionDays(v ?? 30)}
-          style={{ width: '100%' }}
-          addonAfter={t('common.days')}
-        />
-        <Text type="secondary" style={{ fontSize: 12, marginTop: 8, display: 'block' }}>
-          {t('folderSync.retentionHint', { days: retentionDays })}
-        </Text>
-      </Modal>
+      <Dialog open={cleanupVisible} onOpenChange={setCleanupVisible}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              <Eraser size={16} className="inline mr-2" />
+              {t('folderSync.cleanVersionsTitle')}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="flex gap-2 p-3 rounded-[var(--border-radius)] bg-blue-50 border border-blue-200 text-sm mb-4">
+            <Info size={16} className="text-blue-600 flex-shrink-0 mt-0.5" />
+            <div className="text-blue-700">{t('folderSync.versionExplain')}</div>
+          </div>
+          <div className="text-sm text-gray-500 mb-3">
+            {t('folderSync.syncPairPath', { path: cleanupPath })}
+          </div>
+          <div>
+            <div className="mb-2 font-medium text-[var(--font-size-sm)]">{t('folderSync.retentionDays')}</div>
+            <Input
+              type="number"
+              min={1}
+              max={365}
+              value={retentionDays}
+              onChange={(e) => setRetentionDays(Number(e.target.value) || 30)}
+            />
+            <div className="text-xs text-gray-500 mt-1">
+              {t('folderSync.retentionHint', { days: retentionDays })}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCleanupVisible(false)}>{t('common.cancel')}</Button>
+            <Button variant="destructive" onClick={handleCleanVersions} loading={cleaningUp}>{t('common.clean')}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

@@ -483,6 +483,8 @@
     "customAdb": "Benutzerdefinierter Pfad",
     "adbCustomPath": "Pfad zur ADB-Datei",
     "scrcpySource": "scrcpy-Quelle",
+    "bundledScrcpy": "Mitgeliefertes scrcpy (Empfohlen)",
+    "bundledScrcpyDesc": "Verwende das integrierte scrcpy, keine zusätzliche Installation nötig",
     "systemScrcpy": "System-scrcpy",
     "customScrcpy": "Benutzerdefinierter Pfad",
     "scrcpyCustomPath": "Pfad zur scrcpy-Datei",
@@ -491,7 +493,12 @@
     "invalidToolPath": "Ungültiger Pfad oder Werkzeug nicht verfügbar",
     "bundled": "Mitgeliefert",
     "system": "System",
-    "custom": "Benutzerdefiniert"
+    "custom": "Benutzerdefiniert",
+    "displayDensity": "Anzeigedichte",
+    "densityCompact": "Kompakt",
+    "densityComfortable": "Komfortabel",
+    "densityCompactDesc": "Engere Abstände, ideal für Tastatur und Maus",
+    "densityComfortableDesc": "Größere Abstände, ideal für Touchscreens"
   },
   "companion": {
     "title": "Companion-App installieren",

@@ -1,9 +1,7 @@
 import React from 'react';
-import { Row, Col, Typography, Tag, Card, Empty } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { formatDate } from '../utils/format';
-
-const { Text, Title } = Typography;
+import { cn } from '../utils/cn';
 
 interface VersionDiffViewProps {
   dataType: string;
@@ -22,7 +20,6 @@ interface FieldDef {
 }
 
 /**
- * 版本对比组件 - 并排显示两个版本的差异，高亮变更字段
  * Version diff component - side-by-side comparison with highlighted changes
  */
 export const VersionDiffView: React.FC<VersionDiffViewProps> = ({
@@ -33,7 +30,11 @@ export const VersionDiffView: React.FC<VersionDiffViewProps> = ({
   const fields = getFieldDefs(dataType, t);
 
   if (!versionA && !versionB) {
-    return <Empty description={t('versionHistory.noChanges')} />;
+    return (
+      <div className="text-center py-12 text-gray-400">
+        {t('versionHistory.noChanges')}
+      </div>
+    );
   }
 
   const diffs = fields.map((field) => {
@@ -51,78 +52,95 @@ export const VersionDiffView: React.FC<VersionDiffViewProps> = ({
 
   return (
     <div>
-      {/* 版本标题 / Version headers */}
-      <Row gutter={16} style={{ marginBottom: 16 }}>
-        <Col span={12}>
-          <Card size="small" style={{ background: '#fff7e6', borderColor: '#ffd591' }}>
-            <Text strong>{t('versionHistory.versionA')}</Text>
-            {actionA && <Tag style={{ marginLeft: 8 }}>{actionA}</Tag>}
-            <br />
-            <Text type="secondary" style={{ fontSize: 12 }}>{formatDate(timestampA)}</Text>
-          </Card>
-        </Col>
-        <Col span={12}>
-          <Card size="small" style={{ background: '#f6ffed', borderColor: '#b7eb8f' }}>
-            <Text strong>{t('versionHistory.versionB')}</Text>
-            {actionB && <Tag style={{ marginLeft: 8 }}>{actionB}</Tag>}
-            <br />
-            <Text type="secondary" style={{ fontSize: 12 }}>{formatDate(timestampB)}</Text>
-          </Card>
-        </Col>
-      </Row>
+      {/* Version headers */}
+      <div className="grid grid-cols-2 gap-4 mb-4">
+        <div className="rounded-md bg-orange-50 border border-orange-200 p-3">
+          <span className="font-semibold">{t('versionHistory.versionA')}</span>
+          {actionA && (
+            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700 ml-2">
+              {actionA}
+            </span>
+          )}
+          <br />
+          <span className="text-gray-500 text-xs">{formatDate(timestampA)}</span>
+        </div>
+        <div className="rounded-md bg-green-50 border border-green-200 p-3">
+          <span className="font-semibold">{t('versionHistory.versionB')}</span>
+          {actionB && (
+            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700 ml-2">
+              {actionB}
+            </span>
+          )}
+          <br />
+          <span className="text-gray-500 text-xs">{formatDate(timestampB)}</span>
+        </div>
+      </div>
 
       {!hasChanges && (
-        <div style={{ textAlign: 'center', padding: 24 }}>
-          <Text type="secondary">{t('versionHistory.noChanges')}</Text>
+        <div className="text-center py-6">
+          <span className="text-gray-400">{t('versionHistory.noChanges')}</span>
         </div>
       )}
 
-      {/* 逐字段对比 / Field-by-field comparison */}
+      {/* Field-by-field comparison */}
       {diffs.map((diff) => {
         if (!diff.changed) return null;
 
-        const renderVal = diff.render || ((v: any) => <Text>{normalizeValue(v) || '-'}</Text>);
+        const renderVal = diff.render || ((v: any) => <span>{normalizeValue(v) || '-'}</span>);
 
         let statusTag: React.ReactNode;
         if (diff.added) {
-          statusTag = <Tag color="success">{t('versionHistory.fieldAdded')}</Tag>;
+          statusTag = (
+            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-50 text-green-700">
+              {t('versionHistory.fieldAdded')}
+            </span>
+          );
         } else if (diff.removed) {
-          statusTag = <Tag color="error">{t('versionHistory.fieldRemoved')}</Tag>;
+          statusTag = (
+            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-50 text-red-700">
+              {t('versionHistory.fieldRemoved')}
+            </span>
+          );
         } else {
-          statusTag = <Tag color="warning">{t('versionHistory.fieldChanged')}</Tag>;
+          statusTag = (
+            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-50 text-yellow-700">
+              {t('versionHistory.fieldChanged')}
+            </span>
+          );
         }
 
         return (
-          <div key={diff.key} style={{ marginBottom: 12 }}>
-            <div style={{ marginBottom: 4 }}>
-              <Text strong>{diff.label}</Text> {statusTag}
+          <div key={diff.key} className="mb-3">
+            <div className="mb-1">
+              <span className="font-semibold text-[var(--font-size-sm)]">{diff.label}</span>{' '}
+              {statusTag}
             </div>
-            <Row gutter={16}>
-              <Col span={12}>
-                <div style={{
-                  padding: '8px 12px',
-                  borderRadius: 6,
-                  background: diff.removed ? '#fff2f0' : diff.changed ? '#fff7e6' : '#fafafa',
-                  border: `1px solid ${diff.removed ? '#ffccc7' : diff.changed ? '#ffe58f' : '#f0f0f0'}`,
-                  minHeight: 36,
-                  wordBreak: 'break-word',
-                }}>
-                  {diff.valA != null ? renderVal(diff.valA) : <Text type="secondary">-</Text>}
-                </div>
-              </Col>
-              <Col span={12}>
-                <div style={{
-                  padding: '8px 12px',
-                  borderRadius: 6,
-                  background: diff.added ? '#f6ffed' : diff.changed ? '#f6ffed' : '#fafafa',
-                  border: `1px solid ${diff.added ? '#b7eb8f' : diff.changed ? '#b7eb8f' : '#f0f0f0'}`,
-                  minHeight: 36,
-                  wordBreak: 'break-word',
-                }}>
-                  {diff.valB != null ? renderVal(diff.valB) : <Text type="secondary">-</Text>}
-                </div>
-              </Col>
-            </Row>
+            <div className="grid grid-cols-2 gap-4">
+              <div
+                className={cn(
+                  "p-3 rounded-md border min-h-[36px] break-words",
+                  diff.removed
+                    ? "bg-red-50 border-red-200"
+                    : diff.changed
+                    ? "bg-orange-50 border-orange-200"
+                    : "bg-gray-50 border-gray-200"
+                )}
+              >
+                {diff.valA != null ? renderVal(diff.valA) : <span className="text-gray-400">-</span>}
+              </div>
+              <div
+                className={cn(
+                  "p-3 rounded-md border min-h-[36px] break-words",
+                  diff.added
+                    ? "bg-green-50 border-green-200"
+                    : diff.changed
+                    ? "bg-green-50 border-green-200"
+                    : "bg-gray-50 border-gray-200"
+                )}
+              >
+                {diff.valB != null ? renderVal(diff.valB) : <span className="text-gray-400">-</span>}
+              </div>
+            </div>
           </div>
         );
       })}
@@ -144,16 +162,24 @@ function getFieldDefs(dataType: string, t: (key: string) => string): FieldDef[] 
         { key: 'address', label: t('messages.address') },
         { key: 'contact_name', label: t('messages.contact') },
         { key: 'body', label: t('messages.body') },
-        { key: 'date', label: t('messages.date'), render: (v: any) => <Text>{v ? formatDate(v) : '-'}</Text> },
-        { key: 'msg_type', label: t('messages.type'), render: (v: any) => <Tag color={v === 2 ? 'blue' : 'green'}>{v === 2 ? t('messages.sent') : t('messages.received')}</Tag> },
+        { key: 'date', label: t('messages.date'), render: (v: any) => <span>{v ? formatDate(v) : '-'}</span> },
+        {
+          key: 'msg_type',
+          label: t('messages.type'),
+          render: (v: any) => (
+            <span className={cn("inline-flex items-center px-2 py-0.5 rounded text-xs font-medium", v === 2 ? 'bg-blue-50 text-blue-700' : 'bg-green-50 text-green-700')}>
+              {v === 2 ? t('messages.sent') : t('messages.received')}
+            </span>
+          ),
+        },
       ];
     case 'call_logs':
       return [
         { key: 'number', label: t('callLogs.number') },
         { key: 'contact_name', label: t('callLogs.contact') },
         { key: 'call_type', label: t('callLogs.type'), render: renderCallType(t) },
-        { key: 'date', label: t('callLogs.date'), render: (v: any) => <Text>{v ? formatDate(v) : '-'}</Text> },
-        { key: 'duration', label: t('callLogs.duration'), render: (v: any) => <Text>{v > 0 ? `${v}s` : '-'}</Text> },
+        { key: 'date', label: t('callLogs.date'), render: (v: any) => <span>{v ? formatDate(v) : '-'}</span> },
+        { key: 'duration', label: t('callLogs.duration'), render: (v: any) => <span>{v > 0 ? `${v}s` : '-'}</span> },
       ];
     default:
       return [{ key: '_raw', label: 'Data' }];
@@ -166,10 +192,14 @@ function renderJsonArray(val: any): React.ReactNode {
   else if (typeof val === 'string') {
     try { arr = JSON.parse(val); } catch { arr = [val]; }
   }
-  if (arr.length === 0) return <Text type="secondary">-</Text>;
+  if (arr.length === 0) return <span className="text-gray-400">-</span>;
   return (
     <>
-      {arr.map((item, i) => <Tag key={i}>{item}</Tag>)}
+      {arr.map((item, i) => (
+        <span key={i} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700 mr-1">
+          {item}
+        </span>
+      ))}
     </>
   );
 }
@@ -181,7 +211,11 @@ function renderCallType(t: (key: string) => string) {
       : type === 2 ? t('callLogs.outgoing')
       : type === 3 ? t('callLogs.missed')
       : t('callLogs.other');
-    return <Tag>{label}</Tag>;
+    return (
+      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700">
+        {label}
+      </span>
+    );
   };
 }
 

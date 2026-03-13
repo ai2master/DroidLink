@@ -39,7 +39,7 @@ jobs:
             target: macos
 
     runs-on: ${{ matrix.platform }}
-    timeout-minutes: 30
+    timeout-minutes: 60
 
     steps:
       - name: Checkout
@@ -133,6 +133,57 @@ jobs:
             chmod +x src-tauri/resources/adb/adb
           fi
           ls -lah src-tauri/resources/adb/
+
+      - name: Build scrcpy from source
+        shell: bash
+        run: |
+          SCRCPY_VERSION="3.1"
+          mkdir -p src-tauri/resources/scrcpy
+
+          # Clone scrcpy source
+          git clone --depth 1 --branch "v${SCRCPY_VERSION}" https://github.com/Genymobile/scrcpy.git /tmp/scrcpy-src
+
+          if [ "${{ matrix.target }}" == "linux" ]; then
+            sudo apt-get install -y \
+              ffmpeg libsdl2-dev libavcodec-dev libavdevice-dev \
+              libavformat-dev libavutil-dev libswresample-dev \
+              libusb-1.0-0-dev meson ninja-build pkg-config
+            cd /tmp/scrcpy-src
+            meson setup build --buildtype=release -Dcompile_server=false
+            ninja -C build
+            cp build/app/scrcpy $GITHUB_WORKSPACE/src-tauri/resources/scrcpy/scrcpy
+            chmod +x $GITHUB_WORKSPACE/src-tauri/resources/scrcpy/scrcpy
+
+          elif [ "${{ matrix.target }}" == "macos" ]; then
+            brew install ffmpeg sdl2 meson pkg-config libusb
+            cd /tmp/scrcpy-src
+            meson setup build --buildtype=release -Dcompile_server=false
+            ninja -C build
+            cp build/app/scrcpy $GITHUB_WORKSPACE/src-tauri/resources/scrcpy/scrcpy
+            chmod +x $GITHUB_WORKSPACE/src-tauri/resources/scrcpy/scrcpy
+
+          elif [ "${{ matrix.target }}" == "windows" ]; then
+            # On Windows, download pre-built scrcpy release (building from source on Windows CI is very complex)
+            curl -L -o /tmp/scrcpy-win.zip "https://github.com/Genymobile/scrcpy/releases/download/v${SCRCPY_VERSION}/scrcpy-win64-v${SCRCPY_VERSION}.zip"
+            unzip -q /tmp/scrcpy-win.zip -d /tmp/scrcpy-win
+            cp /tmp/scrcpy-win/scrcpy-win64-v${SCRCPY_VERSION}/scrcpy.exe src-tauri/resources/scrcpy/
+            cp /tmp/scrcpy-win/scrcpy-win64-v${SCRCPY_VERSION}/scrcpy-server src-tauri/resources/scrcpy/
+            # Copy required DLLs
+            for dll in /tmp/scrcpy-win/scrcpy-win64-v${SCRCPY_VERSION}/*.dll; do
+              cp "$dll" src-tauri/resources/scrcpy/ 2>/dev/null || true
+            done
+          fi
+
+          ls -lah src-tauri/resources/scrcpy/
+
+      - name: Download scrcpy-server
+        if: matrix.target != 'windows'
+        shell: bash
+        run: |
+          SCRCPY_VERSION="3.1"
+          curl -L -o src-tauri/resources/scrcpy/scrcpy-server \
+            "https://github.com/Genymobile/scrcpy/releases/download/v${SCRCPY_VERSION}/scrcpy-server-v${SCRCPY_VERSION}"
+          ls -lah src-tauri/resources/scrcpy/
 
       - name: Build Tauri app
         uses: tauri-apps/tauri-action@v0

@@ -483,6 +483,8 @@
     "customAdb": "Custom Path",
     "adbCustomPath": "ADB executable path",
     "scrcpySource": "scrcpy Source",
+    "bundledScrcpy": "Bundled scrcpy (Recommended)",
+    "bundledScrcpyDesc": "Use the built-in scrcpy, no additional installation needed",
     "systemScrcpy": "System scrcpy",
     "customScrcpy": "Custom Path",
     "scrcpyCustomPath": "scrcpy executable path",
@@ -491,7 +493,12 @@
     "invalidToolPath": "Invalid path or tool unavailable",
     "bundled": "Bundled",
     "system": "System",
-    "custom": "Custom"
+    "custom": "Custom",
+    "displayDensity": "Display Density",
+    "densityCompact": "Compact",
+    "densityComfortable": "Comfortable",
+    "densityCompactDesc": "Tighter spacing, ideal for keyboard and mouse",
+    "densityComfortableDesc": "More spacious, ideal for touch screens"
   },
   "companion": {
     "title": "Install Companion App",

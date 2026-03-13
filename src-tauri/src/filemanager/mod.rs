@@ -141,8 +141,12 @@ impl FileManager {
             }
         }
 
-        // Use 'mv' command via shell
-        let command = format!("mv '{}' '{}'", old_path.replace("'", "'\\''"), new_path.replace("'", "'\\''"));
+        // Use 'mv' command via shell (path sanitized)
+        let safe_old = adb::sanitize_device_path(old_path)
+            .map_err(|e| FileManagerError::InvalidPath(e.to_string()))?;
+        let safe_new = adb::sanitize_device_path(new_path)
+            .map_err(|e| FileManagerError::InvalidPath(e.to_string()))?;
+        let command = format!("mv '{}' '{}'", safe_old, safe_new);
         adb::shell(serial, &command)
             .map_err(|e| FileManagerError::AdbError(e.to_string()))?;
 
@@ -172,8 +176,12 @@ impl FileManager {
             }
         }
 
-        // Use 'cp -r' command via shell (supports both files and directories)
-        let command = format!("cp -r '{}' '{}'", src.replace("'", "'\\''"), dst.replace("'", "'\\''"));
+        // Use 'cp -r' command via shell (path sanitized, supports both files and directories)
+        let safe_src = adb::sanitize_device_path(src)
+            .map_err(|e| FileManagerError::InvalidPath(e.to_string()))?;
+        let safe_dst = adb::sanitize_device_path(dst)
+            .map_err(|e| FileManagerError::InvalidPath(e.to_string()))?;
+        let command = format!("cp -r '{}' '{}'", safe_src, safe_dst);
         adb::shell(serial, &command)
             .map_err(|e| FileManagerError::AdbError(e.to_string()))?;
 
@@ -198,9 +206,13 @@ impl FileManager {
             .find(|e| e.name == file_name)
             .ok_or_else(|| FileManagerError::FileNotFound(path.to_string()))?;
 
+        // Sanitize path for shell commands
+        let safe_path = adb::sanitize_device_path(path)
+            .map_err(|e| FileManagerError::InvalidPath(e.to_string()))?;
+
         // Get MIME type (only for files)
         let mime_type = if entry.file_type == "file" {
-            let mime_cmd = format!("file -b --mime-type '{}'", path.replace("'", "'\\''"));
+            let mime_cmd = format!("file -b --mime-type '{}'", safe_path);
             adb::shell(serial, &mime_cmd)
                 .unwrap_or_else(|_| "application/octet-stream".to_string())
                 .trim()
@@ -211,7 +223,7 @@ impl FileManager {
 
         // Get MD5 hash (only for files)
         let md5 = if entry.file_type == "file" {
-            let md5_cmd = format!("md5sum '{}' | cut -d' ' -f1", path.replace("'", "'\\''"));
+            let md5_cmd = format!("md5sum '{}' | cut -d' ' -f1", safe_path);
             adb::shell(serial, &md5_cmd)
                 .unwrap_or_else(|_| String::new())
                 .trim()
@@ -316,9 +328,10 @@ impl FileManager {
             return Err(FileManagerError::FileNotFound(path.to_string()));
         }
 
-        // Use 'du -sb' for size in bytes
-        let escaped_path = path.replace("'", "'\\''");
-        let du_cmd = format!("du -sb '{}' | cut -f1", escaped_path);
+        // Use 'du -sb' for size in bytes (path sanitized)
+        let safe_path = adb::sanitize_device_path(path)
+            .map_err(|e| FileManagerError::InvalidPath(e.to_string()))?;
+        let du_cmd = format!("du -sb '{}' | cut -f1", safe_path);
 
         let output = adb::shell(serial, &du_cmd)
             .map_err(|e| FileManagerError::AdbError(e.to_string()))?;

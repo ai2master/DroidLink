@@ -1,36 +1,24 @@
 import React, { useEffect, useState } from 'react';
 import {
-  Table,
-  Button,
-  Space,
-  Card,
-  Typography,
-  message,
-  Dropdown,
-  Empty,
-  Spin,
-  Tag,
-  Radio,
-  Modal,
-  Timeline,
-} from 'antd';
-import type { ColumnsType } from 'antd/es/table';
-import {
-  ExportOutlined,
-  SyncOutlined,
-  PhoneOutlined,
-  ReloadOutlined,
-  HistoryOutlined,
-  EyeOutlined,
-  RollbackOutlined,
-} from '@ant-design/icons';
+  Download,
+  RefreshCw,
+  Phone,
+  RotateCw,
+  History,
+  Eye,
+  Undo2,
+} from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { tauriInvoke } from '../utils/tauri';
 import { useStore } from '../stores/useStore';
 import { formatDate, formatDuration, callTypeText, callTypeColor } from '../utils/format';
 import { VersionPreview } from '../components/VersionPreview';
-
-const { Title, Text } = Typography;
+import { Button } from '../components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogBody } from '../components/ui/dialog';
+import { useToast } from '../components/ui/toast';
+import { useConfirm } from '../components/ui/confirm-dialog';
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '../components/ui/dropdown-menu';
+import { cn } from '../utils/cn';
 
 interface CallLog {
   id: string;
@@ -56,13 +44,18 @@ type CallTypeFilter = 'all' | 'incoming' | 'outgoing' | 'missed';
 export const CallLogs: React.FC = () => {
   const { t } = useTranslation();
   const { connectedDevice } = useStore();
+  const toast = useToast();
+  const { confirm } = useConfirm();
   const [callLogs, setCallLogs] = useState<CallLog[]>([]);
   const [filteredLogs, setFilteredLogs] = useState<CallLog[]>([]);
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [typeFilter, setTypeFilter] = useState<CallTypeFilter>('all');
-  // 版本历史 / Version history
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 20;
+
+  // Version history
   const [versionModalVisible, setVersionModalVisible] = useState(false);
   const [versionHistory, setVersionHistory] = useState<Version[]>([]);
   const [loadingVersions, setLoadingVersions] = useState(false);
@@ -89,7 +82,7 @@ export const CallLogs: React.FC = () => {
       setCallLogs(data || []);
     } catch (error) {
       console.error('Failed to load call logs:', error);
-      message.error(t('callLogs.loadFailed'));
+      toast.error(t('callLogs.loadFailed'));
     } finally {
       setLoading(false);
     }
@@ -118,10 +111,10 @@ export const CallLogs: React.FC = () => {
         serial: connectedDevice.serial,
         dataType: 'call_logs',
       });
-      message.success(t('callLogs.syncStarted'));
+      toast.success(t('callLogs.syncStarted'));
       setTimeout(loadCallLogs, 2000);
     } catch (error) {
-      message.error(t('common.syncFailed'));
+      toast.error(t('common.syncFailed'));
     } finally {
       setSyncing(false);
     }
@@ -136,9 +129,9 @@ export const CallLogs: React.FC = () => {
         format,
         outputPath: `call_logs_export_${Date.now()}.${format}`,
       });
-      message.success(t('callLogs.exportSuccess', { path }));
+      toast.success(t('callLogs.exportSuccess', { path }));
     } catch (error) {
-      message.error(t('common.exportFailed'));
+      toast.error(t('common.exportFailed'));
     } finally {
       setExporting(false);
     }
@@ -153,7 +146,7 @@ export const CallLogs: React.FC = () => {
       });
       setVersionHistory(history || []);
     } catch (error) {
-      message.error(t('versionHistory.loadFailed'));
+      toast.error(t('versionHistory.loadFailed'));
     } finally {
       setLoadingVersions(false);
     }
@@ -165,12 +158,12 @@ export const CallLogs: React.FC = () => {
       setSelectedVersionDetail(detail);
       setDetailModalVisible(true);
     } catch (error) {
-      message.error(t('versionHistory.loadDetailFailed'));
+      toast.error(t('versionHistory.loadDetailFailed'));
     }
   };
 
   const handleRestoreVersion = (versionId: string, description: string) => {
-    Modal.confirm({
+    confirm({
       title: t('versionHistory.restoreConfirmTitle'),
       content: t('versionHistory.restoreConfirm', { description }),
       okText: t('versionHistory.restoreAsNew'),
@@ -178,10 +171,10 @@ export const CallLogs: React.FC = () => {
       onOk: async () => {
         try {
           await tauriInvoke('restore_version', { versionId });
-          message.success(t('versionHistory.restored'));
+          toast.success(t('versionHistory.restored'));
           loadCallLogs();
         } catch (error) {
-          message.error(t('versionHistory.restoreFailed'));
+          toast.error(t('versionHistory.restoreFailed'));
         }
       },
     });
@@ -190,10 +183,36 @@ export const CallLogs: React.FC = () => {
   const getActionColor = (action: string) => {
     const a = action.toLowerCase();
     if (a.includes('create') || a.includes('add')) return 'success';
-    if (a.includes('update') || a.includes('modify')) return 'processing';
+    if (a.includes('update') || a.includes('modify')) return 'warning';
     if (a.includes('delete') || a.includes('remove')) return 'error';
     if (a.includes('restore')) return 'warning';
     return 'default';
+  };
+
+  const getActionBadgeClass = (color: string) => {
+    switch (color) {
+      case 'success':
+        return 'bg-green-50 text-green-700';
+      case 'warning':
+        return 'bg-blue-50 text-blue-700';
+      case 'error':
+        return 'bg-red-50 text-red-700';
+      default:
+        return 'bg-gray-50 text-gray-700';
+    }
+  };
+
+  const getActionDotClass = (color: string) => {
+    switch (color) {
+      case 'success':
+        return 'bg-green-500';
+      case 'warning':
+        return 'bg-blue-500';
+      case 'error':
+        return 'bg-red-500';
+      default:
+        return 'bg-gray-400';
+    }
   };
 
   const getCallTypeIcon = (type: number) => {
@@ -201,237 +220,330 @@ export const CallLogs: React.FC = () => {
     const rotation =
       type === 1 ? 'rotate(135deg)' : type === 2 ? 'rotate(-45deg)' : 'rotate(0deg)';
     return (
-      <PhoneOutlined
-        style={{ color, transform: rotation, display: 'inline-block' }}
+      <Phone
+        className="w-4 h-4 inline-block"
+        style={{ color, transform: rotation }}
       />
     );
   };
 
-  const columns: ColumnsType<CallLog> = [
-    {
-      title: t('callLogs.type'),
-      dataIndex: 'type',
-      key: 'type',
-      width: 120,
-      render: (type: number) => (
-        <Space>
-          {getCallTypeIcon(type)}
-          <Tag color={callTypeColor(type)}>{callTypeText(type)}</Tag>
-        </Space>
-      ),
-      filters: [
-        { text: t('callLogs.incoming'), value: 1 },
-        { text: t('callLogs.outgoing'), value: 2 },
-        { text: t('callLogs.missed'), value: 3 },
-      ],
-      onFilter: (value, record) => record.type === value,
-    },
-    {
-      title: t('callLogs.number'),
-      dataIndex: 'number',
-      key: 'number',
-      render: (number) => <Text copyable>{number}</Text>,
-    },
-    {
-      title: t('callLogs.contact'),
-      dataIndex: 'contactName',
-      key: 'contactName',
-      render: (name) => name || <Text type="secondary">{t('callLogs.unknownContact')}</Text>,
-    },
-    {
-      title: t('callLogs.date'),
-      dataIndex: 'date',
-      key: 'date',
-      render: (date) => formatDate(date),
-      sorter: (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
-      defaultSortOrder: 'descend',
-    },
-    {
-      title: t('callLogs.duration'),
-      dataIndex: 'duration',
-      key: 'duration',
-      render: (duration: number) => (
-        <Text>{duration > 0 ? formatDuration(duration) : '-'}</Text>
-      ),
-      sorter: (a, b) => a.duration - b.duration,
-    },
-  ];
+  const getCallTypeBadgeClass = (type: number) => {
+    const color = callTypeColor(type);
+    if (color === '#52c41a') return 'bg-green-50 text-green-700';
+    if (color === '#1677ff') return 'bg-blue-50 text-blue-700';
+    if (color === '#ff4d4f') return 'bg-red-50 text-red-700';
+    return 'bg-gray-50 text-gray-700';
+  };
 
-  const exportMenuItems = [
-    { key: 'json', label: t('common.jsonFormat') },
-    { key: 'csv', label: t('common.csvFormat') },
-    { key: 'txt', label: t('common.txtFormat') },
-  ];
+  const paginatedLogs = filteredLogs.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize
+  );
+  const totalPages = Math.ceil(filteredLogs.length / pageSize);
 
   if (!connectedDevice) {
     return (
-      <div style={{ textAlign: 'center', padding: '100px 20px' }}>
-        <Empty
-          image={Empty.PRESENTED_IMAGE_SIMPLE}
-          description={
-            <Space direction="vertical" size="large">
-              <Title level={3}>{t('common.connectDeviceTitle')}</Title>
-              <Text type="secondary">{t('callLogs.connectDeviceDesc')}</Text>
-            </Space>
-          }
-        />
+      <div className="flex items-center justify-center" style={{ padding: '100px 20px' }}>
+        <div className="text-center py-12 text-gray-400">
+          <h3 className="text-[var(--font-size-lg)] font-semibold mb-2 text-gray-900">
+            {t('common.connectDeviceTitle')}
+          </h3>
+          <p className="text-[var(--font-size-base)]">{t('callLogs.connectDeviceDesc')}</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div style={{ padding: '24px' }}>
-      <Card>
-        <Space
-          direction="vertical"
-          size="large"
-          style={{ width: '100%', marginBottom: 16 }}
-        >
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              flexWrap: 'wrap',
-              gap: 16,
-            }}
-          >
-            <Title level={2} style={{ margin: 0 }}>
-              {t('callLogs.title')}
-            </Title>
-            <Space wrap>
-              <Radio.Group
-                value={typeFilter}
-                onChange={(e) => setTypeFilter(e.target.value)}
-                buttonStyle="solid"
+    <div style={{ padding: 'var(--page-padding)' }}>
+      <div className="rounded-[var(--border-radius)] border border-border bg-white p-[var(--card-padding)]">
+        <div className="flex justify-between items-center flex-wrap gap-4 mb-[var(--section-gap)]">
+          <h2 className="text-[var(--font-size-title)] font-semibold m-0">
+            {t('callLogs.title')}
+          </h2>
+          <div className="flex flex-wrap gap-2">
+            {/* Type filter button group */}
+            <div className="inline-flex rounded-md shadow-sm" role="group">
+              <button
+                type="button"
+                onClick={() => setTypeFilter('all')}
+                className={cn(
+                  "px-3 py-2 text-sm font-medium border rounded-l-md",
+                  typeFilter === 'all'
+                    ? "bg-blue-500 text-white border-blue-500"
+                    : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
+                )}
               >
-                <Radio.Button value="all">{t('callLogs.all')}</Radio.Button>
-                <Radio.Button value="incoming">{t('callLogs.incoming')}</Radio.Button>
-                <Radio.Button value="outgoing">{t('callLogs.outgoing')}</Radio.Button>
-                <Radio.Button value="missed">{t('callLogs.missed')}</Radio.Button>
-              </Radio.Group>
-              <Dropdown
-                menu={{
-                  items: exportMenuItems,
-                  onClick: ({ key }) => handleExport(key),
-                }}
+                {t('callLogs.all')}
+              </button>
+              <button
+                type="button"
+                onClick={() => setTypeFilter('incoming')}
+                className={cn(
+                  "px-3 py-2 text-sm font-medium border-t border-b",
+                  typeFilter === 'incoming'
+                    ? "bg-blue-500 text-white border-blue-500"
+                    : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
+                )}
               >
-                <Button icon={<ExportOutlined />} loading={exporting}>
+                {t('callLogs.incoming')}
+              </button>
+              <button
+                type="button"
+                onClick={() => setTypeFilter('outgoing')}
+                className={cn(
+                  "px-3 py-2 text-sm font-medium border-t border-b",
+                  typeFilter === 'outgoing'
+                    ? "bg-blue-500 text-white border-blue-500"
+                    : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
+                )}
+              >
+                {t('callLogs.outgoing')}
+              </button>
+              <button
+                type="button"
+                onClick={() => setTypeFilter('missed')}
+                className={cn(
+                  "px-3 py-2 text-sm font-medium border rounded-r-md",
+                  typeFilter === 'missed'
+                    ? "bg-blue-500 text-white border-blue-500"
+                    : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
+                )}
+              >
+                {t('callLogs.missed')}
+              </button>
+            </div>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" loading={exporting}>
+                  <Download className="w-4 h-4 mr-2" />
                   {t('common.export')}
                 </Button>
-              </Dropdown>
-              <Button
-                icon={<HistoryOutlined />}
-                onClick={handleShowVersionHistory}
-              >
-                {t('versionHistory.title')}
-              </Button>
-              <Button
-                icon={<SyncOutlined />}
-                loading={syncing}
-                onClick={handleSync}
-              >
-                {t('common.sync')}
-              </Button>
-              <Button icon={<ReloadOutlined />} onClick={loadCallLogs}>
-                {t('common.refresh')}
-              </Button>
-            </Space>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuItem onClick={() => handleExport('json')}>
+                  {t('common.jsonFormat')}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleExport('csv')}>
+                  {t('common.csvFormat')}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleExport('txt')}>
+                  {t('common.txtFormat')}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <Button variant="outline" onClick={handleShowVersionHistory}>
+              <History className="w-4 h-4 mr-2" />
+              {t('versionHistory.title')}
+            </Button>
+            <Button variant="outline" loading={syncing} onClick={handleSync}>
+              <RefreshCw className="w-4 h-4 mr-2" />
+              {t('common.sync')}
+            </Button>
+            <Button variant="outline" onClick={loadCallLogs}>
+              <RotateCw className="w-4 h-4 mr-2" />
+              {t('common.refresh')}
+            </Button>
           </div>
-        </Space>
+        </div>
 
-        <Spin spinning={loading}>
-          <Table
-            columns={columns}
-            dataSource={filteredLogs}
-            rowKey="id"
-            pagination={{
-              total: filteredLogs.length,
-              pageSize: 20,
-              showTotal: (total) => t('common.totalRecords', { total }),
-              showSizeChanger: true,
-              showQuickJumper: true,
-            }}
-            locale={{
-              emptyText: (
-                <Empty
-                  description={t('callLogs.noData')}
-                  image={Empty.PRESENTED_IMAGE_SIMPLE}
-                />
-              ),
-            }}
-          />
-        </Spin>
-      </Card>
+        {loading ? (
+          <div className="flex items-center justify-center py-20">
+            <RotateCw className="w-6 h-6 animate-spin text-gray-400" />
+          </div>
+        ) : (
+          <>
+            <div className="overflow-auto">
+              <table className="w-full text-left text-[var(--font-size-base)]">
+                <thead>
+                  <tr className="border-b border-border">
+                    <th className="px-3 py-2 font-medium text-gray-500 text-[var(--font-size-sm)] w-[120px]">
+                      {t('callLogs.type')}
+                    </th>
+                    <th className="px-3 py-2 font-medium text-gray-500 text-[var(--font-size-sm)]">
+                      {t('callLogs.number')}
+                    </th>
+                    <th className="px-3 py-2 font-medium text-gray-500 text-[var(--font-size-sm)]">
+                      {t('callLogs.contact')}
+                    </th>
+                    <th className="px-3 py-2 font-medium text-gray-500 text-[var(--font-size-sm)]">
+                      {t('callLogs.date')}
+                    </th>
+                    <th className="px-3 py-2 font-medium text-gray-500 text-[var(--font-size-sm)]">
+                      {t('callLogs.duration')}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {paginatedLogs.map((log) => (
+                    <tr key={log.id} className="border-b border-border hover:bg-gray-50">
+                      <td className="px-3 py-2">
+                        <div className="flex items-center gap-2">
+                          {getCallTypeIcon(log.type)}
+                          <span className={cn("inline-flex items-center px-2 py-0.5 rounded text-xs font-medium", getCallTypeBadgeClass(log.type))}>
+                            {callTypeText(log.type)}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-3 py-2">
+                        <span className="font-mono">{log.number}</span>
+                      </td>
+                      <td className="px-3 py-2">
+                        {log.contactName || <span className="text-gray-400">{t('callLogs.unknownContact')}</span>}
+                      </td>
+                      <td className="px-3 py-2">{formatDate(log.date)}</td>
+                      <td className="px-3 py-2">
+                        {log.duration > 0 ? formatDuration(log.duration) : '-'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
 
-      {/* 版本历史弹窗 / Version history modal */}
-      <Modal
-        title={<><HistoryOutlined /> {t('versionHistory.title')} - {t('versionHistory.callLogs')}</>}
-        open={versionModalVisible}
-        onCancel={() => setVersionModalVisible(false)}
-        footer={[<Button key="close" onClick={() => setVersionModalVisible(false)}>{t('common.close')}</Button>]}
-        width={700}
-      >
-        <Spin spinning={loadingVersions}>
-          {versionHistory.length === 0 ? (
-            <Empty description={t('versionHistory.noVersions')} image={Empty.PRESENTED_IMAGE_SIMPLE} />
-          ) : (
-            <Timeline
-              items={versionHistory.map((v) => ({
-                color: getActionColor(v.action),
-                children: (
-                  <Card size="small" style={{ marginBottom: 4 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <Space>
-                        <Tag color={getActionColor(v.action)}>{v.action}</Tag>
-                        <Text>{v.description}</Text>
-                        <Text type="secondary" style={{ fontSize: 12 }}>{formatDate(v.created_at)}</Text>
-                      </Space>
-                      <Space size={4}>
-                        <Button type="link" size="small" icon={<EyeOutlined />}
-                          onClick={() => handleViewVersionDetail(v.id)} />
-                        <Button type="link" size="small" icon={<RollbackOutlined />}
-                          onClick={() => handleRestoreVersion(v.id, v.description || '')} />
-                      </Space>
+            {filteredLogs.length === 0 && (
+              <div className="text-center py-12 text-gray-400">
+                {t('callLogs.noData')}
+              </div>
+            )}
+
+            {filteredLogs.length > 0 && (
+              <div className="mt-4 flex items-center justify-between text-[var(--font-size-sm)]">
+                <div className="text-gray-500">
+                  {t('common.totalRecords', { total: filteredLogs.length })}
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                    disabled={currentPage === 1}
+                  >
+                    Previous
+                  </Button>
+                  <span className="text-gray-500">
+                    Page {currentPage} of {totalPages}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                    disabled={currentPage === totalPages}
+                  >
+                    Next
+                  </Button>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+
+      {/* Version history modal */}
+      <Dialog open={versionModalVisible} onOpenChange={setVersionModalVisible}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>
+              <div className="flex items-center gap-2">
+                <History className="w-5 h-5" />
+                {t('versionHistory.title')} - {t('versionHistory.callLogs')}
+              </div>
+            </DialogTitle>
+          </DialogHeader>
+          <DialogBody>
+            {loadingVersions ? (
+              <div className="flex items-center justify-center py-20">
+                <RotateCw className="w-6 h-6 animate-spin text-gray-400" />
+              </div>
+            ) : versionHistory.length === 0 ? (
+              <div className="text-center py-12 text-gray-400">
+                {t('versionHistory.noVersions')}
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {versionHistory.map((v) => {
+                  const color = getActionColor(v.action);
+                  return (
+                    <div key={v.id} className="flex gap-3">
+                      <div className={cn("w-2 h-2 mt-2 rounded-full shrink-0", getActionDotClass(color))} />
+                      <div className="flex-1">
+                        <div className="rounded-[var(--border-radius)] border border-border bg-white p-3 text-[var(--font-size-sm)]">
+                          <div className="flex justify-between items-center">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className={cn("inline-flex items-center px-2 py-0.5 rounded text-xs font-medium", getActionBadgeClass(color))}>
+                                {v.action}
+                              </span>
+                              <span>{v.description}</span>
+                              <span className="text-gray-400 text-xs">{formatDate(v.created_at)}</span>
+                            </div>
+                            <div className="flex gap-1">
+                              <Button variant="ghost" size="sm" onClick={() => handleViewVersionDetail(v.id)}>
+                                <Eye className="w-4 h-4" />
+                              </Button>
+                              <Button variant="ghost" size="sm" onClick={() => handleRestoreVersion(v.id, v.description || '')}>
+                                <Undo2 className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
                     </div>
-                  </Card>
-                ),
-              }))}
-            />
-          )}
-        </Spin>
-      </Modal>
+                  );
+                })}
+              </div>
+            )}
+          </DialogBody>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setVersionModalVisible(false)}>
+              {t('common.close')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-      {/* 版本详情弹窗 / Version detail modal */}
-      <Modal
-        title={t('versionHistory.detail')}
-        open={detailModalVisible}
-        onCancel={() => { setDetailModalVisible(false); setSelectedVersionDetail(null); }}
-        width={800}
-        footer={[<Button key="close" onClick={() => { setDetailModalVisible(false); setSelectedVersionDetail(null); }}>{t('common.close')}</Button>]}
-      >
-        {selectedVersionDetail && (() => {
-          const record = selectedVersionDetail.record || selectedVersionDetail;
-          const beforeData = record.data_before ? (typeof record.data_before === 'string' ? JSON.parse(record.data_before) : record.data_before) : null;
-          const afterData = record.data_after ? (typeof record.data_after === 'string' ? JSON.parse(record.data_after) : record.data_after) : null;
-          return (
-            <>
-              {beforeData && (
+      {/* Version detail modal */}
+      <Dialog open={detailModalVisible} onOpenChange={setDetailModalVisible}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>{t('versionHistory.detail')}</DialogTitle>
+          </DialogHeader>
+          <DialogBody>
+            {selectedVersionDetail && (() => {
+              const record = selectedVersionDetail.record || selectedVersionDetail;
+              const beforeData = record.data_before ? (typeof record.data_before === 'string' ? JSON.parse(record.data_before) : record.data_before) : null;
+              const afterData = record.data_after ? (typeof record.data_after === 'string' ? JSON.parse(record.data_after) : record.data_after) : null;
+              return (
                 <>
-                  <Title level={5}>{t('versionHistory.before')}</Title>
-                  <VersionPreview dataType="call_logs" data={beforeData} />
+                  {beforeData && (
+                    <>
+                      <h5 className="text-[var(--font-size-base)] font-semibold mb-2">{t('versionHistory.before')}</h5>
+                      <VersionPreview dataType="call_logs" data={beforeData} />
+                    </>
+                  )}
+                  {afterData && (
+                    <>
+                      <h5 className="text-[var(--font-size-base)] font-semibold mb-2 mt-4">{t('versionHistory.after')}</h5>
+                      <VersionPreview dataType="call_logs" data={afterData} />
+                    </>
+                  )}
                 </>
-              )}
-              {afterData && (
-                <>
-                  <Title level={5} style={{ marginTop: 16 }}>{t('versionHistory.after')}</Title>
-                  <VersionPreview dataType="call_logs" data={afterData} />
-                </>
-              )}
-            </>
-          );
-        })()}
-      </Modal>
+              );
+            })()}
+          </DialogBody>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setDetailModalVisible(false);
+                setSelectedVersionDetail(null);
+              }}
+            >
+              {t('common.close')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

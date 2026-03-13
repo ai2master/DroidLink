@@ -1,17 +1,15 @@
 import React from 'react';
-import { Descriptions, Tag, Space, Typography } from 'antd';
 import {
-  PhoneOutlined,
-  MailOutlined,
-  UserOutlined,
-  TeamOutlined,
-  MessageOutlined,
-  ClockCircleOutlined,
-} from '@ant-design/icons';
+  Phone,
+  Mail,
+  User,
+  Users,
+  MessageSquare,
+  Clock,
+} from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { formatDate, formatDuration, callTypeColor } from '../utils/format';
-
-const { Text } = Typography;
+import { cn } from '../utils/cn';
 
 interface VersionPreviewProps {
   dataType: string;
@@ -20,14 +18,13 @@ interface VersionPreviewProps {
 }
 
 /**
- * 版本数据富预览组件 - 根据数据类型渲染人类可读的卡片
  * Rich preview component for version data - renders human-readable cards by data type
  */
 export const VersionPreview: React.FC<VersionPreviewProps> = ({ dataType, data, compact = false }) => {
   const { t } = useTranslation();
 
   if (!data) {
-    return <Text type="secondary">{t('versionHistory.noData')}</Text>;
+    return <span className="text-gray-400">{t('versionHistory.noData')}</span>;
   }
 
   switch (dataType) {
@@ -39,7 +36,7 @@ export const VersionPreview: React.FC<VersionPreviewProps> = ({ dataType, data, 
       return <CallLogPreview data={data} compact={compact} />;
     default:
       return (
-        <pre style={{ background: '#f5f5f5', padding: 12, borderRadius: 4, fontSize: 12, maxHeight: 200, overflow: 'auto' }}>
+        <pre className="bg-gray-50 p-3 rounded text-xs max-h-[200px] overflow-auto">
           {JSON.stringify(data, null, 2)}
         </pre>
       );
@@ -53,46 +50,61 @@ const ContactPreview: React.FC<{ data: any; compact: boolean }> = ({ data, compa
 
   if (compact) {
     return (
-      <Space direction="vertical" size={2} style={{ width: '100%' }}>
-        <Space>
-          <UserOutlined />
-          <Text strong>{data.display_name || '-'}</Text>
-        </Space>
+      <div className="space-y-1 w-full">
+        <div className="flex items-center gap-2">
+          <User className="w-4 h-4" />
+          <span className="font-semibold">{data.display_name || '-'}</span>
+        </div>
         {phones.length > 0 && (
-          <Space>
-            <PhoneOutlined style={{ color: '#52c41a' }} />
-            <Text>{phones.join(', ')}</Text>
-          </Space>
+          <div className="flex items-center gap-2">
+            <Phone className="w-4 h-4 text-green-600" />
+            <span>{phones.join(', ')}</span>
+          </div>
         )}
         {emails.length > 0 && (
-          <Space>
-            <MailOutlined style={{ color: '#1677ff' }} />
-            <Text>{emails.join(', ')}</Text>
-          </Space>
+          <div className="flex items-center gap-2">
+            <Mail className="w-4 h-4 text-blue-600" />
+            <span>{emails.join(', ')}</span>
+          </div>
         )}
-      </Space>
+      </div>
     );
   }
 
   return (
-    <Descriptions bordered size="small" column={1}>
-      <Descriptions.Item label={<><UserOutlined /> {t('contacts.name')}</>}>
-        {data.display_name || '-'}
-      </Descriptions.Item>
-      <Descriptions.Item label={<><PhoneOutlined /> {t('contacts.phone')}</>}>
+    <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 p-3 border border-border rounded-md text-[var(--font-size-sm)]">
+      <dt className="font-medium text-gray-500 flex items-center gap-2">
+        <User className="w-4 h-4" /> {t('contacts.name')}
+      </dt>
+      <dd className="text-gray-900">{data.display_name || '-'}</dd>
+
+      <dt className="font-medium text-gray-500 flex items-center gap-2">
+        <Phone className="w-4 h-4" /> {t('contacts.phone')}
+      </dt>
+      <dd className="text-gray-900">
         {phones.length > 0 ? phones.map((p: string, i: number) => (
-          <Tag key={i} color="green">{p}</Tag>
+          <span key={i} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-50 text-green-700 mr-1">
+            {p}
+          </span>
         )) : '-'}
-      </Descriptions.Item>
-      <Descriptions.Item label={<><MailOutlined /> {t('contacts.email')}</>}>
+      </dd>
+
+      <dt className="font-medium text-gray-500 flex items-center gap-2">
+        <Mail className="w-4 h-4" /> {t('contacts.email')}
+      </dt>
+      <dd className="text-gray-900">
         {emails.length > 0 ? emails.map((e: string, i: number) => (
-          <Tag key={i} color="blue">{e}</Tag>
+          <span key={i} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-50 text-blue-700 mr-1">
+            {e}
+          </span>
         )) : '-'}
-      </Descriptions.Item>
-      <Descriptions.Item label={<><TeamOutlined /> {t('contacts.organization')}</>}>
-        {data.organization || '-'}
-      </Descriptions.Item>
-    </Descriptions>
+      </dd>
+
+      <dt className="font-medium text-gray-500 flex items-center gap-2">
+        <Users className="w-4 h-4" /> {t('contacts.organization')}
+      </dt>
+      <dd className="text-gray-900">{data.organization || '-'}</dd>
+    </dl>
   );
 };
 
@@ -102,43 +114,47 @@ const MessagePreview: React.FC<{ data: any; compact: boolean }> = ({ data, compa
 
   if (compact) {
     return (
-      <Space direction="vertical" size={2} style={{ width: '100%' }}>
-        <Space>
-          <MessageOutlined />
-          <Text strong>{data.contact_name || data.address || '-'}</Text>
-          <Tag color={isSent ? 'blue' : 'green'}>{isSent ? t('messages.sent') : t('messages.received')}</Tag>
-        </Space>
-        <Text ellipsis style={{ maxWidth: 400 }}>{data.body || '-'}</Text>
-      </Space>
+      <div className="space-y-1 w-full">
+        <div className="flex items-center gap-2">
+          <MessageSquare className="w-4 h-4" />
+          <span className="font-semibold">{data.contact_name || data.address || '-'}</span>
+          <span className={cn("inline-flex items-center px-2 py-0.5 rounded text-xs font-medium", isSent ? 'bg-blue-50 text-blue-700' : 'bg-green-50 text-green-700')}>
+            {isSent ? t('messages.sent') : t('messages.received')}
+          </span>
+        </div>
+        <p className="truncate max-w-[400px] text-gray-600">{data.body || '-'}</p>
+      </div>
     );
   }
 
   return (
     <div>
-      <Descriptions bordered size="small" column={1} style={{ marginBottom: 8 }}>
-        <Descriptions.Item label={t('messages.contact')}>
-          {data.contact_name || data.address || '-'}
-        </Descriptions.Item>
-        <Descriptions.Item label={t('messages.address')}>
-          {data.address || '-'}
-        </Descriptions.Item>
-        <Descriptions.Item label={t('messages.type')}>
-          <Tag color={isSent ? 'blue' : 'green'}>{isSent ? t('messages.sent') : t('messages.received')}</Tag>
-        </Descriptions.Item>
-        <Descriptions.Item label={t('messages.date')}>
-          {data.date ? formatDate(data.date) : '-'}
-        </Descriptions.Item>
-      </Descriptions>
-      <div style={{
-        padding: '10px 14px',
-        borderRadius: 12,
-        backgroundColor: isSent ? '#1890ff' : '#f0f0f0',
-        color: isSent ? '#fff' : '#000',
-        maxWidth: '80%',
-        marginLeft: isSent ? 'auto' : 0,
-        marginTop: 8,
-      }}>
-        <div style={{ wordBreak: 'break-word' }}>{data.body || '-'}</div>
+      <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 mb-2 p-3 border border-border rounded-md text-[var(--font-size-sm)]">
+        <dt className="font-medium text-gray-500">{t('messages.contact')}</dt>
+        <dd className="text-gray-900">{data.contact_name || data.address || '-'}</dd>
+
+        <dt className="font-medium text-gray-500">{t('messages.address')}</dt>
+        <dd className="text-gray-900">{data.address || '-'}</dd>
+
+        <dt className="font-medium text-gray-500">{t('messages.type')}</dt>
+        <dd>
+          <span className={cn("inline-flex items-center px-2 py-0.5 rounded text-xs font-medium", isSent ? 'bg-blue-50 text-blue-700' : 'bg-green-50 text-green-700')}>
+            {isSent ? t('messages.sent') : t('messages.received')}
+          </span>
+        </dd>
+
+        <dt className="font-medium text-gray-500">{t('messages.date')}</dt>
+        <dd className="text-gray-900">{data.date ? formatDate(data.date) : '-'}</dd>
+      </dl>
+      <div
+        className={cn(
+          "px-3 py-2 rounded-xl max-w-[80%] mt-2",
+          isSent
+            ? "bg-blue-500 text-white ml-auto"
+            : "bg-gray-100 text-gray-900 mr-auto"
+        )}
+      >
+        <div className="break-words">{data.body || '-'}</div>
       </div>
     </div>
   );
@@ -153,40 +169,58 @@ const CallLogPreview: React.FC<{ data: any; compact: boolean }> = ({ data, compa
     : callType === 3 ? t('callLogs.missed')
     : t('callLogs.other');
 
+  const getBadgeClass = () => {
+    if (color === '#52c41a') return 'bg-green-50 text-green-700';
+    if (color === '#1677ff') return 'bg-blue-50 text-blue-700';
+    if (color === '#ff4d4f') return 'bg-red-50 text-red-700';
+    return 'bg-gray-50 text-gray-700';
+  };
+
   if (compact) {
     return (
-      <Space>
-        <PhoneOutlined style={{ color, transform: callType === 1 ? 'rotate(135deg)' : callType === 2 ? 'rotate(-45deg)' : 'none' }} />
-        <Tag color={color}>{typeLabel}</Tag>
-        <Text strong>{data.contact_name || data.number || '-'}</Text>
+      <div className="flex items-center gap-2">
+        <Phone
+          className="w-4 h-4"
+          style={{ color, transform: callType === 1 ? 'rotate(135deg)' : callType === 2 ? 'rotate(-45deg)' : 'none' }}
+        />
+        <span className={cn("inline-flex items-center px-2 py-0.5 rounded text-xs font-medium", getBadgeClass())}>
+          {typeLabel}
+        </span>
+        <span className="font-semibold">{data.contact_name || data.number || '-'}</span>
         {data.duration > 0 && (
-          <Text type="secondary"><ClockCircleOutlined /> {formatDuration(data.duration)}</Text>
+          <span className="text-gray-400 flex items-center gap-1">
+            <Clock className="w-4 h-4" /> {formatDuration(data.duration)}
+          </span>
         )}
-      </Space>
+      </div>
     );
   }
 
   return (
-    <Descriptions bordered size="small" column={1}>
-      <Descriptions.Item label={t('callLogs.type')}>
-        <Space>
-          <PhoneOutlined style={{ color, transform: callType === 1 ? 'rotate(135deg)' : callType === 2 ? 'rotate(-45deg)' : 'none' }} />
-          <Tag color={color}>{typeLabel}</Tag>
-        </Space>
-      </Descriptions.Item>
-      <Descriptions.Item label={t('callLogs.number')}>
-        {data.number || '-'}
-      </Descriptions.Item>
-      <Descriptions.Item label={t('callLogs.contact')}>
-        {data.contact_name || '-'}
-      </Descriptions.Item>
-      <Descriptions.Item label={t('callLogs.date')}>
-        {data.date ? formatDate(data.date) : '-'}
-      </Descriptions.Item>
-      <Descriptions.Item label={t('callLogs.duration')}>
-        {data.duration > 0 ? formatDuration(data.duration) : '-'}
-      </Descriptions.Item>
-    </Descriptions>
+    <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 p-3 border border-border rounded-md text-[var(--font-size-sm)]">
+      <dt className="font-medium text-gray-500">{t('callLogs.type')}</dt>
+      <dd className="flex items-center gap-2">
+        <Phone
+          className="w-4 h-4"
+          style={{ color, transform: callType === 1 ? 'rotate(135deg)' : callType === 2 ? 'rotate(-45deg)' : 'none' }}
+        />
+        <span className={cn("inline-flex items-center px-2 py-0.5 rounded text-xs font-medium", getBadgeClass())}>
+          {typeLabel}
+        </span>
+      </dd>
+
+      <dt className="font-medium text-gray-500">{t('callLogs.number')}</dt>
+      <dd className="text-gray-900">{data.number || '-'}</dd>
+
+      <dt className="font-medium text-gray-500">{t('callLogs.contact')}</dt>
+      <dd className="text-gray-900">{data.contact_name || '-'}</dd>
+
+      <dt className="font-medium text-gray-500">{t('callLogs.date')}</dt>
+      <dd className="text-gray-900">{data.date ? formatDate(data.date) : '-'}</dd>
+
+      <dt className="font-medium text-gray-500">{t('callLogs.duration')}</dt>
+      <dd className="text-gray-900">{data.duration > 0 ? formatDuration(data.duration) : '-'}</dd>
+    </dl>
   );
 };
 

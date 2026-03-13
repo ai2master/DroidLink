@@ -499,6 +499,16 @@ pub fn push(serial: &str, local: &str, remote: &str) -> Result<()> {
         return Err(AdbError::InvalidPath(format!("Local path does not exist: {}", local)));
     }
 
+    // 验证本地路径无路径穿越 / Validate local path has no path traversal
+    let canonical = local_path.canonicalize()
+        .map_err(|e| AdbError::InvalidPath(format!("Cannot resolve local path: {}", e)))?;
+    if canonical.to_string_lossy().contains("..") {
+        return Err(AdbError::InvalidPath("Local path traversal not allowed".to_string()));
+    }
+
+    // 验证远程路径安全 / Validate remote path is safe
+    let _ = sanitize_device_path(remote)?;
+
     let output = run_adb_command(&["-s", serial, "push", local, remote])?;
 
     if output.contains("error") || output.contains("failed") {
@@ -511,6 +521,14 @@ pub fn push(serial: &str, local: &str, remote: &str) -> Result<()> {
 /// 从设备拉取文件 (手机 -> 电脑)
 /// Pull a file from device to local (phone -> PC)
 pub fn pull(serial: &str, remote: &str, local: &str) -> Result<()> {
+    // 验证远程路径安全 / Validate remote path is safe
+    let _ = sanitize_device_path(remote)?;
+
+    // 验证本地路径无路径穿越 / Validate local path has no path traversal
+    if local.contains("..") {
+        return Err(AdbError::InvalidPath("Local path traversal not allowed".to_string()));
+    }
+
     let output = run_adb_command(&["-s", serial, "pull", remote, local])?;
 
     if output.contains("error") || output.contains("failed") {

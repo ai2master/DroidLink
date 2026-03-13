@@ -319,8 +319,9 @@ impl FolderSync {
 
     fn scan_remote_directory(serial: &str, remote_path: &str, ignore: &IgnorePatterns) -> Result<HashMap<String, RemoteFileInfo>> {
         let mut files = HashMap::new();
-        let escaped = remote_path.replace("'", "'\\''");
-        let cmd = format!("find '{}' -type f -printf '%p\\t%s\\t%T@\\n' 2>/dev/null", escaped);
+        let safe_path = adb::sanitize_device_path(remote_path)
+            .map_err(|e| FolderSyncError::InvalidPath(e.to_string()))?;
+        let cmd = format!("find '{}' -type f -printf '%p\\t%s\\t%T@\\n' 2>/dev/null", safe_path);
         let output = adb::shell(serial, &cmd).map_err(|e| FolderSyncError::AdbError(e.to_string()))?;
 
         let base = if remote_path.ends_with('/') { remote_path.to_string() } else { format!("{}/", remote_path) };
@@ -673,7 +674,9 @@ impl FolderSync {
             .map(|d| d.as_secs().to_string());
 
         let (remote_hash, remote_size, remote_modified) = if let Some(rp) = remote {
-            let cmd = format!("stat -c '%s %Y' '{}' 2>/dev/null", rp.replace("'", "'\\''"));
+            let safe_rp = adb::sanitize_device_path(rp)
+                .map_err(|e| FolderSyncError::InvalidPath(e.to_string()))?;
+            let cmd = format!("stat -c '%s %Y' '{}' 2>/dev/null", safe_rp);
             if let Ok(output) = adb::shell(serial, &cmd) {
                 let parts: Vec<&str> = output.trim().split(' ').collect();
                 (local_hash.clone(), parts.first().and_then(|s| s.parse().ok()), parts.get(1).map(|s| s.to_string()))

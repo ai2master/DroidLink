@@ -137,9 +137,12 @@ impl ScrcpyManager {
     /// Check if scrcpy is installed (without executing it, to avoid snap notice popups)
     pub fn check_available() -> ScrcpyResult<String> {
         let binary = scrcpy_binary();
-        // 仅检查二进制文件是否存在，不执行它
-        // Only check if binary exists, don't execute it
-        if which::which(&binary).is_ok() {
+        // 检查路径是否为文件或是否在 PATH 中
+        // Check if path exists as file or is in PATH
+        let path = std::path::Path::new(&binary);
+        if path.is_absolute() && path.exists() {
+            Ok("installed (bundled)".to_string())
+        } else if which::which(&binary).is_ok() {
             Ok("installed".to_string())
         } else {
             Err(ScrcpyError::NotFound)
@@ -157,6 +160,12 @@ impl ScrcpyManager {
 
         let opts = options.unwrap_or_default();
         let mut cmd = Command::new(&scrcpy_binary());
+
+        // 设置 scrcpy-server 路径 (使用打包的服务端)
+        // Set scrcpy-server path (use bundled server)
+        if let Some(server_path) = bundled_scrcpy_server_path() {
+            cmd.env("SCRCPY_SERVER_PATH", server_path);
+        }
 
         // 设备选择 (仅 USB) / Device selection (USB only)
         cmd.arg("-s").arg(serial);
@@ -460,11 +469,16 @@ impl ScrcpyManager {
     /// 注意: `input text` 不支持空格和部分特殊字符，空格需要用 keyevent 62
     /// Note: `input text` doesn't support spaces and some special chars, space needs keyevent 62
     pub fn passthrough_text(serial: &str, text: &str) -> ScrcpyResult<()> {
+        // 安全: 限制最大长度 / Security: limit max length
+        if text.len() > 1000 {
+            return Err(ScrcpyError::StartFailed("Text too long for passthrough (max 1000 chars)".to_string()));
+        }
+
         // 将文本按空格分段处理
         // Split text by spaces for handling
         for segment in text.split(' ') {
             if !segment.is_empty() {
-                // 转义 shell 特殊字符 / Escape shell special characters
+                // 转义 shell 特殊字符 (完整列表) / Escape shell special characters (complete list)
                 let escaped = segment.replace('\\', "\\\\")
                     .replace('\'', "\\'")
                     .replace('"', "\\\"")
@@ -474,7 +488,14 @@ impl ScrcpyManager {
                     .replace('(', "\\(")
                     .replace(')', "\\)")
                     .replace('<', "\\<")
-                    .replace('>', "\\>");
+                    .replace('>', "\\>")
+                    .replace('$', "\\$")
+                    .replace('`', "\\`")
+                    .replace('!', "\\!")
+                    .replace('{', "\\{")
+                    .replace('}', "\\}")
+                    .replace('#', "\\#")
+                    .replace('~', "\\~");
                 let cmd = format!("input text '{}'", escaped);
                 crate::adb::shell(serial, &cmd)
                     .map_err(|e| ScrcpyError::StartFailed(e.to_string()))?;
@@ -552,20 +573,91 @@ pub fn set_scrcpy_source(source: &str) {
 }
 
 fn scrcpy_binary() -> String {
-    let source = SCRCPY_SOURCE.get().map(|s| s.as_str()).unwrap_or("system");
-    if source == "custom" {
-        if let Some(custom) = SCRCPY_CUSTOM_PATH.get() {
-            if !custom.is_empty() {
-                return custom.clone();
+    let source = SCRCPY_SOURCE.get().map(|s| s.as_str()).unwrap_or("bundled");
+    match source {
+        "bundled" => {
+            // 尝试使用打包的 scrcpy / Try bundled scrcpy
+            if let Some(path) = bundled_scrcpy_path() {
+                return path;
             }
+            // 回退到系统 PATH / Fall back to system PATH
+            log::warn!("Bundled scrcpy not found, falling back to system PATH");
+            default_scrcpy_name()
         }
+        "custom" => {
+            if let Some(custom) = SCRCPY_CUSTOM_PATH.get() {
+                if !custom.is_empty() {
+                    return custom.clone();
+                }
+            }
+            default_scrcpy_name()
+        }
+        _ => default_scrcpy_name(),
     }
-    // 默认系统 PATH / Default: system PATH
+}
+
+fn default_scrcpy_name() -> String {
     if cfg!(target_os = "windows") {
         "scrcpy.exe".to_string()
     } else {
         "scrcpy".to_string()
     }
+}
+
+/// 获取打包的 scrcpy 路径
+/// Get bundled scrcpy binary path
+fn bundled_scrcpy_path() -> Option<String> {
+    let exe_dir = std::env::current_exe().ok()?.parent()?.to_path_buf();
+
+    // Tauri bundles resources next to the executable (or in Resources on macOS)
+    let candidates = if cfg!(target_os = "macos") {
+        vec![
+            exe_dir.join("../Resources/scrcpy/scrcpy"),
+            exe_dir.join("scrcpy/scrcpy"),
+        ]
+    } else if cfg!(target_os = "windows") {
+        vec![
+            exe_dir.join("scrcpy/scrcpy.exe"),
+            exe_dir.join("resources/scrcpy/scrcpy.exe"),
+        ]
+    } else {
+        vec![
+            exe_dir.join("scrcpy/scrcpy"),
+            exe_dir.join("resources/scrcpy/scrcpy"),
+        ]
+    };
+
+    for candidate in candidates {
+        if candidate.exists() {
+            return Some(candidate.to_string_lossy().to_string());
+        }
+    }
+    None
+}
+
+/// 获取打包的 scrcpy-server 路径
+/// Get bundled scrcpy-server path
+fn bundled_scrcpy_server_path() -> Option<String> {
+    let exe_dir = std::env::current_exe().ok()?.parent()?.to_path_buf();
+
+    let candidates = if cfg!(target_os = "macos") {
+        vec![
+            exe_dir.join("../Resources/scrcpy/scrcpy-server"),
+            exe_dir.join("scrcpy/scrcpy-server"),
+        ]
+    } else {
+        vec![
+            exe_dir.join("scrcpy/scrcpy-server"),
+            exe_dir.join("resources/scrcpy/scrcpy-server"),
+        ]
+    };
+
+    for candidate in candidates {
+        if candidate.exists() {
+            return Some(candidate.to_string_lossy().to_string());
+        }
+    }
+    None
 }
 
 /// 验证 scrcpy 路径是否可用

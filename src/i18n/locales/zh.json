@@ -483,6 +483,8 @@
     "customAdb": "自定义路径",
     "adbCustomPath": "ADB 可执行文件路径",
     "scrcpySource": "scrcpy 来源",
+    "bundledScrcpy": "内置 scrcpy (推荐)",
+    "bundledScrcpyDesc": "使用应用自带的 scrcpy，无需额外安装",
     "systemScrcpy": "系统 scrcpy",
     "customScrcpy": "自定义路径",
     "scrcpyCustomPath": "scrcpy 可执行文件路径",
@@ -491,7 +493,12 @@
     "invalidToolPath": "路径无效或工具不可用",
     "bundled": "内置",
     "system": "系统",
-    "custom": "自定义"
+    "custom": "自定义",
+    "displayDensity": "显示密度",
+    "densityCompact": "紧凑",
+    "densityComfortable": "舒适",
+    "densityCompactDesc": "更紧凑的间距，适合键盘鼠标操作",
+    "densityComfortableDesc": "更宽松的间距，适合触屏操作"
   },
   "companion": {
     "title": "安装手机端应用",

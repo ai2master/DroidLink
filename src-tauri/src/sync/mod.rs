@@ -248,7 +248,8 @@ impl SyncEngine {
                     let _ = engine.sync_call_logs_blocking(&serial, has_companion);
                 }
                 Some(unknown) => {
-                    warn!("Unknown data type: {}", unknown);
+                    // 安全: 仅接受白名单中的 data_type / Security: only accept whitelisted data_type
+                    warn!("Rejected unknown data type (whitelist: contacts, messages, call_logs): {}", unknown);
                 }
             }
         });

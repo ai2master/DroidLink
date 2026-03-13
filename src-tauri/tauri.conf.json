@@ -35,7 +35,8 @@
     "resources": [
       "resources/companion/DroidLinkCompanion.apk",
       "resources/companion/version.txt",
-      "resources/adb/*"
+      "resources/adb/*",
+      "resources/scrcpy/*"
     ],
     "icon": [
       "icons/32x32.png",

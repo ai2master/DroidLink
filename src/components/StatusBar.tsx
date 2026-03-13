@@ -1,4 +1,4 @@
-import { SyncOutlined, CheckCircleOutlined, CloseCircleOutlined } from '@ant-design/icons';
+import { RefreshCw, CheckCircle2, XCircle } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useStore } from '../stores/useStore';
 
@@ -23,7 +23,7 @@ export default function StatusBar() {
       <div className="sync-indicator">
         {activeSyncs.length > 0 ? (
           <>
-            <SyncOutlined spin style={{ color: '#1677ff' }} />
+            <RefreshCw className="animate-spin" style={{ color: '#1677ff' }} />
             <span>
               {t('statusBar.syncing', { types: activeSyncs.map((s) => dataTypeLabels[s.dataType] || s.dataType).join(', ') })}
               {activeSyncs[0]?.current != null && activeSyncs[0]?.total != null && (
@@ -33,12 +33,12 @@ export default function StatusBar() {
           </>
         ) : device ? (
           <>
-            <CheckCircleOutlined style={{ color: '#52c41a' }} />
+            <CheckCircle2 style={{ color: '#52c41a' }} />
             <span>{t('statusBar.connected')}</span>
           </>
         ) : (
           <>
-            <CloseCircleOutlined style={{ color: '#d9d9d9' }} />
+            <XCircle style={{ color: '#d9d9d9' }} />
             <span>{t('statusBar.disconnected')}</span>
           </>
         )}

@@ -334,13 +334,13 @@ fn receive_via_activity(serial: &str) -> ClipResult<String> {
     let output_path = "/data/local/tmp/.droidlink_clipboard_out";
 
     // Clean up any existing output file
-    let _ = adb::shell(serial, &format!("rm -f {} 2>/dev/null", output_path));
+    let _ = adb::shell(serial, &format!("rm -f '{}' 2>/dev/null", output_path));
 
     // Launch the transparent ClipboardActivity with GET action
     let cmd = format!(
         "am start -n com.droidlink.companion/.clipboard.ClipboardActivity \
          --es action GET \
-         --es output_path {} \
+         --es output_path '{}' \
          2>/dev/null",
         output_path
     );
@@ -351,8 +351,8 @@ fn receive_via_activity(serial: &str) -> ClipResult<String> {
     std::thread::sleep(std::time::Duration::from_millis(500));
 
     // Read the output file
-    let content = adb::shell(serial, &format!("cat {} 2>/dev/null", output_path))?;
-    let _ = adb::shell(serial, &format!("rm -f {} 2>/dev/null", output_path));
+    let content = adb::shell(serial, &format!("cat '{}' 2>/dev/null", output_path))?;
+    let _ = adb::shell(serial, &format!("rm -f '{}' 2>/dev/null", output_path));
 
     Ok(content.trim().to_string())
 }
@@ -411,7 +411,7 @@ fn receive_via_file_transfer(serial: &str) -> ClipResult<String> {
     let content = std::fs::read_to_string(&local_temp)?;
 
     let _ = std::fs::remove_file(&local_temp);
-    let _ = adb::shell(serial, &format!("rm -f {} 2>/dev/null", TEMP_CLIPBOARD_OUT_PATH));
+    let _ = adb::shell(serial, &format!("rm -f '{}' 2>/dev/null", TEMP_CLIPBOARD_OUT_PATH));
 
     Ok(content)
 }
@@ -435,7 +435,7 @@ fn send_via_activity(serial: &str, content: &str) -> ClipResult<()> {
     let cmd = format!(
         "am start -n com.droidlink.companion/.clipboard.ClipboardActivity \
          --es action SET \
-         --es input_path {} \
+         --es input_path '{}' \
          2>/dev/null",
         TEMP_CLIPBOARD_PATH
     );
@@ -445,7 +445,7 @@ fn send_via_activity(serial: &str, content: &str) -> ClipResult<()> {
     std::thread::sleep(std::time::Duration::from_millis(500));
 
     let _ = std::fs::remove_file(&local_temp);
-    let _ = adb::shell(serial, &format!("rm -f {} 2>/dev/null", TEMP_CLIPBOARD_PATH));
+    let _ = adb::shell(serial, &format!("rm -f '{}' 2>/dev/null", TEMP_CLIPBOARD_PATH));
 
     Ok(())
 }

@@ -483,6 +483,8 @@
     "customAdb": "Произвольный путь",
     "adbCustomPath": "Путь к исполняемому файлу ADB",
     "scrcpySource": "Источник scrcpy",
+    "bundledScrcpy": "Встроенный scrcpy (рекомендуется)",
+    "bundledScrcpyDesc": "Использовать встроенный scrcpy, дополнительная установка не требуется",
     "systemScrcpy": "Системный scrcpy",
     "customScrcpy": "Произвольный путь",
     "scrcpyCustomPath": "Путь к исполняемому файлу scrcpy",
@@ -491,7 +493,12 @@
     "invalidToolPath": "Недопустимый путь или инструмент недоступен",
     "bundled": "Встроенный",
     "system": "Системный",
-    "custom": "Произвольный"
+    "custom": "Произвольный",
+    "displayDensity": "Плотность отображения",
+    "densityCompact": "Компактный",
+    "densityComfortable": "Просторный",
+    "densityCompactDesc": "Меньшие отступы, идеально для клавиатуры и мыши",
+    "densityComfortableDesc": "Больше отступы, идеально для сенсорных экранов"
   },
   "companion": {
     "title": "Установить приложение-компаньон",
