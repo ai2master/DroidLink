@@ -8,6 +8,7 @@ on:
     paths:
       - 'src/**'
       - 'src-tauri/**'
+      - 'android/**'
       - 'package.json'
       - 'package-lock.json'
       - 'tsconfig.json'
@@ -69,6 +70,13 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
+      # 设置 Gradle (直接用 Gradle 8.5，不依赖 wrapper JAR)
+      # Setup Gradle (use Gradle 8.5 directly, no wrapper JAR dependency)
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.5'
+
       # Linux 依赖 / Linux dependencies
       - name: Install Linux dependencies
         if: matrix.target == 'linux'
@@ -104,20 +112,13 @@ jobs:
       - name: Install npm dependencies
         run: npm ci || npm install
 
-      # 构建 Android companion APK
-      # Build Android companion APK
+      # 构建 Android companion APK (使用 setup-gradle 提供的 gradle 命令)
+      # Build Android companion APK (uses gradle command from setup-gradle)
       - name: Build companion APK
         shell: bash
         run: |
           cd android
-          chmod +x gradlew 2>/dev/null || true
-          ./gradlew assembleRelease --no-daemon --stacktrace 2>&1 || {
-            echo "Gradle build failed, creating placeholder APK"
-            mkdir -p ../src-tauri/resources/companion
-            echo "placeholder" > ../src-tauri/resources/companion/DroidLinkCompanion.apk
-            echo "1.0" > ../src-tauri/resources/companion/version.txt
-            exit 0
-          }
+          gradle assembleRelease --no-daemon --stacktrace
           mkdir -p ../src-tauri/resources/companion
           cp app/build/outputs/apk/release/app-release-unsigned.apk ../src-tauri/resources/companion/DroidLinkCompanion.apk
           echo "${{ env.VERSION }}" > ../src-tauri/resources/companion/version.txt
