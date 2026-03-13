@@ -174,7 +174,7 @@ jobs:
             done
           fi
 
-          ls -lah src-tauri/resources/scrcpy/
+          ls -lah $GITHUB_WORKSPACE/src-tauri/resources/scrcpy/
 
       - name: Download scrcpy-server
         if: matrix.target != 'windows'
