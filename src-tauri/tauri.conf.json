@@ -52,26 +52,5 @@
       }
     }
   },
-  "plugins": {
-    "fs": {
-      "scope": {
-        "allow": [
-          "$APPDATA/**",
-          "$DOWNLOAD/**",
-          "$TEMP/**",
-          "$HOME/**"
-        ],
-        "deny": [
-          "**/.ssh/**",
-          "**/.gnupg/**",
-          "**/id_rsa*",
-          "**/*.key",
-          "**/*.pem"
-        ]
-      }
-    },
-    "shell": {
-      "open": true
-    }
-  }
+  "plugins": {}
 }
