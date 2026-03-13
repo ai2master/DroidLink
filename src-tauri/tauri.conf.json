@@ -45,12 +45,8 @@
       "icons/icon.ico"
     ],
     "linux": {
-      "deb": {
-        "depends": []
-      },
-      "rpm": {
-        "depends": []
-      },
+      "deb": {},
+      "rpm": {},
       "appimage": {
         "bundleMediaFramework": false
       }
