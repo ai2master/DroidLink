@@ -53,7 +53,6 @@
     }
   },
   "plugins": {
-    "dialog": {},
     "fs": {
       "scope": {
         "allow": [
@@ -73,10 +72,6 @@
     },
     "shell": {
       "open": true
-    },
-    "clipboard-manager": {},
-    "notification": {
-      "all": true
     }
   }
 }
