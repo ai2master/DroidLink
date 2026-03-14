@@ -13,7 +13,11 @@
     "screenMirror": "屏幕投射",
     "transfer": "传输",
     "versionHistory": "版本历史",
-    "settings": "设置"
+    "settings": "设置",
+    "selectDevice": "选择设备",
+    "devicesConnected": "{{count}} 台设备已连接",
+    "switchDevice": "切换设备",
+    "noDeviceSelected": "未选择设备"
   },
   "common": {
     "loading": "加载中...",
@@ -204,7 +208,36 @@
     "folderCreated": "文件夹已创建",
     "createFailed": "创建失败: {{error}}",
     "folderName": "文件夹名称",
-    "emptyDir": "此目录为空"
+    "emptyDir": "此目录为空",
+    "rename": "重命名",
+    "renamed": "已重命名",
+    "renameFailed": "重命名失败: {{error}}",
+    "enterNewName": "输入新名称",
+    "copyTo": "复制到...",
+    "moveTo": "移动到...",
+    "cut": "剪切",
+    "open": "打开",
+    "destination": "目标位置",
+    "copyHere": "复制到此处",
+    "moveHere": "移动到此处",
+    "noSubfolders": "没有子文件夹",
+    "selectedCount": "已选择 {{count}} 项",
+    "selectAll": "全选",
+    "deselectAll": "取消全选",
+    "batchDeleteConfirm": "确定要删除 {{count}} 个项目吗？",
+    "batchDeleted": "已删除 {{count}} 个项目",
+    "batchPartialFail": "{{count}} 个项目删除失败",
+    "batchCopied": "已复制 {{count}} 个项目",
+    "batchMoved": "已移动 {{count}} 个项目",
+    "operationFailed": "操作失败: {{error}}",
+    "filesCopied": "已复制 {{count}} 个项目到剪贴板",
+    "filesCut": "已剪切 {{count}} 个项目到剪贴板",
+    "dropFilesHere": "拖放文件到此处上传",
+    "searchFiles": "搜索文件",
+    "searchPlaceholder": "输入文件名搜索...",
+    "searchIn": "搜索范围",
+    "searchFailed": "搜索失败: {{error}}",
+    "noSearchResults": "未找到结果"
   },
   "folderSync": {
     "title": "文件夹同步",
@@ -286,7 +319,15 @@
     "syncPairPath": "同步对路径: {{path}}",
     "errorsCount": "{{count}} 个错误",
     "addTitle": "添加文件夹同步对",
-    "deleted": "已删除"
+    "deleted": "已删除",
+    "recovery": {
+      "title": "传输恢复",
+      "recovered": "{{count}} 个传输已成功恢复",
+      "failedRetry": "{{count}} 个传输恢复失败（将在下次同步时重试）",
+      "showErrors": "显示 {{count}} 个错误",
+      "integrityFailed": "完整性校验失败",
+      "willRetryNextSync": "将在下次同步时重试"
+    }
   },
   "screenMirror": {
     "title": "屏幕投射",

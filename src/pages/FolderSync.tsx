@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   RefreshCw, Plus, Trash2, Play, ArrowLeftRight, ArrowRight, ArrowLeft, FolderOpen,
-  Settings, AlertTriangle, Zap, Clock, FileText, Eraser, Info,
+  Settings, AlertTriangle, Zap, Clock, FileText, Eraser, Info, CheckCircle, XCircle,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { tauriInvoke, tauriListen } from '../utils/tauri';
@@ -105,6 +105,7 @@ export default function FolderSync() {
   const [retentionDays, setRetentionDays] = useState(30);
   const [cleaningUp, setCleaningUp] = useState(false);
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+  const [recovery, setRecovery] = useState<{ recovered: number; failed: number; errors: string[] } | null>(null);
 
   const directionLabel: Record<string, { text: string; icon: React.ReactNode; color: string }> = {
     bidirectional: { text: t('folderSync.bidirectional'), icon: <ArrowLeftRight size={14} />, color: 'default' },
@@ -172,7 +173,24 @@ export default function FolderSync() {
         loadPairs();
       }
     });
-    return () => { unlisten.then((fn) => fn()); };
+    const unlistenRecovery = tauriListen<{ serial: string; recovered: number; failed: number; errors: string[] }>(
+      'transfer-recovery',
+      (data) => {
+        setRecovery({ recovered: data.recovered, failed: data.failed, errors: data.errors });
+        if (data.recovered > 0) {
+          toast.success(t('folderSync.recovery.recovered', { count: data.recovered }));
+        }
+        if (data.failed > 0) {
+          toast.warning(t('folderSync.recovery.failedRetry', { count: data.failed }));
+        }
+        // Auto-dismiss after 30 seconds
+        setTimeout(() => setRecovery(null), 30000);
+      },
+    );
+    return () => {
+      unlisten.then((fn) => fn());
+      unlistenRecovery.then((fn) => fn());
+    };
   }, []);
 
   useEffect(() => {
@@ -350,6 +368,56 @@ export default function FolderSync() {
                 )}
               </div>
             </div>
+          </div>
+        )}
+
+        {recovery && (
+          <div className={cn(
+            "rounded-[var(--border-radius)] border p-[var(--card-padding)] mb-[var(--card-gap)] flex items-start gap-3",
+            recovery.failed > 0
+              ? "bg-yellow-50 border-yellow-200"
+              : "bg-green-50 border-green-200"
+          )}>
+            {recovery.failed > 0 ? (
+              <AlertTriangle size={18} className="text-yellow-600 flex-shrink-0 mt-0.5" />
+            ) : (
+              <CheckCircle size={18} className="text-green-600 flex-shrink-0 mt-0.5" />
+            )}
+            <div className="flex-1">
+              <div className="font-semibold text-[var(--font-size-sm)]">
+                {t('folderSync.recovery.title')}
+              </div>
+              <div className="text-[var(--font-size-xs)] mt-1">
+                {recovery.recovered > 0 && (
+                  <span className="text-green-700 mr-3">
+                    <CheckCircle size={12} className="inline mr-1" />
+                    {t('folderSync.recovery.recovered', { count: recovery.recovered })}
+                  </span>
+                )}
+                {recovery.failed > 0 && (
+                  <span className="text-yellow-700">
+                    <XCircle size={12} className="inline mr-1" />
+                    {t('folderSync.recovery.failedRetry', { count: recovery.failed })}
+                  </span>
+                )}
+              </div>
+              {recovery.errors.length > 0 && (
+                <details className="mt-2">
+                  <summary className="text-[var(--font-size-xs)] text-gray-600 cursor-pointer">
+                    {t('folderSync.recovery.showErrors', { count: recovery.errors.length })}
+                  </summary>
+                  <div className="text-[var(--font-size-xs)] text-red-600 mt-1 whitespace-pre-line">
+                    {recovery.errors.join('\n')}
+                  </div>
+                </details>
+              )}
+            </div>
+            <button
+              className="text-gray-400 hover:text-gray-600 flex-shrink-0"
+              onClick={() => setRecovery(null)}
+            >
+              &times;
+            </button>
           </div>
         )}
 

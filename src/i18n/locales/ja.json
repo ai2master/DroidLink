@@ -13,7 +13,11 @@
     "screenMirror": "画面ミラーリング",
     "transfer": "転送",
     "versionHistory": "バージョン履歴",
-    "settings": "設定"
+    "settings": "設定",
+    "selectDevice": "デバイスを選択",
+    "devicesConnected": "{{count}} 台のデバイスが接続中",
+    "switchDevice": "デバイスを切り替え",
+    "noDeviceSelected": "デバイスが選択されていません"
   },
   "common": {
     "loading": "読み込み中...",
@@ -204,7 +208,36 @@
     "folderCreated": "フォルダを作成しました",
     "createFailed": "作成に失敗しました: {{error}}",
     "folderName": "フォルダ名",
-    "emptyDir": "このディレクトリは空です"
+    "emptyDir": "このディレクトリは空です",
+    "rename": "名前を変更",
+    "renamed": "名前を変更しました",
+    "renameFailed": "名前の変更に失敗しました: {{error}}",
+    "enterNewName": "新しい名前を入力",
+    "copyTo": "コピー先...",
+    "moveTo": "移動先...",
+    "cut": "切り取り",
+    "open": "開く",
+    "destination": "移動先",
+    "copyHere": "ここにコピー",
+    "moveHere": "ここに移動",
+    "noSubfolders": "サブフォルダなし",
+    "selectedCount": "{{count}} 件選択中",
+    "selectAll": "すべて選択",
+    "deselectAll": "選択解除",
+    "batchDeleteConfirm": "{{count}} 件のアイテムを削除してもよろしいですか？",
+    "batchDeleted": "{{count}} 件のアイテムを削除しました",
+    "batchPartialFail": "{{count}} 件のアイテムの削除に失敗しました",
+    "batchCopied": "{{count}} 件のアイテムをコピーしました",
+    "batchMoved": "{{count}} 件のアイテムを移動しました",
+    "operationFailed": "操作に失敗しました: {{error}}",
+    "filesCopied": "{{count}} 件をクリップボードにコピーしました",
+    "filesCut": "{{count}} 件をクリップボードに切り取りました",
+    "dropFilesHere": "ここにファイルをドロップしてアップロード",
+    "searchFiles": "ファイル検索",
+    "searchPlaceholder": "ファイル名を入力して検索...",
+    "searchIn": "検索対象",
+    "searchFailed": "検索に失敗しました: {{error}}",
+    "noSearchResults": "結果が見つかりません"
   },
   "folderSync": {
     "title": "フォルダ同期",
@@ -286,7 +319,15 @@
     "syncPairPath": "同期ペアのパス: {{path}}",
     "errorsCount": "{{count}}個のエラー",
     "addTitle": "フォルダ同期ペアを追加",
-    "deleted": "削除しました"
+    "deleted": "削除しました",
+    "recovery": {
+      "title": "転送リカバリ",
+      "recovered": "{{count}} 件の転送を正常に回復しました",
+      "failedRetry": "{{count}} 件の転送の回復に失敗しました（次回同期時に再試行）",
+      "showErrors": "{{count}} 件のエラーを表示",
+      "integrityFailed": "整合性チェックに失敗しました",
+      "willRetryNextSync": "次回同期時に再試行されます"
+    }
   },
   "screenMirror": {
     "title": "画面ミラーリング",

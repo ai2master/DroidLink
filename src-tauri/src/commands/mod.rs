@@ -417,6 +417,89 @@ pub async fn create_folder(serial: String, remote_path: String) -> Result<(), St
     adb::create_dir(&serial, &remote_path).map_err(|e| e.to_string())
 }
 
+// ========== File Manager Extended Commands ==========
+
+#[tauri::command]
+pub async fn rename_file(serial: String, old_path: String, new_path: String) -> Result<(), String> {
+    crate::filemanager::FileManager::rename(&serial, &old_path, &new_path)
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn copy_file(serial: String, src_path: String, dst_path: String) -> Result<(), String> {
+    crate::filemanager::FileManager::copy(&serial, &src_path, &dst_path)
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn move_file(serial: String, old_path: String, new_path: String) -> Result<(), String> {
+    crate::filemanager::FileManager::rename(&serial, &old_path, &new_path)
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn get_file_info(serial: String, path: String) -> Result<Value, String> {
+    let info = crate::filemanager::FileManager::get_file_info(&serial, &path)
+        .map_err(|e| e.to_string())?;
+    Ok(serde_json::to_value(&info).unwrap())
+}
+
+#[tauri::command]
+pub async fn search_files(serial: String, base_path: String, pattern: String) -> Result<Value, String> {
+    let results = crate::filemanager::FileManager::search_files(&serial, &base_path, &pattern)
+        .map_err(|e| e.to_string())?;
+    Ok(serde_json::to_value(&results).unwrap())
+}
+
+#[tauri::command]
+pub async fn batch_delete_files(serial: String, paths: Vec<String>) -> Result<Value, String> {
+    let mut succeeded = 0u32;
+    let mut failed = Vec::new();
+    for path in &paths {
+        match adb::delete_path(&serial, path) {
+            Ok(_) => succeeded += 1,
+            Err(e) => failed.push(serde_json::json!({ "path": path, "error": e.to_string() })),
+        }
+    }
+    Ok(serde_json::json!({ "succeeded": succeeded, "failed": failed }))
+}
+
+#[tauri::command]
+pub async fn batch_copy_files(serial: String, files: Vec<String>, destination: String) -> Result<Value, String> {
+    let mut succeeded = 0u32;
+    let mut failed = Vec::new();
+    for src in &files {
+        let file_name = std::path::Path::new(src)
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or("unknown");
+        let dst = format!("{}/{}", destination.trim_end_matches('/'), file_name);
+        match crate::filemanager::FileManager::copy(&serial, src, &dst) {
+            Ok(_) => succeeded += 1,
+            Err(e) => failed.push(serde_json::json!({ "path": src, "error": e.to_string() })),
+        }
+    }
+    Ok(serde_json::json!({ "succeeded": succeeded, "failed": failed }))
+}
+
+#[tauri::command]
+pub async fn batch_move_files(serial: String, files: Vec<String>, destination: String) -> Result<Value, String> {
+    let mut succeeded = 0u32;
+    let mut failed = Vec::new();
+    for src in &files {
+        let file_name = std::path::Path::new(src)
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or("unknown");
+        let dst = format!("{}/{}", destination.trim_end_matches('/'), file_name);
+        match crate::filemanager::FileManager::rename(&serial, src, &dst) {
+            Ok(_) => succeeded += 1,
+            Err(e) => failed.push(serde_json::json!({ "path": src, "error": e.to_string() })),
+        }
+    }
+    Ok(serde_json::json!({ "succeeded": succeeded, "failed": failed }))
+}
+
 // ========== Folder Sync Commands ==========
 
 #[tauri::command]

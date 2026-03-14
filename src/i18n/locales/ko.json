@@ -13,7 +13,11 @@
     "screenMirror": "화면 미러링",
     "transfer": "전송",
     "versionHistory": "버전 기록",
-    "settings": "설정"
+    "settings": "설정",
+    "selectDevice": "기기 선택",
+    "devicesConnected": "{{count}}대 기기 연결됨",
+    "switchDevice": "기기 전환",
+    "noDeviceSelected": "선택된 기기 없음"
   },
   "common": {
     "loading": "로딩 중...",
@@ -204,7 +208,36 @@
     "folderCreated": "폴더 생성됨",
     "createFailed": "생성 실패: {{error}}",
     "folderName": "폴더 이름",
-    "emptyDir": "이 디렉토리는 비어있습니다"
+    "emptyDir": "이 디렉토리는 비어있습니다",
+    "rename": "이름 변경",
+    "renamed": "이름이 변경되었습니다",
+    "renameFailed": "이름 변경 실패: {{error}}",
+    "enterNewName": "새 이름 입력",
+    "copyTo": "복사...",
+    "moveTo": "이동...",
+    "cut": "잘라내기",
+    "open": "열기",
+    "destination": "대상 위치",
+    "copyHere": "여기에 복사",
+    "moveHere": "여기로 이동",
+    "noSubfolders": "하위 폴더 없음",
+    "selectedCount": "{{count}}개 선택됨",
+    "selectAll": "모두 선택",
+    "deselectAll": "선택 해제",
+    "batchDeleteConfirm": "{{count}}개 항목을 삭제하시겠습니까?",
+    "batchDeleted": "{{count}}개 항목 삭제됨",
+    "batchPartialFail": "{{count}}개 항목 삭제 실패",
+    "batchCopied": "{{count}}개 항목 복사됨",
+    "batchMoved": "{{count}}개 항목 이동됨",
+    "operationFailed": "작업 실패: {{error}}",
+    "filesCopied": "{{count}}개 항목이 클립보드에 복사됨",
+    "filesCut": "{{count}}개 항목이 클립보드에 잘라내기됨",
+    "dropFilesHere": "여기에 파일을 놓아 업로드",
+    "searchFiles": "파일 검색",
+    "searchPlaceholder": "파일 이름을 입력하여 검색...",
+    "searchIn": "검색 범위",
+    "searchFailed": "검색 실패: {{error}}",
+    "noSearchResults": "검색 결과가 없습니다"
   },
   "folderSync": {
     "title": "폴더 동기화",
@@ -286,7 +319,15 @@
     "syncPairPath": "동기화 쌍 경로: {{path}}",
     "errorsCount": "{{count}}개 오류",
     "addTitle": "폴더 동기화 쌍 추가",
-    "deleted": "삭제됨"
+    "deleted": "삭제됨",
+    "recovery": {
+      "title": "전송 복구",
+      "recovered": "{{count}}개 전송이 성공적으로 복구되었습니다",
+      "failedRetry": "{{count}}개 전송 복구 실패 (다음 동기화 시 재시도)",
+      "showErrors": "{{count}}개 오류 표시",
+      "integrityFailed": "무결성 검증 실패",
+      "willRetryNextSync": "다음 동기화 시 재시도됩니다"
+    }
   },
   "screenMirror": {
     "title": "화면 미러링",

@@ -13,7 +13,11 @@
     "screenMirror": "Screen Mirror",
     "transfer": "Transfer",
     "versionHistory": "Version History",
-    "settings": "Settings"
+    "settings": "Settings",
+    "selectDevice": "Select Device",
+    "devicesConnected": "{{count}} devices connected",
+    "switchDevice": "Switch Device",
+    "noDeviceSelected": "No device selected"
   },
   "common": {
     "loading": "Loading...",
@@ -204,7 +208,36 @@
     "folderCreated": "Folder created",
     "createFailed": "Create failed: {{error}}",
     "folderName": "Folder name",
-    "emptyDir": "This directory is empty"
+    "emptyDir": "This directory is empty",
+    "rename": "Rename",
+    "renamed": "Renamed",
+    "renameFailed": "Rename failed: {{error}}",
+    "enterNewName": "Enter new name",
+    "copyTo": "Copy to...",
+    "moveTo": "Move to...",
+    "cut": "Cut",
+    "open": "Open",
+    "destination": "Destination",
+    "copyHere": "Copy here",
+    "moveHere": "Move here",
+    "noSubfolders": "No subfolders",
+    "selectedCount": "{{count}} selected",
+    "selectAll": "Select all",
+    "deselectAll": "Deselect all",
+    "batchDeleteConfirm": "Are you sure you want to delete {{count}} items?",
+    "batchDeleted": "Deleted {{count}} items",
+    "batchPartialFail": "{{count}} items failed to delete",
+    "batchCopied": "Copied {{count}} items",
+    "batchMoved": "Moved {{count}} items",
+    "operationFailed": "Operation failed: {{error}}",
+    "filesCopied": "{{count}} items copied to clipboard",
+    "filesCut": "{{count}} items cut to clipboard",
+    "dropFilesHere": "Drop files here to upload",
+    "searchFiles": "Search Files",
+    "searchPlaceholder": "Enter file name to search...",
+    "searchIn": "Searching in",
+    "searchFailed": "Search failed: {{error}}",
+    "noSearchResults": "No results found"
   },
   "folderSync": {
     "title": "Folder Sync",
@@ -286,7 +319,15 @@
     "syncPairPath": "Sync pair path: {{path}}",
     "errorsCount": "{{count}} errors",
     "addTitle": "Add Folder Sync Pair",
-    "deleted": "Deleted"
+    "deleted": "Deleted",
+    "recovery": {
+      "title": "Transfer Recovery",
+      "recovered": "{{count}} transfer(s) recovered successfully",
+      "failedRetry": "{{count}} transfer(s) failed (will retry on next sync)",
+      "showErrors": "Show {{count}} error(s)",
+      "integrityFailed": "Integrity verification failed",
+      "willRetryNextSync": "Will be retried on next sync"
+    }
   },
   "screenMirror": {
     "title": "Screen Mirror",

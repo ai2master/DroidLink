@@ -18,7 +18,8 @@ import { Settings } from './pages/Settings';
 
 function App() {
   const currentPage = useStore((s) => s.currentPage);
-  const setConnectedDevice = useStore((s) => s.setConnectedDevice);
+  const addDevice = useStore((s) => s.addDevice);
+  const removeDevice = useStore((s) => s.removeDevice);
   const setCompanionInstalled = useStore((s) => s.setCompanionInstalled);
   const updateSyncStatus = useStore((s) => s.updateSyncStatus);
   const setClipboardContent = useStore((s) => s.setClipboardContent);
@@ -37,24 +38,32 @@ function App() {
     // Load initial settings
     tauriInvoke<Record<string, string>>('get_settings').then(setSettings).catch(console.error);
 
-    // Check for already connected devices
+    // 启动时检查所有已连接设备 / Check all already connected devices on startup
     tauriInvoke<Array<{ serial: string; state: string }>>('get_devices')
       .then(async (devices) => {
-        const connected = devices.find((d) => d.state === 'device');
-        if (connected) {
-          const info = await tauriInvoke('get_device_info', { serial: connected.serial });
-          setConnectedDevice(info as any);
+        const connected = devices.filter((d) => d.state === 'device');
+        for (const dev of connected) {
+          try {
+            const info = await tauriInvoke('get_device_info', { serial: dev.serial });
+            addDevice(info as any);
+          } catch (e) {
+            console.error(`Failed to get device info for ${dev.serial}:`, e);
+          }
         }
       })
       .catch(console.error);
 
-    // Listen for device events
+    // 监听设备连接事件 / Listen for device connect events
     const unlistenConnect = tauriListen('device-connected', (device: any) => {
-      setConnectedDevice(device);
+      addDevice(device);
     });
 
-    const unlistenDisconnect = tauriListen('device-disconnected', () => {
-      setConnectedDevice(null);
+    // 监听设备断开事件 / Listen for device disconnect events
+    const unlistenDisconnect = tauriListen('device-disconnected', (data: any) => {
+      const serial = typeof data === 'string' ? data : data?.serial;
+      if (serial) {
+        removeDevice(serial);
+      }
       setCompanionPromptVisible(false);
     });
 

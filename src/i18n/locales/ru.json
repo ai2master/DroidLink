@@ -13,7 +13,11 @@
     "screenMirror": "Зеркалирование экрана",
     "transfer": "Передача",
     "versionHistory": "История версий",
-    "settings": "Настройки"
+    "settings": "Настройки",
+    "selectDevice": "Выбрать устройство",
+    "devicesConnected": "{{count}} устройств подключено",
+    "switchDevice": "Переключить устройство",
+    "noDeviceSelected": "Устройство не выбрано"
   },
   "common": {
     "loading": "Загрузка...",
@@ -204,7 +208,36 @@
     "folderCreated": "Папка создана",
     "createFailed": "Создание не удалось: {{error}}",
     "folderName": "Имя папки",
-    "emptyDir": "Эта директория пуста"
+    "emptyDir": "Эта директория пуста",
+    "rename": "Переименовать",
+    "renamed": "Переименовано",
+    "renameFailed": "Переименование не удалось: {{error}}",
+    "enterNewName": "Введите новое имя",
+    "copyTo": "Копировать в...",
+    "moveTo": "Переместить в...",
+    "cut": "Вырезать",
+    "open": "Открыть",
+    "destination": "Назначение",
+    "copyHere": "Копировать сюда",
+    "moveHere": "Переместить сюда",
+    "noSubfolders": "Нет подпапок",
+    "selectedCount": "Выбрано {{count}}",
+    "selectAll": "Выбрать все",
+    "deselectAll": "Снять выделение",
+    "batchDeleteConfirm": "Удалить {{count}} элементов?",
+    "batchDeleted": "Удалено {{count}} элементов",
+    "batchPartialFail": "{{count}} элементов не удалось удалить",
+    "batchCopied": "Скопировано {{count}} элементов",
+    "batchMoved": "Перемещено {{count}} элементов",
+    "operationFailed": "Операция не удалась: {{error}}",
+    "filesCopied": "{{count}} элементов скопировано в буфер",
+    "filesCut": "{{count}} элементов вырезано в буфер",
+    "dropFilesHere": "Перетащите файлы сюда для загрузки",
+    "searchFiles": "Поиск файлов",
+    "searchPlaceholder": "Введите имя файла для поиска...",
+    "searchIn": "Область поиска",
+    "searchFailed": "Поиск не удался: {{error}}",
+    "noSearchResults": "Результаты не найдены"
   },
   "folderSync": {
     "title": "Синхронизация папок",
@@ -286,7 +319,15 @@
     "syncPairPath": "Путь пары синхронизации: {{path}}",
     "errorsCount": "{{count}} ошибок",
     "addTitle": "Добавить пару синхронизации папок",
-    "deleted": "Удалено"
+    "deleted": "Удалено",
+    "recovery": {
+      "title": "Восстановление передачи",
+      "recovered": "{{count}} передач(а) успешно восстановлено",
+      "failedRetry": "{{count}} передач(а) не удалось восстановить (повтор при следующей синхронизации)",
+      "showErrors": "Показать {{count}} ошибок",
+      "integrityFailed": "Проверка целостности не пройдена",
+      "willRetryNextSync": "Повтор при следующей синхронизации"
+    }
   },
   "screenMirror": {
     "title": "Зеркалирование экрана",

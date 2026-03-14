@@ -13,7 +13,11 @@
     "screenMirror": "عرض الشاشة",
     "transfer": "النقل",
     "versionHistory": "سجل الإصدارات",
-    "settings": "الإعدادات"
+    "settings": "الإعدادات",
+    "selectDevice": "اختر الجهاز",
+    "devicesConnected": "{{count}} أجهزة متصلة",
+    "switchDevice": "تبديل الجهاز",
+    "noDeviceSelected": "لم يتم اختيار جهاز"
   },
   "common": {
     "loading": "جاري التحميل...",
@@ -204,7 +208,36 @@
     "folderCreated": "تم إنشاء المجلد",
     "createFailed": "فشل الإنشاء: {{error}}",
     "folderName": "اسم المجلد",
-    "emptyDir": "هذا المجلد فارغ"
+    "emptyDir": "هذا المجلد فارغ",
+    "rename": "إعادة تسمية",
+    "renamed": "تمت إعادة التسمية",
+    "renameFailed": "فشل إعادة التسمية: {{error}}",
+    "enterNewName": "أدخل الاسم الجديد",
+    "copyTo": "نسخ إلى...",
+    "moveTo": "نقل إلى...",
+    "cut": "قص",
+    "open": "فتح",
+    "destination": "الوجهة",
+    "copyHere": "نسخ هنا",
+    "moveHere": "نقل هنا",
+    "noSubfolders": "لا توجد مجلدات فرعية",
+    "selectedCount": "{{count}} محدد",
+    "selectAll": "تحديد الكل",
+    "deselectAll": "إلغاء التحديد",
+    "batchDeleteConfirm": "هل أنت متأكد أنك تريد حذف {{count}} عنصر؟",
+    "batchDeleted": "تم حذف {{count}} عنصر",
+    "batchPartialFail": "فشل حذف {{count}} عنصر",
+    "batchCopied": "تم نسخ {{count}} عنصر",
+    "batchMoved": "تم نقل {{count}} عنصر",
+    "operationFailed": "فشل العملية: {{error}}",
+    "filesCopied": "تم نسخ {{count}} عنصر إلى الحافظة",
+    "filesCut": "تم قص {{count}} عنصر إلى الحافظة",
+    "dropFilesHere": "اسحب الملفات هنا للرفع",
+    "searchFiles": "البحث عن ملفات",
+    "searchPlaceholder": "أدخل اسم الملف للبحث...",
+    "searchIn": "البحث في",
+    "searchFailed": "فشل البحث: {{error}}",
+    "noSearchResults": "لم يتم العثور على نتائج"
   },
   "folderSync": {
     "title": "مزامنة المجلدات",
@@ -286,7 +319,15 @@
     "syncPairPath": "مسار زوج المزامنة: {{path}}",
     "errorsCount": "{{count}} أخطاء",
     "addTitle": "إضافة زوج مزامنة مجلدات",
-    "deleted": "تم الحذف"
+    "deleted": "تم الحذف",
+    "recovery": {
+      "title": "استعادة النقل",
+      "recovered": "تم استعادة {{count}} عملية نقل بنجاح",
+      "failedRetry": "فشل استعادة {{count}} عملية نقل (ستتم إعادة المحاولة في المزامنة التالية)",
+      "showErrors": "عرض {{count}} خطأ",
+      "integrityFailed": "فشل التحقق من السلامة",
+      "willRetryNextSync": "ستتم إعادة المحاولة في المزامنة التالية"
+    }
   },
   "screenMirror": {
     "title": "عرض الشاشة",

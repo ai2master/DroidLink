@@ -153,6 +153,7 @@ pub fn run() {
             // Forward events to frontend
             let app_handle = app.handle().clone();
             let se = sync_engine.clone();
+            let fs_for_recovery = folder_sync.clone();
             let db_for_events = db.clone();
 
             std::thread::spawn(move || {
@@ -190,6 +191,32 @@ pub fn run() {
 
                                             if !installed {
                                                 log::info!("Companion app NOT installed on {}. Frontend will prompt user.", serial_for_check);
+                                            }
+                                        });
+
+                                        // 恢复中断的文件传输 / Recover interrupted file transfers
+                                        let serial_for_recovery = info.serial.clone();
+                                        let fs_recovery = fs_for_recovery.clone();
+                                        let app_handle_for_recovery = app_handle.clone();
+                                        std::thread::spawn(move || {
+                                            match fs_recovery.recover_transfers(&serial_for_recovery) {
+                                                Ok(result) => {
+                                                    if result.recovered > 0 || result.failed > 0 {
+                                                        log::info!(
+                                                            "Transfer recovery for {}: {} recovered, {} failed",
+                                                            serial_for_recovery, result.recovered, result.failed
+                                                        );
+                                                        let _ = app_handle_for_recovery.emit("transfer-recovery", serde_json::json!({
+                                                            "serial": serial_for_recovery,
+                                                            "recovered": result.recovered,
+                                                            "failed": result.failed,
+                                                            "errors": result.errors,
+                                                        }));
+                                                    }
+                                                }
+                                                Err(e) => {
+                                                    log::warn!("Transfer recovery failed for {}: {}", serial_for_recovery, e);
+                                                }
                                             }
                                         });
 
@@ -321,6 +348,14 @@ pub fn run() {
             commands::push_file,
             commands::delete_file,
             commands::create_folder,
+            commands::rename_file,
+            commands::copy_file,
+            commands::move_file,
+            commands::get_file_info,
+            commands::search_files,
+            commands::batch_delete_files,
+            commands::batch_copy_files,
+            commands::batch_move_files,
             // 文件夹同步命令 / Folder sync commands
             commands::get_folder_sync_pairs,
             commands::add_folder_sync_pair,

@@ -13,7 +13,11 @@
     "screenMirror": "Bildschirmspiegelung",
     "transfer": "Übertragung",
     "versionHistory": "Versionsverlauf",
-    "settings": "Einstellungen"
+    "settings": "Einstellungen",
+    "selectDevice": "Geraet auswaehlen",
+    "devicesConnected": "{{count}} Geraete verbunden",
+    "switchDevice": "Geraet wechseln",
+    "noDeviceSelected": "Kein Geraet ausgewaehlt"
   },
   "common": {
     "loading": "Lädt...",
@@ -204,7 +208,36 @@
     "folderCreated": "Ordner erstellt",
     "createFailed": "Erstellen fehlgeschlagen: {{error}}",
     "folderName": "Ordnername",
-    "emptyDir": "Dieses Verzeichnis ist leer"
+    "emptyDir": "Dieses Verzeichnis ist leer",
+    "rename": "Umbenennen",
+    "renamed": "Umbenannt",
+    "renameFailed": "Umbenennen fehlgeschlagen: {{error}}",
+    "enterNewName": "Neuen Namen eingeben",
+    "copyTo": "Kopieren nach...",
+    "moveTo": "Verschieben nach...",
+    "cut": "Ausschneiden",
+    "open": "Oeffnen",
+    "destination": "Ziel",
+    "copyHere": "Hierher kopieren",
+    "moveHere": "Hierher verschieben",
+    "noSubfolders": "Keine Unterordner",
+    "selectedCount": "{{count}} ausgewaehlt",
+    "selectAll": "Alle auswaehlen",
+    "deselectAll": "Auswahl aufheben",
+    "batchDeleteConfirm": "Moechten Sie {{count}} Elemente loeschen?",
+    "batchDeleted": "{{count}} Elemente geloescht",
+    "batchPartialFail": "{{count}} Elemente konnten nicht geloescht werden",
+    "batchCopied": "{{count}} Elemente kopiert",
+    "batchMoved": "{{count}} Elemente verschoben",
+    "operationFailed": "Vorgang fehlgeschlagen: {{error}}",
+    "filesCopied": "{{count}} Elemente in Zwischenablage kopiert",
+    "filesCut": "{{count}} Elemente in Zwischenablage ausgeschnitten",
+    "dropFilesHere": "Dateien hier ablegen zum Hochladen",
+    "searchFiles": "Dateien suchen",
+    "searchPlaceholder": "Dateiname eingeben zum Suchen...",
+    "searchIn": "Suche in",
+    "searchFailed": "Suche fehlgeschlagen: {{error}}",
+    "noSearchResults": "Keine Ergebnisse gefunden"
   },
   "folderSync": {
     "title": "Ordnersynchronisation",
@@ -286,7 +319,15 @@
     "syncPairPath": "Synchronisationspaar-Pfad: {{path}}",
     "errorsCount": "{{count}} Fehler",
     "addTitle": "Ordnersynchronisationspaar hinzufügen",
-    "deleted": "Gelöscht"
+    "deleted": "Gelöscht",
+    "recovery": {
+      "title": "Ubertragungswiederherstellung",
+      "recovered": "{{count}} Ubertragung(en) erfolgreich wiederhergestellt",
+      "failedRetry": "{{count}} Ubertragung(en) fehlgeschlagen (Wiederholung bei nachster Synchronisation)",
+      "showErrors": "{{count}} Fehler anzeigen",
+      "integrityFailed": "Integritatsprufung fehlgeschlagen",
+      "willRetryNextSync": "Wird bei nachster Synchronisation wiederholt"
+    }
   },
   "screenMirror": {
     "title": "Bildschirmspiegelung",

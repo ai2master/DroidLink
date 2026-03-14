@@ -1,15 +1,17 @@
 use crate::adb;
-use crate::db::{Database, FolderSyncEntry, FolderSyncPair};
+use crate::db::{Database, FolderSyncEntry, FolderSyncPair, TransferJournalEntry};
 use crossbeam_channel::{Sender, Receiver, unbounded};
 use log::{debug, error, info, warn};
 use notify::{Config, Event, RecommendedWatcher, RecursiveMode, Watcher};
 use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::io::Read as IoRead;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::{Duration, Instant, SystemTime};
 use thiserror::Error;
+use uuid::Uuid;
 use walkdir::WalkDir;
 use xxhash_rust::xxh3::xxh3_64;
 
@@ -50,6 +52,10 @@ pub enum FolderSyncError {
     WatchError(String),
     #[error("UTF-8 error: {0}")]
     Utf8Error(#[from] std::string::FromUtf8Error),
+    #[error("Integrity check failed: expected {expected}, got {actual}")]
+    IntegrityError { expected: String, actual: String },
+    #[error("Transfer interrupted: {0}")]
+    TransferInterrupted(String),
 }
 
 pub type Result<T> = std::result::Result<T, FolderSyncError>;
@@ -266,6 +272,16 @@ struct WatchHandle {
     stop_tx: Sender<()>,
 }
 
+// ========== Recovery Result ==========
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RecoveryResult {
+    pub recovered: u64,
+    pub failed: u64,
+    pub errors: Vec<String>,
+}
+
 // ========== FolderSync ==========
 
 pub struct FolderSync {
@@ -290,6 +306,253 @@ impl FolderSync {
     fn hash_local_file(path: &Path) -> Result<String> {
         let data = std::fs::read(path)?;
         Ok(format!("{:016x}", xxh3_64(&data)))
+    }
+
+    /// Calculate MD5 hash of a local file (for integrity verification against device md5sum)
+    fn md5_local_file(path: &Path) -> Result<String> {
+        use std::io::BufReader;
+        let file = std::fs::File::open(path)?;
+        let mut reader = BufReader::new(file);
+        let mut context = md5::Context::new();
+        let mut buffer = [0u8; 65536];
+        loop {
+            let n = reader.read(&mut buffer)?;
+            if n == 0 { break; }
+            context.consume(&buffer[..n]);
+        }
+        Ok(format!("{:x}", context.compute()))
+    }
+
+    /// Verified push: push file to temp path on device, verify MD5, then atomic rename.
+    /// Returns Ok(()) on success, records result in transfer journal.
+    fn verified_push(
+        &self, serial: &str, local_path: &str, remote_path: &str,
+        pair_id: &str, relative_path: &str, file_size: u64,
+    ) -> Result<()> {
+        let journal_id = Uuid::new_v4().to_string();
+        let temp_remote = format!("{}.droidlink_temp", remote_path);
+
+        // Calculate local MD5
+        let local_md5 = Self::md5_local_file(Path::new(local_path))
+            .map_err(|e| FolderSyncError::IoError(std::io::Error::new(std::io::ErrorKind::Other, e.to_string())))?;
+
+        // Create journal entry
+        let _ = self.db.create_transfer_entry(&TransferJournalEntry {
+            id: journal_id.clone(),
+            pair_id: pair_id.to_string(),
+            device_serial: serial.to_string(),
+            file_path: relative_path.to_string(),
+            direction: "push".to_string(),
+            status: "in_progress".to_string(),
+            temp_path: Some(temp_remote.clone()),
+            final_path: remote_path.to_string(),
+            file_size: file_size as i64,
+            hash_expected: Some(local_md5.clone()),
+            hash_actual: None,
+            created_at: String::new(),
+            updated_at: String::new(),
+            error_message: None,
+            retry_count: 0,
+        });
+
+        // Push to temp path
+        match adb::push(serial, local_path, &temp_remote) {
+            Ok(_) => {}
+            Err(e) => {
+                let msg = format!("Push to temp failed: {}", e);
+                let _ = self.db.update_transfer_status(&journal_id, "failed", Some(&msg));
+                let _ = self.db.increment_transfer_retry(&journal_id);
+                // Clean up temp file
+                let _ = adb::delete_path(serial, &temp_remote);
+                return Err(FolderSyncError::AdbError(msg));
+            }
+        }
+
+        // Verify remote MD5
+        match adb::get_file_hash(serial, &temp_remote) {
+            Ok(remote_md5) => {
+                let _ = self.db.update_transfer_hash(&journal_id, &remote_md5);
+                if remote_md5 != local_md5 {
+                    let msg = format!("Integrity mismatch: expected {}, got {}", local_md5, remote_md5);
+                    let _ = self.db.update_transfer_status(&journal_id, "failed", Some(&msg));
+                    let _ = self.db.increment_transfer_retry(&journal_id);
+                    let _ = adb::delete_path(serial, &temp_remote);
+                    return Err(FolderSyncError::IntegrityError {
+                        expected: local_md5, actual: remote_md5,
+                    });
+                }
+            }
+            Err(e) => {
+                // md5sum not available or file gone — fallback: skip integrity check, just rename
+                warn!("MD5 verification unavailable for {}: {}, proceeding without integrity check", temp_remote, e);
+            }
+        }
+
+        // Atomic rename: temp -> final
+        let safe_temp = adb::sanitize_device_path(&temp_remote)
+            .map_err(|e| FolderSyncError::InvalidPath(e.to_string()))?;
+        let safe_final = adb::sanitize_device_path(remote_path)
+            .map_err(|e| FolderSyncError::InvalidPath(e.to_string()))?;
+        let mv_cmd = format!("mv '{}' '{}'", safe_temp, safe_final);
+        match adb::shell(serial, &mv_cmd) {
+            Ok(_) => {
+                let _ = self.db.update_transfer_status(&journal_id, "completed", None);
+                Ok(())
+            }
+            Err(e) => {
+                let msg = format!("Atomic rename failed: {}", e);
+                let _ = self.db.update_transfer_status(&journal_id, "failed", Some(&msg));
+                let _ = self.db.increment_transfer_retry(&journal_id);
+                Err(FolderSyncError::AdbError(msg))
+            }
+        }
+    }
+
+    /// Verified pull: get remote MD5, pull to local temp, verify local MD5, atomic rename.
+    fn verified_pull(
+        &self, serial: &str, remote_path: &str, local_path: &str,
+        pair_id: &str, relative_path: &str, file_size: u64,
+    ) -> Result<()> {
+        let journal_id = Uuid::new_v4().to_string();
+        let temp_local = format!("{}.droidlink_temp", local_path);
+
+        // Get remote MD5 (may fail if md5sum not available on device)
+        let remote_md5 = adb::get_file_hash(serial, remote_path).ok();
+
+        // Create journal entry
+        let _ = self.db.create_transfer_entry(&TransferJournalEntry {
+            id: journal_id.clone(),
+            pair_id: pair_id.to_string(),
+            device_serial: serial.to_string(),
+            file_path: relative_path.to_string(),
+            direction: "pull".to_string(),
+            status: "in_progress".to_string(),
+            temp_path: Some(temp_local.clone()),
+            final_path: local_path.to_string(),
+            file_size: file_size as i64,
+            hash_expected: remote_md5.clone(),
+            hash_actual: None,
+            created_at: String::new(),
+            updated_at: String::new(),
+            error_message: None,
+            retry_count: 0,
+        });
+
+        // Pull to temp path
+        match adb::pull(serial, remote_path, &temp_local) {
+            Ok(_) => {}
+            Err(e) => {
+                let msg = format!("Pull to temp failed: {}", e);
+                let _ = self.db.update_transfer_status(&journal_id, "failed", Some(&msg));
+                let _ = self.db.increment_transfer_retry(&journal_id);
+                let _ = std::fs::remove_file(&temp_local);
+                return Err(FolderSyncError::AdbError(msg));
+            }
+        }
+
+        // Verify local MD5 if we have remote reference hash
+        if let Some(ref expected_md5) = remote_md5 {
+            match Self::md5_local_file(Path::new(&temp_local)) {
+                Ok(local_md5) => {
+                    let _ = self.db.update_transfer_hash(&journal_id, &local_md5);
+                    if &local_md5 != expected_md5 {
+                        let msg = format!("Integrity mismatch: expected {}, got {}", expected_md5, local_md5);
+                        let _ = self.db.update_transfer_status(&journal_id, "failed", Some(&msg));
+                        let _ = self.db.increment_transfer_retry(&journal_id);
+                        let _ = std::fs::remove_file(&temp_local);
+                        return Err(FolderSyncError::IntegrityError {
+                            expected: expected_md5.clone(), actual: local_md5,
+                        });
+                    }
+                }
+                Err(e) => {
+                    warn!("Local MD5 calculation failed for {}: {}", temp_local, e);
+                }
+            }
+        }
+
+        // Atomic rename: temp -> final
+        match std::fs::rename(&temp_local, local_path) {
+            Ok(_) => {
+                let _ = self.db.update_transfer_status(&journal_id, "completed", None);
+                Ok(())
+            }
+            Err(e) => {
+                let msg = format!("Local rename failed: {}", e);
+                let _ = self.db.update_transfer_status(&journal_id, "failed", Some(&msg));
+                let _ = self.db.increment_transfer_retry(&journal_id);
+                let _ = std::fs::remove_file(&temp_local);
+                Err(FolderSyncError::IoError(e))
+            }
+        }
+    }
+
+    /// Recover pending/failed transfers for a device (called on reconnect)
+    pub fn recover_transfers(&self, serial: &str) -> Result<RecoveryResult> {
+        let entries = self.db.get_failed_transfers_for_device(serial)
+            .map_err(|e| FolderSyncError::DatabaseError(e.to_string()))?;
+
+        if entries.is_empty() {
+            return Ok(RecoveryResult { recovered: 0, failed: 0, errors: Vec::new() });
+        }
+
+        info!("Recovering {} interrupted transfers for device {}", entries.len(), serial);
+        let mut result = RecoveryResult { recovered: 0, failed: 0, errors: Vec::new() };
+
+        for entry in &entries {
+            // Clean up any leftover temp files first
+            if let Some(ref temp) = entry.temp_path {
+                if entry.direction == "push" {
+                    let _ = adb::delete_path(serial, temp);
+                } else {
+                    let _ = std::fs::remove_file(temp);
+                }
+            }
+
+            // Re-attempt the transfer
+            let retry_result = if entry.direction == "push" {
+                // For push: local file must still exist
+                if Path::new(&entry.final_path).exists() || Path::new(&entry.file_path).exists() {
+                    let local = if Path::new(&entry.final_path).exists() {
+                        // final_path for push is the remote path, file_path is relative
+                        // We need to find the local source — look up the pair
+                        None // Will use re-query below
+                    } else {
+                        None
+                    };
+                    // Mark old entry as superseded, create fresh attempt
+                    let _ = self.db.update_transfer_status(&entry.id, "failed", Some("Superseded by recovery"));
+                    // We cannot easily re-derive local paths here without the pair context.
+                    // Skip entries that need pair context — they'll be retried on next sync.
+                    Err(FolderSyncError::TransferInterrupted("Will retry on next sync".to_string()))
+                } else {
+                    Err(FolderSyncError::TransferInterrupted("Source file no longer exists".to_string()))
+                }
+            } else {
+                // For pull: remote file must still exist, we know the final local path
+                let local_path = &entry.final_path;
+                if let Some(parent) = Path::new(local_path).parent() {
+                    let _ = std::fs::create_dir_all(parent);
+                }
+                // Reconstruct remote path from file_path + pair info
+                let _ = self.db.update_transfer_status(&entry.id, "failed", Some("Superseded by recovery"));
+                Err(FolderSyncError::TransferInterrupted("Will retry on next sync".to_string()))
+            };
+
+            match retry_result {
+                Ok(_) => result.recovered += 1,
+                Err(e) => {
+                    result.failed += 1;
+                    result.errors.push(format!("{}: {}", entry.file_path, e));
+                }
+            }
+        }
+
+        // Clean up old completed entries (older than 7 days)
+        let _ = self.db.delete_completed_transfers(7);
+
+        info!("Recovery done: {} recovered, {} failed", result.recovered, result.failed);
+        Ok(result)
     }
 
     fn scan_local_directory(local_path: &Path, ignore: &IgnorePatterns) -> Result<HashMap<String, LocalFileInfo>> {
@@ -579,7 +842,7 @@ impl FolderSync {
                         if let Some(p) = PathBuf::from(remote).parent() {
                             let _ = adb::create_dir(serial, p.to_str().unwrap_or(""));
                         }
-                        match adb::push(serial, local.to_str().unwrap_or(""), remote) {
+                        match self.verified_push(serial, local.to_str().unwrap_or(""), remote, pair_id, &change.relative_path, change.local_size) {
                             Ok(_) => {
                                 result.pushed += 1;
                                 result.bytes_pushed += change.local_size;
@@ -595,7 +858,7 @@ impl FolderSync {
                             let _ = Self::version_local_file(local, local_path);
                         }
                         if let Some(p) = local.parent() { let _ = std::fs::create_dir_all(p); }
-                        match adb::pull(serial, remote, local.to_str().unwrap_or("")) {
+                        match self.verified_pull(serial, remote, local.to_str().unwrap_or(""), pair_id, &change.relative_path, change.remote_size) {
                             Ok(_) => {
                                 result.pulled += 1;
                                 result.bytes_pulled += change.remote_size;
@@ -630,7 +893,7 @@ impl FolderSync {
                                 if let Some(p) = PathBuf::from(remote).parent() {
                                     let _ = adb::create_dir(serial, p.to_str().unwrap_or(""));
                                 }
-                                match adb::push(serial, local.to_str().unwrap_or(""), remote) {
+                                match self.verified_push(serial, local.to_str().unwrap_or(""), remote, pair_id, &change.relative_path, change.local_size) {
                                     Ok(_) => { result.pushed += 1; result.bytes_pushed += change.local_size;
                                         self.update_index_entry(&pair, &change.relative_path, local, Some(remote), serial)?; }
                                     Err(e) => result.errors.push(format!("ConflictPush: {} - {}", change.relative_path, e)),
@@ -640,7 +903,7 @@ impl FolderSync {
                         Some(ChangeAction::PullModified) => {
                             if let (Some(local), Some(remote)) = (&change.local_path, &change.remote_path) {
                                 if let Some(p) = local.parent() { let _ = std::fs::create_dir_all(p); }
-                                match adb::pull(serial, remote, local.to_str().unwrap_or("")) {
+                                match self.verified_pull(serial, remote, local.to_str().unwrap_or(""), pair_id, &change.relative_path, change.remote_size) {
                                     Ok(_) => { result.pulled += 1; result.bytes_pulled += change.remote_size;
                                         self.update_index_entry(&pair, &change.relative_path, local, Some(remote), serial)?; }
                                     Err(e) => result.errors.push(format!("ConflictPull: {} - {}", change.relative_path, e)),

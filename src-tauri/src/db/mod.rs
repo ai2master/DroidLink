@@ -137,6 +137,26 @@ pub struct Conversation {
     pub last_message: String,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TransferJournalEntry {
+    pub id: String,
+    pub pair_id: String,
+    pub device_serial: String,
+    pub file_path: String,
+    pub direction: String,
+    pub status: String,
+    pub temp_path: Option<String>,
+    pub final_path: String,
+    pub file_size: i64,
+    pub hash_expected: Option<String>,
+    pub hash_actual: Option<String>,
+    pub created_at: String,
+    pub updated_at: String,
+    pub error_message: Option<String>,
+    pub retry_count: i32,
+}
+
 pub struct Database {
     conn: Arc<Mutex<Connection>>,
     data_path: PathBuf,
@@ -278,6 +298,26 @@ impl Database {
                 error_message TEXT,
                 PRIMARY KEY (device_serial, data_type)
             );
+
+            CREATE TABLE IF NOT EXISTS transfer_journal (
+                id TEXT PRIMARY KEY,
+                pair_id TEXT NOT NULL,
+                device_serial TEXT NOT NULL,
+                file_path TEXT NOT NULL,
+                direction TEXT NOT NULL,
+                status TEXT NOT NULL DEFAULT 'pending',
+                temp_path TEXT,
+                final_path TEXT NOT NULL,
+                file_size INTEGER NOT NULL DEFAULT 0,
+                hash_expected TEXT,
+                hash_actual TEXT,
+                created_at TEXT DEFAULT (datetime('now')),
+                updated_at TEXT DEFAULT (datetime('now')),
+                error_message TEXT,
+                retry_count INTEGER DEFAULT 0
+            );
+            CREATE INDEX IF NOT EXISTS idx_transfer_journal_pair ON transfer_journal(pair_id, status);
+            CREATE INDEX IF NOT EXISTS idx_transfer_journal_serial ON transfer_journal(device_serial, status);
 
             CREATE TABLE IF NOT EXISTS settings (
                 key TEXT PRIMARY KEY,
@@ -679,5 +719,91 @@ impl Database {
             Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
         })?.collect::<SqlResult<Vec<_>>>()?;
         Ok(rows.into_iter().collect())
+    }
+
+    // === Transfer Journal methods ===
+
+    pub fn create_transfer_entry(&self, entry: &TransferJournalEntry) -> DbResult<()> {
+        let conn = self.conn.lock();
+        conn.execute(
+            "INSERT INTO transfer_journal (id, pair_id, device_serial, file_path, direction, status, temp_path, final_path, file_size, hash_expected, created_at, updated_at)
+             VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,datetime('now'),datetime('now'))",
+            params![entry.id, entry.pair_id, entry.device_serial, entry.file_path, entry.direction, entry.status, entry.temp_path, entry.final_path, entry.file_size, entry.hash_expected],
+        )?;
+        Ok(())
+    }
+
+    pub fn update_transfer_status(&self, id: &str, status: &str, error: Option<&str>) -> DbResult<()> {
+        let conn = self.conn.lock();
+        conn.execute(
+            "UPDATE transfer_journal SET status=?2, error_message=?3, updated_at=datetime('now') WHERE id=?1",
+            params![id, status, error],
+        )?;
+        Ok(())
+    }
+
+    pub fn update_transfer_hash(&self, id: &str, hash_actual: &str) -> DbResult<()> {
+        let conn = self.conn.lock();
+        conn.execute(
+            "UPDATE transfer_journal SET hash_actual=?2, updated_at=datetime('now') WHERE id=?1",
+            params![id, hash_actual],
+        )?;
+        Ok(())
+    }
+
+    pub fn increment_transfer_retry(&self, id: &str) -> DbResult<()> {
+        let conn = self.conn.lock();
+        conn.execute(
+            "UPDATE transfer_journal SET retry_count=retry_count+1, updated_at=datetime('now') WHERE id=?1",
+            params![id],
+        )?;
+        Ok(())
+    }
+
+    pub fn get_pending_transfers(&self, pair_id: &str) -> DbResult<Vec<TransferJournalEntry>> {
+        let conn = self.conn.lock();
+        let mut stmt = conn.prepare(
+            "SELECT id, pair_id, device_serial, file_path, direction, status, temp_path, final_path, file_size, hash_expected, hash_actual, created_at, updated_at, error_message, retry_count
+             FROM transfer_journal WHERE pair_id=?1 AND status IN ('pending','in_progress','failed') AND retry_count < 3
+             ORDER BY created_at"
+        )?;
+        let rows = stmt.query_map(params![pair_id], |row| {
+            Ok(TransferJournalEntry {
+                id: row.get(0)?, pair_id: row.get(1)?, device_serial: row.get(2)?,
+                file_path: row.get(3)?, direction: row.get(4)?, status: row.get(5)?,
+                temp_path: row.get(6)?, final_path: row.get(7)?, file_size: row.get(8)?,
+                hash_expected: row.get(9)?, hash_actual: row.get(10)?, created_at: row.get(11)?,
+                updated_at: row.get(12)?, error_message: row.get(13)?, retry_count: row.get(14)?,
+            })
+        })?.collect::<SqlResult<Vec<_>>>()?;
+        Ok(rows)
+    }
+
+    pub fn get_failed_transfers_for_device(&self, serial: &str) -> DbResult<Vec<TransferJournalEntry>> {
+        let conn = self.conn.lock();
+        let mut stmt = conn.prepare(
+            "SELECT id, pair_id, device_serial, file_path, direction, status, temp_path, final_path, file_size, hash_expected, hash_actual, created_at, updated_at, error_message, retry_count
+             FROM transfer_journal WHERE device_serial=?1 AND status IN ('pending','in_progress','failed') AND retry_count < 3
+             ORDER BY created_at"
+        )?;
+        let rows = stmt.query_map(params![serial], |row| {
+            Ok(TransferJournalEntry {
+                id: row.get(0)?, pair_id: row.get(1)?, device_serial: row.get(2)?,
+                file_path: row.get(3)?, direction: row.get(4)?, status: row.get(5)?,
+                temp_path: row.get(6)?, final_path: row.get(7)?, file_size: row.get(8)?,
+                hash_expected: row.get(9)?, hash_actual: row.get(10)?, created_at: row.get(11)?,
+                updated_at: row.get(12)?, error_message: row.get(13)?, retry_count: row.get(14)?,
+            })
+        })?.collect::<SqlResult<Vec<_>>>()?;
+        Ok(rows)
+    }
+
+    pub fn delete_completed_transfers(&self, days: u32) -> DbResult<usize> {
+        let conn = self.conn.lock();
+        let count = conn.execute(
+            "DELETE FROM transfer_journal WHERE status='completed' AND updated_at < datetime('now', ?1)",
+            params![format!("-{} days", days)],
+        )?;
+        Ok(count)
     }
 }
