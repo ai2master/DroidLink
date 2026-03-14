@@ -1,10 +1,12 @@
 package com.droidlink.companion.data
 
+import android.Manifest
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.util.Log
-import com.droidlink.companion.observers.ContentObserverManager
+import androidx.core.content.ContextCompat
 import com.droidlink.companion.providers.CallLogProvider
 import com.droidlink.companion.providers.ContactProvider
 import com.droidlink.companion.providers.SmsProvider
@@ -15,9 +17,14 @@ import java.io.File
  * Handles data export requests from the desktop app via ADB broadcast commands.
  * All communication is pure ADB over USB - no TCP/HTTP involved.
  *
+ * 细粒度权限检查：每个导出操作独立检查所需权限。
+ * 如果权限未授予，返回明确的错误信息而不是崩溃。
+ * Granular permission check: each export operation independently checks required permission.
+ * Returns clear error message if permission not granted instead of crashing.
+ *
  * Pattern:
  * 1. Desktop sends: adb shell am broadcast -a com.droidlink.EXPORT_CONTACTS --es output_path /data/local/tmp/.droidlink_contacts.json
- * 2. This receiver queries ContentProviders and writes JSON to the specified file
+ * 2. This receiver checks permission, queries ContentProviders and writes JSON to the specified file
  * 3. Desktop retrieves: adb pull /data/local/tmp/.droidlink_contacts.json
  */
 class DataExportReceiver : BroadcastReceiver() {
@@ -53,6 +60,11 @@ class DataExportReceiver : BroadcastReceiver() {
 
     private fun handleExportContacts(context: Context, outputPath: String?) {
         val path = outputPath ?: "/data/local/tmp/.droidlink_contacts.json"
+        // 检查联系人权限 / Check contacts permission
+        if (!hasPermission(context, Manifest.permission.READ_CONTACTS)) {
+            writePermissionError(path, "READ_CONTACTS")
+            return
+        }
         try {
             val provider = ContactProvider(context)
             val contacts = provider.getAllContacts()
@@ -67,6 +79,11 @@ class DataExportReceiver : BroadcastReceiver() {
 
     private fun handleExportMessages(context: Context, outputPath: String?) {
         val path = outputPath ?: "/data/local/tmp/.droidlink_messages.json"
+        // 检查短信权限 / Check SMS permission
+        if (!hasPermission(context, Manifest.permission.READ_SMS)) {
+            writePermissionError(path, "READ_SMS")
+            return
+        }
         try {
             val provider = SmsProvider(context)
             val messages = provider.getAllMessages()
@@ -81,6 +98,11 @@ class DataExportReceiver : BroadcastReceiver() {
 
     private fun handleExportCallLogs(context: Context, outputPath: String?) {
         val path = outputPath ?: "/data/local/tmp/.droidlink_calllogs.json"
+        // 检查通话记录权限 / Check call log permission
+        if (!hasPermission(context, Manifest.permission.READ_CALL_LOG)) {
+            writePermissionError(path, "READ_CALL_LOG")
+            return
+        }
         try {
             val provider = CallLogProvider(context)
             val callLogs = provider.getAllCallLogs()
@@ -96,23 +118,12 @@ class DataExportReceiver : BroadcastReceiver() {
     private fun handleExportChanges(context: Context, outputPath: String?) {
         val path = outputPath ?: "/data/local/tmp/.droidlink_changes.json"
         try {
-            // Try to get change summary from the running service
-            val changeSummary = try {
-                val serviceField = Class.forName("com.droidlink.companion.DroidLinkService")
-                // We can't easily access the service instance from a BroadcastReceiver,
-                // so we report changes based on a simple check
-                mapOf(
-                    "contacts" to 1,
-                    "messages" to 1,
-                    "callLogs" to 1
-                )
-            } catch (e: Exception) {
-                mapOf(
-                    "contacts" to 1,
-                    "messages" to 1,
-                    "callLogs" to 1
-                )
-            }
+            // 返回每种数据类型的可用状态 / Return availability status for each data type
+            val changeSummary = mapOf(
+                "contacts" to if (hasPermission(context, Manifest.permission.READ_CONTACTS)) 1 else 0,
+                "messages" to if (hasPermission(context, Manifest.permission.READ_SMS)) 1 else 0,
+                "callLogs" to if (hasPermission(context, Manifest.permission.READ_CALL_LOG)) 1 else 0
+            )
 
             val json = gson.toJson(changeSummary)
             File(path).writeText(json, Charsets.UTF_8)
@@ -120,6 +131,24 @@ class DataExportReceiver : BroadcastReceiver() {
         } catch (e: Exception) {
             Log.e(TAG, "Error exporting changes", e)
             writeError(path, e)
+        }
+    }
+
+    private fun hasPermission(context: Context, permission: String): Boolean {
+        return ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
+    }
+
+    private fun writePermissionError(path: String, permissionName: String) {
+        try {
+            val error = mapOf(
+                "error" to "PERMISSION_DENIED",
+                "permission" to permissionName,
+                "message" to "Permission $permissionName not granted. Please grant it in the DroidLink Companion app."
+            )
+            File(path).writeText(gson.toJson(error), Charsets.UTF_8)
+            Log.w(TAG, "Permission $permissionName not granted, wrote error to $path")
+        } catch (writeError: Exception) {
+            Log.e(TAG, "Failed to write permission error file", writeError)
         }
     }
 

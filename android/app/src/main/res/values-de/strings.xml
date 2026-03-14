@@ -8,7 +8,7 @@
     <string name="stop_service">Dienst stoppen</string>
     <string name="connection_status">Verbindungsstatus</string>
     <string name="server_address">Kommunikation: Reines USB ADB</string>
-    <string name="permissions_required">Berechtigungen erforderlich</string>
+    <string name="permissions_required">Funktionsberechtigungen</string>
     <string name="permissions_need_desc">Kontakte-, SMS- und Anruflisten-Berechtigungen benötigt</string>
     <string name="grant_permissions">Berechtigungen erteilen</string>
     <string name="permissions_granted">Berechtigungen erteilt</string>
@@ -25,4 +25,18 @@
     <string name="ime_banner">DroidLink-Eingabe - Texteingabe vom PC</string>
     <string name="security_title">Sicherheitshinweise</string>
     <string name="security_desc">• Reine USB-ADB-Kommunikation, kein Netzwerk\n• Telefon ist passiv, reagiert nur auf PC-Befehle\n• Telefon kann nicht auf PC-Zwischenablage zugreifen\n• Alle Vorgänge werden vom PC initiiert und gesteuert\n• Keine INTERNET-Berechtigung, kein Netzwerkzugriff</string>
+    <!-- Detaillierte Berechtigungen -->
+    <string name="perm_granular_desc">Erteilen Sie nur die Berechtigungen, die Sie benötigen</string>
+    <string name="perm_contacts">Kontakte</string>
+    <string name="perm_contacts_desc">Kontakte synchronisieren und verwalten</string>
+    <string name="perm_sms">SMS</string>
+    <string name="perm_sms_desc">Nachrichten synchronisieren</string>
+    <string name="perm_call_logs">Anrufliste</string>
+    <string name="perm_call_logs_desc">Anrufverlauf synchronisieren</string>
+    <string name="perm_phone">Telefonstatus</string>
+    <string name="perm_phone_desc">Geräteinformationen abrufen</string>
+    <string name="perm_notifications">Benachrichtigungen</string>
+    <string name="perm_notifications_desc">Dienstbenachrichtigung anzeigen</string>
+    <string name="perm_granted">Erteilt</string>
+    <string name="perm_grant">Erteilen</string>
 </resources>

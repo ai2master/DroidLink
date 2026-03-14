@@ -8,7 +8,7 @@
     <string name="stop_service">Остановить службу</string>
     <string name="connection_status">Статус подключения</string>
     <string name="server_address">Связь: только USB ADB</string>
-    <string name="permissions_required">Необходимы разрешения</string>
+    <string name="permissions_required">Разрешения функций</string>
     <string name="permissions_need_desc">Требуются разрешения на контакты, SMS и журнал вызовов</string>
     <string name="grant_permissions">Предоставить разрешения</string>
     <string name="permissions_granted">Разрешения предоставлены</string>
@@ -25,4 +25,18 @@
     <string name="ime_banner">DroidLink Ввод - ввод текста с ПК</string>
     <string name="security_title">Безопасность</string>
     <string name="security_desc">• Только USB ADB связь, без сети\n• Телефон в пассивном режиме, отвечает только на команды ПК\n• Телефон не может получить доступ к буферу обмена ПК\n• Все операции инициируются и контролируются ПК\n• Нет разрешения INTERNET, нет доступа к сети</string>
+    <!-- Детальные разрешения -->
+    <string name="perm_granular_desc">Предоставляйте только нужные разрешения — не обязательно включать все</string>
+    <string name="perm_contacts">Контакты</string>
+    <string name="perm_contacts_desc">Синхронизация и управление контактами</string>
+    <string name="perm_sms">SMS</string>
+    <string name="perm_sms_desc">Синхронизация сообщений</string>
+    <string name="perm_call_logs">Журнал вызовов</string>
+    <string name="perm_call_logs_desc">Синхронизация истории вызовов</string>
+    <string name="perm_phone">Состояние телефона</string>
+    <string name="perm_phone_desc">Доступ к информации об устройстве</string>
+    <string name="perm_notifications">Уведомления</string>
+    <string name="perm_notifications_desc">Показывать уведомление о работе службы</string>
+    <string name="perm_granted">Разрешено</string>
+    <string name="perm_grant">Разрешить</string>
 </resources>

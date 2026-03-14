@@ -8,7 +8,7 @@
     <string name="stop_service">إيقاف الخدمة</string>
     <string name="connection_status">حالة الاتصال</string>
     <string name="server_address">طريقة الاتصال: USB ADB فقط</string>
-    <string name="permissions_required">الأذونات مطلوبة</string>
+    <string name="permissions_required">أذونات الميزات</string>
     <string name="permissions_need_desc">يلزم إذن جهات الاتصال والرسائل وسجل المكالمات</string>
     <string name="grant_permissions">منح الأذونات</string>
     <string name="permissions_granted">تم منح الأذونات</string>
@@ -25,4 +25,18 @@
     <string name="ime_banner">إدخال DroidLink - إدخال النص من الكمبيوتر</string>
     <string name="security_title">معلومات الأمان</string>
     <string name="security_desc">• اتصال USB ADB فقط، بدون شبكة\n• الهاتف في الوضع السلبي، يستجيب فقط لأوامر الكمبيوتر\n• لا يمكن للهاتف الوصول إلى حافظة الكمبيوتر\n• جميع العمليات يبدأها ويتحكم بها الكمبيوتر\n• لا إذن INTERNET، لا وصول للشبكة</string>
+    <!-- الأذونات التفصيلية -->
+    <string name="perm_granular_desc">امنح فقط الأذونات التي تحتاجها — لا حاجة لتفعيل كل شيء</string>
+    <string name="perm_contacts">جهات الاتصال</string>
+    <string name="perm_contacts_desc">مزامنة وإدارة جهات الاتصال</string>
+    <string name="perm_sms">الرسائل القصيرة</string>
+    <string name="perm_sms_desc">مزامنة الرسائل النصية</string>
+    <string name="perm_call_logs">سجل المكالمات</string>
+    <string name="perm_call_logs_desc">مزامنة سجل المكالمات</string>
+    <string name="perm_phone">حالة الهاتف</string>
+    <string name="perm_phone_desc">الوصول إلى معلومات الجهاز</string>
+    <string name="perm_notifications">الإشعارات</string>
+    <string name="perm_notifications_desc">عرض إشعار الخدمة</string>
+    <string name="perm_granted">ممنوح</string>
+    <string name="perm_grant">منح</string>
 </resources>

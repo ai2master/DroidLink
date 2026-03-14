@@ -104,7 +104,7 @@ pub fn run() {
             // 初始化 scrcpy 路径设置
             // Initialize scrcpy path settings
             let scrcpy_source = db.get_setting("scrcpy_source")
-                .ok().flatten().unwrap_or_else(|| "system".to_string());
+                .ok().flatten().unwrap_or_else(|| "bundled".to_string());
             let scrcpy_custom_path = db.get_setting("scrcpy_custom_path")
                 .ok().flatten().unwrap_or_default();
             scrcpy::set_scrcpy_source(&scrcpy_source);

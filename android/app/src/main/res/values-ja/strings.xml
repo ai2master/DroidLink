@@ -8,7 +8,7 @@
     <string name="stop_service">サービス停止</string>
     <string name="connection_status">接続状態</string>
     <string name="server_address">通信方式: 純粋なUSB ADB</string>
-    <string name="permissions_required">権限が必要です</string>
+    <string name="permissions_required">機能の権限</string>
     <string name="permissions_need_desc">連絡先、SMS、通話履歴の権限が必要です</string>
     <string name="grant_permissions">権限を付与</string>
     <string name="permissions_granted">権限付与済み</string>
@@ -25,4 +25,18 @@
     <string name="ime_banner">DroidLink入力法 - PCから入力</string>
     <string name="security_title">セキュリティ情報</string>
     <string name="security_desc">• 純粋なUSB ADB通信、ネットワーク不使用\n• スマホは受動モード、PCの指令にのみ応答\n• スマホはPCのクリップボードにアクセス不可\n• 全操作はPC側から開始・制御\n• INTERNETパーミッションなし、ネットワークなし</string>
+    <!-- 細粒度権限 -->
+    <string name="perm_granular_desc">必要な権限だけを許可できます。すべてを有効にする必要はありません</string>
+    <string name="perm_contacts">連絡先</string>
+    <string name="perm_contacts_desc">連絡先の同期と管理</string>
+    <string name="perm_sms">SMS</string>
+    <string name="perm_sms_desc">メッセージの同期</string>
+    <string name="perm_call_logs">通話履歴</string>
+    <string name="perm_call_logs_desc">通話履歴の同期</string>
+    <string name="perm_phone">電話の状態</string>
+    <string name="perm_phone_desc">デバイス情報の取得</string>
+    <string name="perm_notifications">通知</string>
+    <string name="perm_notifications_desc">サービス通知の表示</string>
+    <string name="perm_granted">許可済み</string>
+    <string name="perm_grant">許可</string>
 </resources>

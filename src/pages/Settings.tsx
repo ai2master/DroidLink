@@ -102,8 +102,18 @@ export const Settings: React.FC = () => {
     setLoading(true);
     try {
       const data = await tauriInvoke<Record<string, string>>('get_settings');
-      const settingsData = data as any;
-      setSettings(settingsData);
+      // 正确解析 DB snake_case 字符串值为类型化 SettingsData
+      // Properly parse DB snake_case string values into typed SettingsData
+      setSettings({
+        autoSync: data.auto_sync === 'true',
+        syncContacts: data.sync_contacts !== 'false',
+        syncMessages: data.sync_messages !== 'false',
+        syncCallLogs: data.sync_call_logs !== 'false',
+        retentionDays: parseInt(data.version_history_days) || 30,
+        clipboardSync: data.clipboard_sync !== 'false',
+        scrcpyMaxSize: parseInt(data.scrcpy_max_size) || 1920,
+        scrcpyBitRate: parseInt(data.scrcpy_bit_rate) || 8000000,
+      });
       // 读取工具路径设置 / Load tool path settings
       if (data.adb_source) setAdbSource(data.adb_source);
       if (data.adb_custom_path) setAdbCustomPath(data.adb_custom_path);
@@ -149,9 +159,22 @@ export const Settings: React.FC = () => {
   const handleSave = async () => {
     setSaving(true);
     try {
-      await tauriInvoke('set_settings', { settings });
+      // 转换 camelCase 为 snake_case DB 键，不包含工具路径设置（由 update_tool_paths 处理）
+      // Convert camelCase to snake_case DB keys, excluding tool paths (handled by update_tool_paths)
+      await tauriInvoke('set_settings', {
+        settings: {
+          auto_sync: String(settings.autoSync),
+          sync_contacts: String(settings.syncContacts),
+          sync_messages: String(settings.syncMessages),
+          sync_call_logs: String(settings.syncCallLogs),
+          version_history_days: String(settings.retentionDays),
+          clipboard_sync: String(settings.clipboardSync),
+          scrcpy_max_size: String(settings.scrcpyMaxSize),
+          scrcpy_bit_rate: String(settings.scrcpyBitRate),
+        },
+      });
 
-      // 更新工具路径 / Update tool paths
+      // 更新工具路径（单独保存，避免覆盖） / Update tool paths (separate save to avoid conflicts)
       await tauriInvoke('update_tool_paths', {
         adbSource,
         adbCustomPath: adbCustomPath || null,

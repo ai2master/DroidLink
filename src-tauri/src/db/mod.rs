@@ -335,7 +335,7 @@ impl Database {
                 ('language', 'zh-CN'),
                 ('adb_source', 'bundled'),
                 ('adb_custom_path', ''),
-                ('scrcpy_source', 'system'),
+                ('scrcpy_source', 'bundled'),
                 ('scrcpy_custom_path', '');
             ",
         )?;

@@ -9,7 +9,7 @@
     <string name="stop_service">停止服务</string>
     <string name="connection_status">连接状态</string>
     <string name="server_address">通信方式: 纯 USB ADB</string>
-    <string name="permissions_required">需要权限</string>
+    <string name="permissions_required">功能权限</string>
     <string name="permissions_need_desc">需要授予联系人、短信、通话记录权限</string>
     <string name="grant_permissions">授予权限</string>
     <string name="permissions_granted">权限已授予</string>
@@ -26,4 +26,18 @@
     <string name="ime_banner">DroidLink 输入法 - 从电脑输入中文</string>
     <string name="security_title">安全说明</string>
     <string name="security_desc">• 纯 USB ADB 通信，不使用网络\n• 手机端为被动模式，仅响应电脑端指令\n• 手机无法主动读写电脑剪贴板或传输文件\n• 所有操作由电脑端发起和控制\n• 无 INTERNET 权限，无网络连接</string>
+    <!-- 细粒度权限 / Granular permissions -->
+    <string name="perm_granular_desc">按需授权：只授予你需要的功能权限，无需全部授权</string>
+    <string name="perm_contacts">联系人</string>
+    <string name="perm_contacts_desc">同步和管理联系人</string>
+    <string name="perm_sms">短信</string>
+    <string name="perm_sms_desc">同步短信记录</string>
+    <string name="perm_call_logs">通话记录</string>
+    <string name="perm_call_logs_desc">同步通话记录</string>
+    <string name="perm_phone">电话状态</string>
+    <string name="perm_phone_desc">获取设备信息</string>
+    <string name="perm_notifications">通知</string>
+    <string name="perm_notifications_desc">显示服务运行通知</string>
+    <string name="perm_granted">已授权</string>
+    <string name="perm_grant">授权</string>
 </resources>

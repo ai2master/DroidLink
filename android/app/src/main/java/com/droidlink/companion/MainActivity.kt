@@ -18,39 +18,85 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 
-// 主界面 Activity - 权限管理、服务控制、多语言支持
-// Main Activity - permission management, service control, multi-language support
-// Android 系统会根据设备语言自动选择对应的 strings.xml
-// Android system automatically selects the matching strings.xml based on device language
+// 主界面 Activity - 细粒度权限管理、服务控制、多语言支持
+// Main Activity - granular permission management, service control, multi-language support
+// 每个功能模块有独立的权限开关，用户可以只授权需要的功能
+// Each feature module has independent permission toggle, user can grant only what they need
 class MainActivity : ComponentActivity() {
 
     private var isServiceRunning by mutableStateOf(false)
-    private var hasPermissions by mutableStateOf(false)
 
-    private val requiredPermissions = mutableListOf(
-        Manifest.permission.READ_CONTACTS,
-        Manifest.permission.WRITE_CONTACTS,
-        Manifest.permission.READ_SMS,
-        Manifest.permission.READ_CALL_LOG,
-        Manifest.permission.READ_PHONE_STATE
-    ).apply {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            add(Manifest.permission.POST_NOTIFICATIONS)
+    // 细粒度权限分组 / Granular permission groups
+    // 每个功能模块的权限独立管理 / Each feature's permissions managed independently
+    data class PermissionGroup(
+        val nameResId: Int,
+        val descResId: Int,
+        val permissions: List<String>,
+        val granted: MutableState<Boolean> = mutableStateOf(false)
+    )
+
+    private val contactsGroup = PermissionGroup(
+        nameResId = R.string.perm_contacts,
+        descResId = R.string.perm_contacts_desc,
+        permissions = listOf(
+            Manifest.permission.READ_CONTACTS,
+            Manifest.permission.WRITE_CONTACTS
+        )
+    )
+
+    private val smsGroup = PermissionGroup(
+        nameResId = R.string.perm_sms,
+        descResId = R.string.perm_sms_desc,
+        permissions = listOf(Manifest.permission.READ_SMS)
+    )
+
+    private val callLogsGroup = PermissionGroup(
+        nameResId = R.string.perm_call_logs,
+        descResId = R.string.perm_call_logs_desc,
+        permissions = listOf(Manifest.permission.READ_CALL_LOG)
+    )
+
+    private val phoneGroup = PermissionGroup(
+        nameResId = R.string.perm_phone,
+        descResId = R.string.perm_phone_desc,
+        permissions = listOf(Manifest.permission.READ_PHONE_STATE)
+    )
+
+    private val notificationGroup = PermissionGroup(
+        nameResId = R.string.perm_notifications,
+        descResId = R.string.perm_notifications_desc,
+        permissions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            listOf(Manifest.permission.POST_NOTIFICATIONS)
+        } else {
+            emptyList()
         }
+    )
+
+    private val permissionGroups: List<PermissionGroup> by lazy {
+        listOf(contactsGroup, smsGroup, callLogsGroup, phoneGroup, notificationGroup)
+            .filter { it.permissions.isNotEmpty() }
     }
+
+    // 当前正在请求的权限组 / Currently requesting permission group
+    private var pendingGroup: PermissionGroup? = null
 
     private val permissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
-        hasPermissions = permissions.all { it.value }
-        if (hasPermissions && !isServiceRunning) {
-            startDroidLinkService()
+        // 更新对应组的授权状态 / Update the requesting group's status
+        pendingGroup?.let { group ->
+            group.granted.value = group.permissions.all { perm ->
+                ContextCompat.checkSelfPermission(this, perm) == PackageManager.PERMISSION_GRANTED
+            }
         }
+        pendingGroup = null
+        // 重新检查所有权限状态 / Re-check all permission states
+        checkAllPermissions()
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        checkPermissions()
+        checkAllPermissions()
         checkServiceStatus()
 
         setContent {
@@ -67,15 +113,28 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
-        checkPermissions()
+        checkAllPermissions()
         checkServiceStatus()
     }
 
-    // 检查权限 / Check permissions
-    private fun checkPermissions() {
-        hasPermissions = requiredPermissions.all { permission ->
-            ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED
+    // 检查每个权限组的状态 / Check each permission group's status
+    private fun checkAllPermissions() {
+        for (group in permissionGroups) {
+            group.granted.value = group.permissions.all { perm ->
+                ContextCompat.checkSelfPermission(this, perm) == PackageManager.PERMISSION_GRANTED
+            }
         }
+    }
+
+    // 是否有任何权限被授予（服务可以启动） / Whether any permission is granted (service can start)
+    private fun hasAnyPermission(): Boolean {
+        return permissionGroups.any { it.granted.value }
+    }
+
+    // 请求特定组的权限 / Request permissions for a specific group
+    private fun requestGroupPermissions(group: PermissionGroup) {
+        pendingGroup = group
+        permissionLauncher.launch(group.permissions.toTypedArray())
     }
 
     // 检查服务状态 / Check service status
@@ -83,17 +142,8 @@ class MainActivity : ComponentActivity() {
         isServiceRunning = DroidLinkService.isRunning
     }
 
-    // 请求权限 / Request permissions
-    private fun requestPermissions() {
-        permissionLauncher.launch(requiredPermissions.toTypedArray())
-    }
-
-    // 启动前台服务 / Start foreground service
+    // 启动前台服务（不再要求全部权限） / Start foreground service (no longer requires all permissions)
     private fun startDroidLinkService() {
-        if (!hasPermissions) {
-            requestPermissions()
-            return
-        }
         val intent = Intent(this, DroidLinkService::class.java)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             startForegroundService(intent)
@@ -112,8 +162,6 @@ class MainActivity : ComponentActivity() {
 
     @Composable
     fun MainScreen() {
-        // 所有 UI 文本均来自 strings.xml，支持自动多语言
-        // All UI text comes from strings.xml, supports automatic multi-language
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -121,7 +169,7 @@ class MainActivity : ComponentActivity() {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
             // 应用标题 / App title
             Text(
@@ -131,7 +179,7 @@ class MainActivity : ComponentActivity() {
                 color = MaterialTheme.colorScheme.primary
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
             // 连接状态卡片 / Connection status card
             Card(
@@ -169,11 +217,11 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
-            // 权限状态 / Permissions status
+            // 细粒度权限卡片 / Granular permissions card
             Card(modifier = Modifier.fillMaxWidth()) {
                 Column(
                     modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Text(
                         text = getString(R.string.permissions_required),
@@ -181,28 +229,19 @@ class MainActivity : ComponentActivity() {
                         fontSize = 16.sp
                     )
                     Text(
-                        text = if (hasPermissions)
-                            getString(R.string.permissions_granted)
-                        else
-                            getString(R.string.permissions_need_desc),
-                        fontSize = 14.sp,
-                        color = if (hasPermissions)
-                            MaterialTheme.colorScheme.primary
-                        else
-                            MaterialTheme.colorScheme.error
+                        text = getString(R.string.perm_granular_desc),
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    if (!hasPermissions) {
-                        Button(
-                            onClick = { requestPermissions() },
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text(getString(R.string.grant_permissions))
-                        }
+
+                    // 每个权限组独立显示 / Each permission group shown independently
+                    for (group in permissionGroups) {
+                        PermissionRow(group)
                     }
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
             // 启动/停止服务按钮 / Start/Stop service button
             Button(
@@ -218,8 +257,7 @@ class MainActivity : ComponentActivity() {
                         MaterialTheme.colorScheme.error
                     else
                         MaterialTheme.colorScheme.primary
-                ),
-                enabled = hasPermissions || isServiceRunning
+                )
             ) {
                 Text(
                     text = if (isServiceRunning)
@@ -251,6 +289,45 @@ class MainActivity : ComponentActivity() {
                         fontSize = 12.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                }
+            }
+        }
+    }
+
+    @Composable
+    fun PermissionRow(group: PermissionGroup) {
+        val granted = group.granted.value
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = getString(group.nameResId),
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium
+                )
+                Text(
+                    text = getString(group.descResId),
+                    fontSize = 11.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            if (granted) {
+                Text(
+                    text = getString(R.string.perm_granted),
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold
+                )
+            } else {
+                Button(
+                    onClick = { requestGroupPermissions(group) },
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                    modifier = Modifier.height(32.dp)
+                ) {
+                    Text(getString(R.string.perm_grant), fontSize = 12.sp)
                 }
             }
         }

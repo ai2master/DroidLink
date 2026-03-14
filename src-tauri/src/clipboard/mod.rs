@@ -97,9 +97,18 @@ impl ClipboardBridge {
     /// All communication is pure ADB over USB.
     ///
     /// Multi-tier approach:
-    /// Tier 1: Broadcast with base64 (for small text <=100KB)
-    /// Tier 2: File transfer (adb push + broadcast to read file)
-    /// Tier 3: Activity fallback if broadcast fails
+    /// Tier 1: Activity-based SET (most reliable, works on all Android versions)
+    /// Tier 2: Broadcast with base64 (for small text <=100KB, faster but less reliable)
+    /// Tier 3: File-based broadcast transfer
+    ///
+    /// 优先使用 Activity 方式，因为广播在以下情况下会静默失败:
+    /// - 应用被强制停止
+    /// - Android 10+ 后台限制
+    /// - SELinux 策略阻止
+    /// Prefer Activity method because broadcasts silently fail when:
+    /// - App is force-stopped
+    /// - Android 10+ background restrictions
+    /// - SELinux policy blocks delivery
     pub fn send_to_device(&self, serial: &str, content: &str) -> ClipResult<String> {
         let byte_size = content.len();
         if byte_size > self.max_size {
@@ -116,30 +125,36 @@ impl ClipboardBridge {
             byte_size
         );
 
-        // Tier 1: For small-medium content, use am broadcast with base64
-        if byte_size <= BROADCAST_MAX_SIZE {
-            if let Ok(()) = send_via_broadcast(serial, content) {
-                log::info!("Clipboard sent via broadcast");
-                return Ok("broadcast".to_string());
-            }
-            log::debug!("Broadcast method failed, trying file transfer");
-        }
-
-        // Tier 2: File-based transfer (works for any size, most reliable)
-        match send_via_file_transfer(serial, content) {
+        // Tier 1: Activity-based SET (最可靠 / most reliable)
+        // am start 可以启动被强制停止的应用，不受后台限制
+        // am start can launch force-stopped apps, not affected by background restrictions
+        match send_via_activity(serial, content) {
             Ok(()) => {
-                log::info!("Clipboard sent via file transfer");
-                return Ok("file_transfer".to_string());
+                log::info!("Clipboard sent via Activity (most reliable method)");
+                return Ok("activity".to_string());
             }
             Err(e) => {
-                log::debug!("File transfer failed: {}, trying Activity fallback", e);
+                log::debug!("Activity method failed: {}, trying broadcast", e);
             }
         }
 
-        // Tier 3: Activity fallback (for devices where broadcast doesn't work)
-        send_via_activity(serial, content)?;
-        log::info!("Clipboard sent via Activity");
-        Ok("activity".to_string())
+        // Tier 2: For small content, try broadcast with base64 (faster)
+        if byte_size <= BROADCAST_MAX_SIZE {
+            match send_via_broadcast(serial, content) {
+                Ok(()) => {
+                    log::info!("Clipboard sent via broadcast");
+                    return Ok("broadcast".to_string());
+                }
+                Err(e) => {
+                    log::debug!("Broadcast method failed: {}, trying file transfer", e);
+                }
+            }
+        }
+
+        // Tier 3: File-based transfer (for large content or when others fail)
+        send_via_file_transfer(serial, content)?;
+        log::info!("Clipboard sent via file transfer");
+        Ok("file_transfer".to_string())
     }
 
     // ========================
@@ -301,18 +316,41 @@ fn send_via_broadcast(serial: &str, content: &str) -> ClipResult<()> {
     let cmd = format!(
         "am broadcast -a com.droidlink.SET_CLIPBOARD \
          --es content_b64 '{}' \
-         -n com.droidlink.companion/.clipboard.ClipboardReceiver 2>/dev/null",
+         -n com.droidlink.companion/.clipboard.ClipboardReceiver",
         encoded
     );
-    adb::shell(serial, &cmd)?;
+    let output = adb::shell(serial, &cmd)?;
+
+    // 验证广播是否被接收 / Verify broadcast was actually received
+    // 成功时输出: "Broadcast completed: result=0"
+    // 失败时: "Error" 或无 "Broadcast completed"
+    if !output.contains("Broadcast completed") {
+        log::warn!("Broadcast not delivered: {}", output.trim());
+        return Err(ClipboardError::Encoding(
+            "Broadcast not delivered - companion app may not be running".into()
+        ));
+    }
+    if output.contains("result=-1") || output.contains("Error") {
+        log::warn!("Broadcast delivery error: {}", output.trim());
+        return Err(ClipboardError::Encoding(
+            "Broadcast delivery failed".into()
+        ));
+    }
+
     Ok(())
 }
 
 fn receive_via_broadcast(serial: &str) -> ClipResult<String> {
     let cmd = "am broadcast -a com.droidlink.GET_CLIPBOARD \
                --es output_path /data/local/tmp/.droidlink_clipboard_out \
-               -n com.droidlink.companion/.clipboard.ClipboardReceiver 2>/dev/null";
-    adb::shell(serial, cmd)?;
+               -n com.droidlink.companion/.clipboard.ClipboardReceiver";
+    let output = adb::shell(serial, cmd)?;
+
+    // 验证广播送达 / Verify broadcast delivered
+    if !output.contains("Broadcast completed") || output.contains("Error") {
+        log::warn!("GET_CLIPBOARD broadcast not delivered: {}", output.trim());
+        return Err(ClipboardError::ReadFailed);
+    }
 
     std::thread::sleep(std::time::Duration::from_millis(300));
 
@@ -380,12 +418,21 @@ fn send_via_file_transfer(serial: &str, content: &str) -> ClipResult<()> {
     let cmd = format!(
         "am broadcast -a com.droidlink.SET_CLIPBOARD_FILE \
          --es file_path '{}' \
-         -n com.droidlink.companion/.clipboard.ClipboardReceiver 2>/dev/null",
+         -n com.droidlink.companion/.clipboard.ClipboardReceiver",
         TEMP_CLIPBOARD_PATH
     );
-    adb::shell(serial, &cmd)?;
+    let output = adb::shell(serial, &cmd)?;
 
     let _ = std::fs::remove_file(&local_temp);
+
+    // 验证广播结果 / Verify broadcast result
+    if !output.contains("Broadcast completed") || output.contains("Error") {
+        log::warn!("File transfer broadcast not delivered: {}", output.trim());
+        return Err(ClipboardError::Encoding(
+            "File transfer broadcast not delivered".into()
+        ));
+    }
+
     Ok(())
 }
 
@@ -418,8 +465,9 @@ fn receive_via_file_transfer(serial: &str) -> ClipResult<String> {
     Ok(content)
 }
 
-/// Send clipboard via transparent Activity (fallback method).
-/// Used when broadcast methods fail on some devices.
+/// Send clipboard via transparent Activity (最可靠的方法 / most reliable method).
+/// am start 可以启动被强制停止的应用，Activity 在前台运行不受后台限制。
+/// am start can launch force-stopped apps, Activity runs in foreground without restrictions.
 fn send_via_activity(serial: &str, content: &str) -> ClipResult<()> {
     let temp_dir = std::env::temp_dir();
     // 使用唯一文件名防止竞争条件 / Use unique filename to prevent race conditions
@@ -437,14 +485,25 @@ fn send_via_activity(serial: &str, content: &str) -> ClipResult<()> {
     let cmd = format!(
         "am start -n com.droidlink.companion/.clipboard.ClipboardActivity \
          --es action SET \
-         --es input_path '{}' \
-         2>/dev/null",
+         --es input_path '{}'",
         TEMP_CLIPBOARD_PATH
     );
-    adb::shell(serial, &cmd)?;
+    let output = adb::shell(serial, &cmd)?;
+
+    // 验证 Activity 启动成功 / Verify Activity started successfully
+    // 成功时: "Starting: Intent { ... }"
+    // 失败时: "Error" 或 "does not exist" 等
+    if output.contains("Error") || output.contains("does not exist") {
+        log::warn!("Activity launch failed: {}", output.trim());
+        let _ = std::fs::remove_file(&local_temp);
+        return Err(ClipboardError::Encoding(
+            "Failed to launch ClipboardActivity - companion app may not be installed".into()
+        ));
+    }
 
     // Wait for the Activity to launch, read file, set clipboard, and finish
-    std::thread::sleep(std::time::Duration::from_millis(500));
+    // Activity 启动、读文件、设剪贴板、关闭需要一点时间
+    std::thread::sleep(std::time::Duration::from_millis(800));
 
     let _ = std::fs::remove_file(&local_temp);
     let _ = adb::shell(serial, &format!("rm -f '{}' 2>/dev/null", TEMP_CLIPBOARD_PATH));

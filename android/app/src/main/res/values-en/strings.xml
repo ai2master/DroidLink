@@ -8,7 +8,7 @@
     <string name="stop_service">Stop Service</string>
     <string name="connection_status">Connection Status</string>
     <string name="server_address">Communication: Pure USB ADB</string>
-    <string name="permissions_required">Permissions Required</string>
+    <string name="permissions_required">Feature Permissions</string>
     <string name="permissions_need_desc">Contacts, SMS, and Call Log permissions needed</string>
     <string name="grant_permissions">Grant Permissions</string>
     <string name="permissions_granted">Permissions Granted</string>
@@ -25,4 +25,18 @@
     <string name="ime_banner">DroidLink IME - Input from PC</string>
     <string name="security_title">Security Info</string>
     <string name="security_desc">• Pure USB ADB communication, no network\n• Phone is passive, only responds to PC commands\n• Phone cannot access PC clipboard or send files\n• All operations initiated and controlled by PC\n• No INTERNET permission, no network access</string>
+    <!-- Granular permissions -->
+    <string name="perm_granular_desc">Grant only the permissions you need — no need to enable everything</string>
+    <string name="perm_contacts">Contacts</string>
+    <string name="perm_contacts_desc">Sync and manage contacts</string>
+    <string name="perm_sms">SMS</string>
+    <string name="perm_sms_desc">Sync text messages</string>
+    <string name="perm_call_logs">Call Logs</string>
+    <string name="perm_call_logs_desc">Sync call history</string>
+    <string name="perm_phone">Phone State</string>
+    <string name="perm_phone_desc">Access device information</string>
+    <string name="perm_notifications">Notifications</string>
+    <string name="perm_notifications_desc">Show service notification</string>
+    <string name="perm_granted">Granted</string>
+    <string name="perm_grant">Grant</string>
 </resources>
