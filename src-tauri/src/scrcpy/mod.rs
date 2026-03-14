@@ -246,12 +246,52 @@ impl ScrcpyManager {
             cmd.arg("--rotation").arg(rot.to_string());
         }
 
-        let child = cmd
+        let binary = scrcpy_binary();
+        log::info!("scrcpy 二进制路径 / scrcpy binary path: {}", binary);
+
+        let mut child = cmd
             .stdin(std::process::Stdio::null())
             .stdout(std::process::Stdio::piped())
             .stderr(std::process::Stdio::piped())
             .spawn()
-            .map_err(|e| ScrcpyError::StartFailed(e.to_string()))?;
+            .map_err(|e| ScrcpyError::StartFailed(
+                format!("Failed to start scrcpy (binary: {}): {}", binary, e)
+            ))?;
+
+        // 等待一小段时间，检查进程是否立即崩溃
+        // Wait briefly and check if the process crashed immediately
+        std::thread::sleep(std::time::Duration::from_millis(500));
+
+        match child.try_wait() {
+            Ok(Some(exit_status)) => {
+                // scrcpy 立即退出了，读取 stderr 获取错误信息
+                // scrcpy exited immediately, read stderr for error details
+                let stderr_output = if let Some(stderr) = child.stderr.take() {
+                    use std::io::Read;
+                    let mut buf = String::new();
+                    let mut reader = std::io::BufReader::new(stderr);
+                    let _ = reader.read_to_string(&mut buf);
+                    buf
+                } else {
+                    String::new()
+                };
+
+                let error_msg = if !stderr_output.trim().is_empty() {
+                    format!("scrcpy exited immediately ({}): {}", exit_status, stderr_output.trim())
+                } else {
+                    format!("scrcpy exited immediately with {}", exit_status)
+                };
+                log::error!("{}", error_msg);
+                return Err(ScrcpyError::StartFailed(error_msg));
+            }
+            Ok(None) => {
+                // 进程还在运行，正常
+                // Process still running, good
+            }
+            Err(e) => {
+                log::warn!("Failed to check scrcpy process status: {}", e);
+            }
+        }
 
         log::info!("scrcpy 已启动 / scrcpy started for device {} (PID: {})", serial, child.id());
 
@@ -577,6 +617,21 @@ pub fn set_scrcpy_source(source: &str) {
     }
 }
 
+/// Tauri 资源目录路径 (由 lib.rs 在启动时设置)
+/// Tauri resource directory path (set by lib.rs at startup)
+/// 重要: 这是 Tauri 实际放置 bundle resources 的目录，不是 exe_dir
+/// Important: This is where Tauri actually places bundled resources, NOT exe_dir
+static RESOURCE_DIR: std::sync::Mutex<String> = std::sync::Mutex::new(String::new());
+
+/// 设置 Tauri 资源目录 (由 lib.rs 在 setup 中调用)
+/// Set Tauri resource directory (called by lib.rs during setup)
+pub fn set_resource_dir(path: &str) {
+    if let Ok(mut d) = RESOURCE_DIR.lock() {
+        *d = path.to_string();
+        log::info!("scrcpy resource_dir set to: {}", path);
+    }
+}
+
 fn scrcpy_binary() -> String {
     let source = SCRCPY_SOURCE.lock().ok()
         .map(|s| if s.is_empty() { "bundled".to_string() } else { s.clone() })
@@ -619,57 +674,83 @@ pub fn has_bundled_scrcpy() -> bool {
 
 /// 获取打包的 scrcpy 路径
 /// Get bundled scrcpy binary path
+///
+/// 使用 Tauri resource_dir（由 set_resource_dir 设置）而不是 exe_dir，
+/// 因为 Tauri v2 在 Linux DEB/AppImage 中将资源放在不同于可执行文件的目录。
+/// Uses Tauri resource_dir (set via set_resource_dir) instead of exe_dir,
+/// because Tauri v2 places resources in a different directory than the executable on Linux DEB/AppImage.
 fn bundled_scrcpy_path() -> Option<String> {
-    let exe_dir = std::env::current_exe().ok()?.parent()?.to_path_buf();
+    let mut candidates = Vec::new();
 
-    // Tauri bundles resources next to the executable (or in Resources on macOS)
-    let candidates = if cfg!(target_os = "macos") {
-        vec![
-            exe_dir.join("../Resources/scrcpy/scrcpy"),
-            exe_dir.join("scrcpy/scrcpy"),
-        ]
-    } else if cfg!(target_os = "windows") {
-        vec![
-            exe_dir.join("scrcpy/scrcpy.exe"),
-            exe_dir.join("resources/scrcpy/scrcpy.exe"),
-        ]
-    } else {
-        vec![
-            exe_dir.join("scrcpy/scrcpy"),
-            exe_dir.join("resources/scrcpy/scrcpy"),
-        ]
-    };
+    // 优先使用 Tauri resource_dir（正确路径）
+    // Prefer Tauri resource_dir (correct path)
+    if let Ok(dir) = RESOURCE_DIR.lock() {
+        if !dir.is_empty() {
+            let res_dir = std::path::PathBuf::from(dir.as_str());
+            let binary_name = if cfg!(target_os = "windows") { "scrcpy.exe" } else { "scrcpy" };
+            candidates.push(res_dir.join("scrcpy").join(binary_name));
+        }
+    }
 
-    for candidate in candidates {
+    // 回退: 使用 exe_dir 相对路径 (开发模式或某些打包格式)
+    // Fallback: use exe_dir relative paths (dev mode or certain package formats)
+    if let Some(exe_dir) = std::env::current_exe().ok().and_then(|p| p.parent().map(|d| d.to_path_buf())) {
+        if cfg!(target_os = "macos") {
+            candidates.push(exe_dir.join("../Resources/scrcpy/scrcpy"));
+            candidates.push(exe_dir.join("scrcpy/scrcpy"));
+        } else if cfg!(target_os = "windows") {
+            candidates.push(exe_dir.join("scrcpy/scrcpy.exe"));
+            candidates.push(exe_dir.join("resources/scrcpy/scrcpy.exe"));
+        } else {
+            candidates.push(exe_dir.join("scrcpy/scrcpy"));
+            candidates.push(exe_dir.join("resources/scrcpy/scrcpy"));
+        }
+    }
+
+    for candidate in &candidates {
         if candidate.exists() {
+            log::info!("Found bundled scrcpy at: {}", candidate.display());
             return Some(candidate.to_string_lossy().to_string());
         }
     }
+
+    log::warn!("Bundled scrcpy not found. Searched: {:?}", candidates.iter().map(|c| c.display().to_string()).collect::<Vec<_>>());
     None
 }
 
 /// 获取打包的 scrcpy-server 路径
 /// Get bundled scrcpy-server path
 fn bundled_scrcpy_server_path() -> Option<String> {
-    let exe_dir = std::env::current_exe().ok()?.parent()?.to_path_buf();
+    let mut candidates = Vec::new();
 
-    let candidates = if cfg!(target_os = "macos") {
-        vec![
-            exe_dir.join("../Resources/scrcpy/scrcpy-server"),
-            exe_dir.join("scrcpy/scrcpy-server"),
-        ]
-    } else {
-        vec![
-            exe_dir.join("scrcpy/scrcpy-server"),
-            exe_dir.join("resources/scrcpy/scrcpy-server"),
-        ]
-    };
+    // 优先使用 Tauri resource_dir
+    // Prefer Tauri resource_dir
+    if let Ok(dir) = RESOURCE_DIR.lock() {
+        if !dir.is_empty() {
+            let res_dir = std::path::PathBuf::from(dir.as_str());
+            candidates.push(res_dir.join("scrcpy").join("scrcpy-server"));
+        }
+    }
 
-    for candidate in candidates {
+    // 回退: exe_dir 相对路径
+    // Fallback: exe_dir relative paths
+    if let Some(exe_dir) = std::env::current_exe().ok().and_then(|p| p.parent().map(|d| d.to_path_buf())) {
+        if cfg!(target_os = "macos") {
+            candidates.push(exe_dir.join("../Resources/scrcpy/scrcpy-server"));
+            candidates.push(exe_dir.join("scrcpy/scrcpy-server"));
+        } else {
+            candidates.push(exe_dir.join("scrcpy/scrcpy-server"));
+            candidates.push(exe_dir.join("resources/scrcpy/scrcpy-server"));
+        }
+    }
+
+    for candidate in &candidates {
         if candidate.exists() {
+            log::info!("Found bundled scrcpy-server at: {}", candidate.display());
             return Some(candidate.to_string_lossy().to_string());
         }
     }
+
     None
 }
 

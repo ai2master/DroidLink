@@ -103,6 +103,9 @@ pub fn run() {
 
             // 初始化 scrcpy 路径设置
             // Initialize scrcpy path settings
+            // 必须先设置 resource_dir，bundled_scrcpy_path() 才能找到正确位置
+            // Must set resource_dir first so bundled_scrcpy_path() can find the correct location
+            scrcpy::set_resource_dir(&resource_dir.to_string_lossy());
             let scrcpy_source = db.get_setting("scrcpy_source")
                 .ok().flatten().unwrap_or_else(|| "bundled".to_string());
             let scrcpy_custom_path = db.get_setting("scrcpy_custom_path")
