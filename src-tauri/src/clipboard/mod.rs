@@ -164,45 +164,59 @@ impl ClipboardBridge {
     /// Get current clipboard content from device (manual operation).
     /// All communication is pure ADB over USB.
     ///
-    /// Multi-tier approach for Android 10+ compatibility:
-    /// Tier 1: Try direct Binder call (fastest, no companion needed, works on some devices)
-    /// Tier 2: Try broadcast + file (fails on Android 10+ due to background restrictions)
-    /// Tier 3: Use Activity-based approach (works on Android 10+, requires companion)
+    /// Multi-tier approach (同 send 一样优先使用 Activity / same as send, prefer Activity):
+    /// Tier 1: Activity-based GET (most reliable, works on Android 10+)
+    /// Tier 2: Broadcast + file (works on Android <10)
+    /// Tier 3: Direct Binder call (unreliable, last resort)
+    ///
+    /// 不再优先使用 Binder 调用，因为:
+    /// - service call clipboard 的事务码在不同 Android 版本不一致
+    /// - 错误响应的 Parcel 会被解析为乱码
+    /// - Android 10+ 后台限制
+    /// No longer prefer Binder call because:
+    /// - service call clipboard transaction codes vary across Android versions
+    /// - Error Parcel responses get parsed as garbled text
+    /// - Android 10+ background restrictions
     pub fn get_from_device(&self, serial: &str) -> ClipResult<(String, String)> {
         log::info!("Getting clipboard from device");
 
-        // Tier 1: Try direct Binder call via service call
-        // This works on some devices because ADB has shell UID privileges
-        // Fastest method, no companion app needed
-        if let Ok(content) = receive_via_binder(serial) {
-            if !content.is_empty() {
-                log::info!("Clipboard received via Binder call: {} bytes", content.len());
-                return Ok((content, "binder".to_string()));
+        // Tier 1: Activity-based GET (最可靠 / most reliable)
+        // Activity 在前台运行，不受 Android 10+ 剪贴板后台限制
+        // Activity runs in foreground, not affected by Android 10+ clipboard bg restrictions
+        match receive_via_activity(serial) {
+            Ok(content) => {
+                if content == "CLIPBOARD_ACCESS_DENIED" {
+                    log::warn!("Activity returned CLIPBOARD_ACCESS_DENIED, trying other methods");
+                } else if !content.is_empty() {
+                    log::info!("Clipboard received via Activity: {} bytes", content.len());
+                    return Ok((content, "activity".to_string()));
+                }
+            }
+            Err(e) => {
+                log::debug!("Activity method failed: {}, trying broadcast", e);
             }
         }
 
-        // Tier 2: Try broadcast + file (works on Android <10, fails on 10+ for background)
+        // Tier 2: Broadcast + file (works on older Android versions)
         match receive_via_broadcast(serial) {
             Ok(content) => {
                 if content == "CLIPBOARD_ACCESS_DENIED" {
-                    log::warn!("Broadcast method blocked by Android 10+ restrictions, trying Activity fallback");
-                    // Fall through to Tier 3
+                    log::warn!("Broadcast method blocked by Android 10+ restrictions");
                 } else if !content.is_empty() {
                     log::info!("Clipboard received via broadcast: {} bytes", content.len());
                     return Ok((content, "broadcast".to_string()));
                 }
             }
             Err(e) => {
-                log::debug!("Broadcast method failed: {}, trying Activity fallback", e);
+                log::debug!("Broadcast method failed: {}", e);
             }
         }
 
-        // Tier 3: Try Activity-based approach (works on Android 10+)
-        // This launches a foreground Activity that can read clipboard
-        if let Ok(content) = receive_via_activity(serial) {
+        // Tier 3: Direct Binder call (last resort, unreliable across Android versions)
+        if let Ok(content) = receive_via_binder(serial) {
             if !content.is_empty() {
-                log::info!("Clipboard received via Activity: {} bytes", content.len());
-                return Ok((content, "activity".to_string()));
+                log::info!("Clipboard received via Binder call: {} bytes", content.len());
+                return Ok((content, "binder".to_string()));
             }
         }
 
@@ -216,89 +230,135 @@ impl ClipboardBridge {
 
 /// Try to read clipboard via direct Binder call.
 /// This uses the shell UID privileges to call the clipboard service directly.
-/// Works on some devices, but not all (depends on SELinux policy).
+///
+/// 警告: 此方法不可靠! Binder 事务码在不同 Android 版本上不同。
+/// WARNING: This method is unreliable! Binder transaction codes differ across Android versions.
+/// 已知问题: 某些设备上 code 2 不是 getPrimaryClip 而是 setPrimaryClipAsPackage。
+/// Known issue: On some devices, code 2 is setPrimaryClipAsPackage instead of getPrimaryClip.
 fn receive_via_binder(serial: &str) -> ClipResult<String> {
-    // service call clipboard 2 s16 com.android.shell
-    // The '2' is the transaction code for getting clipboard
-    // s16 specifies the calling package (shell has clipboard access)
-    let cmd = "service call clipboard 2 s16 com.android.shell 2>/dev/null";
-    let output = adb::shell(serial, cmd)?;
+    // 先查询 Android API 版本，选择可能正确的事务码
+    // Query Android API level first to select likely correct transaction code
+    let api_str = adb::shell(serial, "getprop ro.build.version.sdk 2>/dev/null")
+        .unwrap_or_default();
+    let api_level: u32 = api_str.trim().parse().unwrap_or(0);
 
-    // Parse the Binder result format
-    // Example output:
-    // Result: Parcel(
-    //   0x00000000: 00000000 00000009 00680054 00730069 '........T.h.i.s.'
-    //   0x00000010: 00200020 00730069 00200020 00650074 '  . .i.s. . .t.e.'
-    //   ...
-    // )
+    // 根据 API 级别选择事务码 / Select transaction code based on API level
+    // AIDL 接口的事务码在不同版本可能不同，这里使用最常见的:
+    // - Android 10 (API 29) 之前: code 1 = getPrimaryClip
+    // - Android 10+ (API 29+): code 2 在某些 OEM 上可能是 setPrimaryClip
+    // 为安全起见，尝试多个 code 并验证结果
+    let transaction_codes = if api_level >= 29 { vec![1, 2] } else { vec![2, 1] };
 
-    // Look for the Result: Parcel format
-    if !output.contains("Result: Parcel") {
-        return Err(ClipboardError::ReadFailed);
-    }
+    for code in transaction_codes {
+        let cmd = format!(
+            "service call clipboard {} s16 com.android.shell 2>/dev/null",
+            code
+        );
+        let output = match adb::shell(serial, &cmd) {
+            Ok(o) => o,
+            Err(_) => continue,
+        };
 
-    // Extract hex data from the parcel
-    let mut text_chars = Vec::new();
-    for line in output.lines() {
-        // Skip non-hex lines
-        if !line.trim().starts_with("0x") {
+        // 检查是否有错误响应 / Check for error responses
+        if !output.contains("Result: Parcel") {
             continue;
         }
 
-        // Parse hex bytes from the line
-        // Format: 0x00000000: 00000000 00000009 00680054 ...
-        if let Some(hex_part) = line.split(':').nth(1) {
-            // Take only the hex values part (before the ASCII representation in quotes)
-            let hex_data = if let Some(ascii_start) = hex_part.find('\'') {
-                &hex_part[..ascii_start]
-            } else {
-                hex_part
-            };
+        // 检查 Parcel 是否为错误/异常 / Check if Parcel is an error/exception
+        // 错误 Parcel 通常只有 1-2 行 hex 数据且第一个值是 ffffffff (error flag)
+        // Error Parcels typically have 1-2 hex lines with first value ffffffff
+        let hex_lines: Vec<&str> = output.lines()
+            .filter(|l| l.trim().starts_with("0x"))
+            .collect();
 
-            // Parse hex values (each is 4 bytes / 8 hex digits)
-            for hex_value in hex_data.split_whitespace() {
-                if hex_value.len() == 8 {
-                    // Parse as u32 (little-endian in the output)
-                    if let Ok(val) = u32::from_str_radix(hex_value, 16) {
-                        // Extract UTF-16 characters (Android uses UTF-16 internally)
-                        let b0 = (val & 0xFF) as u8;
-                        let b1 = ((val >> 8) & 0xFF) as u8;
-                        let b2 = ((val >> 16) & 0xFF) as u8;
-                        let b3 = ((val >> 24) & 0xFF) as u8;
+        if hex_lines.is_empty() {
+            continue;
+        }
 
-                        // Combine bytes into UTF-16 code units
-                        if b1 != 0 || b0 != 0 {
-                            let c1 = u16::from_le_bytes([b0, b1]);
-                            if c1 != 0 {
-                                text_chars.push(c1);
-                            }
+        // 检查第一个 hex 值是否为错误标志 / Check first hex value for error flag
+        if let Some(first_line) = hex_lines.first() {
+            if let Some(hex_part) = first_line.split(':').nth(1) {
+                let first_hex = hex_part.split_whitespace().next().unwrap_or("");
+                // ffffffff = error response, 只有很少数据 = 空剪贴板
+                // ffffffff = error response, very few data = empty clipboard
+                if first_hex == "ffffffff" || (hex_lines.len() <= 1 && first_hex == "00000000") {
+                    log::debug!("Binder code {} returned error/empty parcel", code);
+                    continue;
+                }
+            }
+        }
+
+        // 解析 hex 数据为 UTF-16 / Parse hex data to UTF-16
+        let mut text_chars = Vec::new();
+        let mut is_first_word = true;
+        for line in &hex_lines {
+            if let Some(hex_part) = line.split(':').nth(1) {
+                let hex_data = if let Some(ascii_start) = hex_part.find('\'') {
+                    &hex_part[..ascii_start]
+                } else {
+                    hex_part
+                };
+
+                for hex_value in hex_data.split_whitespace() {
+                    if hex_value.len() == 8 {
+                        // 跳过 Parcel 头部（第一个 word 是状态码）
+                        // Skip Parcel header (first word is status code)
+                        if is_first_word {
+                            is_first_word = false;
+                            continue;
                         }
-                        if b3 != 0 || b2 != 0 {
-                            let c2 = u16::from_le_bytes([b2, b3]);
-                            if c2 != 0 {
-                                text_chars.push(c2);
+
+                        if let Ok(val) = u32::from_str_radix(hex_value, 16) {
+                            let b0 = (val & 0xFF) as u8;
+                            let b1 = ((val >> 8) & 0xFF) as u8;
+                            let b2 = ((val >> 16) & 0xFF) as u8;
+                            let b3 = ((val >> 24) & 0xFF) as u8;
+
+                            if b1 != 0 || b0 != 0 {
+                                let c1 = u16::from_le_bytes([b0, b1]);
+                                if c1 != 0 { text_chars.push(c1); }
+                            }
+                            if b3 != 0 || b2 != 0 {
+                                let c2 = u16::from_le_bytes([b2, b3]);
+                                if c2 != 0 { text_chars.push(c2); }
                             }
                         }
                     }
                 }
             }
         }
+
+        let text = String::from_utf16_lossy(&text_chars);
+        let cleaned = text.trim_start_matches(|c: char| c.is_control() && c != '\n' && c != '\r' && c != '\t')
+                          .trim_end_matches('\0')
+                          .to_string();
+
+        if cleaned.is_empty() {
+            continue;
+        }
+
+        // 验证结果看起来像正常文本而不是乱码 / Validate result looks like normal text, not garbled
+        // 如果超过 30% 是替换字符 (U+FFFD)，说明是解析错误
+        // If >30% are replacement chars (U+FFFD), it's a parsing error
+        let replacement_count = cleaned.chars().filter(|&c| c == '\u{FFFD}').count();
+        let total_chars = cleaned.chars().count();
+        if total_chars > 0 && replacement_count as f64 / total_chars as f64 > 0.3 {
+            log::warn!("Binder code {} returned garbled data ({}% replacement chars), skipping",
+                code, replacement_count * 100 / total_chars);
+            continue;
+        }
+
+        // 检查是否包含 Java 异常堆栈 / Check for Java exception stack trace
+        if cleaned.contains("Exception") || cleaned.contains("at com.android") || cleaned.contains("at android.os") {
+            log::warn!("Binder code {} returned exception data, skipping", code);
+            continue;
+        }
+
+        log::info!("Binder code {} succeeded: {} chars", code, cleaned.len());
+        return Ok(cleaned);
     }
 
-    // Convert UTF-16 to String
-    let text = String::from_utf16_lossy(&text_chars);
-
-    // The Binder result includes some header bytes, try to find the actual text
-    // Skip any leading null/control characters
-    let cleaned = text.trim_start_matches(|c: char| c.is_control() && c != '\n' && c != '\r' && c != '\t')
-                      .trim_end_matches('\0')
-                      .to_string();
-
-    if cleaned.is_empty() {
-        return Err(ClipboardError::ReadFailed);
-    }
-
-    Ok(cleaned)
+    Err(ClipboardError::ReadFailed)
 }
 
 // ========================
