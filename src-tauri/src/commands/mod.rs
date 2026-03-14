@@ -785,11 +785,9 @@ pub async fn get_tool_sources(app_handle: tauri::AppHandle) -> Result<Value, Str
 
     let adb_sources = crate::adb::get_available_sources(&resource_dir);
 
-    // scrcpy: 检查内置和系统 scrcpy / Check bundled and system scrcpy
-    let mut scrcpy_sources = Vec::new();
-    if crate::scrcpy::has_bundled_scrcpy() {
-        scrcpy_sources.push("bundled".to_string());
-    }
+    // scrcpy: 始终包含内置选项（CI 构建会打包 scrcpy，运行时缺失则自动回退到系统 PATH）
+    // scrcpy: always include bundled option (CI build bundles scrcpy, runtime falls back to system PATH if missing)
+    let mut scrcpy_sources = vec!["bundled".to_string()];
     if which::which(if cfg!(target_os = "windows") { "scrcpy.exe" } else { "scrcpy" }).is_ok() {
         scrcpy_sources.push("system".to_string());
     }

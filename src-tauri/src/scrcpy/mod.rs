@@ -555,27 +555,33 @@ impl Drop for ScrcpyManager {
 
 /// 全局 scrcpy 自定义路径 (设置后覆盖默认值)
 /// Global scrcpy custom path (overrides default when set)
-static SCRCPY_CUSTOM_PATH: std::sync::OnceLock<String> = std::sync::OnceLock::new();
+static SCRCPY_CUSTOM_PATH: std::sync::Mutex<String> = std::sync::Mutex::new(String::new());
 
 /// 设置 scrcpy 自定义路径
 /// Set custom scrcpy path from settings
 pub fn set_scrcpy_custom_path(path: &str) {
-    let _ = SCRCPY_CUSTOM_PATH.set(path.to_string());
+    if let Ok(mut p) = SCRCPY_CUSTOM_PATH.lock() {
+        *p = path.to_string();
+    }
 }
 
-/// scrcpy 来源模式 (system / custom)
+/// scrcpy 来源模式 (bundled / system / custom)
 /// scrcpy source mode
-static SCRCPY_SOURCE: std::sync::OnceLock<String> = std::sync::OnceLock::new();
+static SCRCPY_SOURCE: std::sync::Mutex<String> = std::sync::Mutex::new(String::new());
 
 /// 设置 scrcpy 来源
 /// Set scrcpy source mode
 pub fn set_scrcpy_source(source: &str) {
-    let _ = SCRCPY_SOURCE.set(source.to_string());
+    if let Ok(mut s) = SCRCPY_SOURCE.lock() {
+        *s = source.to_string();
+    }
 }
 
 fn scrcpy_binary() -> String {
-    let source = SCRCPY_SOURCE.get().map(|s| s.as_str()).unwrap_or("bundled");
-    match source {
+    let source = SCRCPY_SOURCE.lock().ok()
+        .map(|s| if s.is_empty() { "bundled".to_string() } else { s.clone() })
+        .unwrap_or_else(|| "bundled".to_string());
+    match source.as_str() {
         "bundled" => {
             // 尝试使用打包的 scrcpy / Try bundled scrcpy
             if let Some(path) = bundled_scrcpy_path() {
@@ -586,7 +592,7 @@ fn scrcpy_binary() -> String {
             default_scrcpy_name()
         }
         "custom" => {
-            if let Some(custom) = SCRCPY_CUSTOM_PATH.get() {
+            if let Ok(custom) = SCRCPY_CUSTOM_PATH.lock() {
                 if !custom.is_empty() {
                     return custom.clone();
                 }
