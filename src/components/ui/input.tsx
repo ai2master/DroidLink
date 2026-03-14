@@ -10,11 +10,11 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
   ({ className, icon, suffix, ...props }, ref) => {
     const renderIcon = () => {
       if (!icon) return null;
-      if (typeof icon === 'function') {
-        const IconComp = icon as React.ComponentType<{ className?: string }>;
-        return <IconComp className="h-4 w-4" />;
-      }
-      return icon;
+      // Already a rendered React element (e.g., <Search />)
+      if (React.isValidElement(icon)) return icon;
+      // Component reference: function component or forwardRef object (e.g., Search from lucide-react)
+      const IconComp = icon as React.ComponentType<{ className?: string }>;
+      return <IconComp className="h-4 w-4" />;
     };
     if (icon || suffix) {
       return (
