@@ -1,4 +1,3 @@
-use std::sync::Arc;
 use serde_json::Value;
 use tauri::{State, Manager};
 
@@ -8,7 +7,7 @@ use crate::adb;
 // ========== Device Commands ==========
 
 #[tauri::command]
-pub async fn get_devices(state: State<'_, AppState>) -> Result<Value, String> {
+pub async fn get_devices(_state: State<'_, AppState>) -> Result<Value, String> {
     let devices = adb::get_devices().map_err(|e| e.to_string())?;
     Ok(serde_json::to_value(&devices).unwrap())
 }
@@ -34,7 +33,7 @@ pub async fn get_contacts(serial: String, state: State<'_, AppState>) -> Result<
 }
 
 #[tauri::command]
-pub async fn get_contact_history(serial: String, contact_id: String, state: State<'_, AppState>) -> Result<Value, String> {
+pub async fn get_contact_history(_serial: String, contact_id: String, state: State<'_, AppState>) -> Result<Value, String> {
     let history = state.db.get_version_history("contacts", Some(&contact_id), 50).map_err(|e| e.to_string())?;
     Ok(serde_json::to_value(&history).unwrap())
 }

@@ -1,12 +1,11 @@
 use crate::adb;
 use crate::db::{Database, FolderSyncEntry, FolderSyncPair, TransferJournalEntry};
 use crossbeam_channel::{Sender, Receiver, unbounded};
-use log::{debug, error, info, warn};
+use log::{info, warn};
 use notify::{Config, Event, RecommendedWatcher, RecursiveMode, Watcher};
 use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::io::Read as IoRead;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::{Duration, Instant, SystemTime};
@@ -509,35 +508,13 @@ impl FolderSync {
                 }
             }
 
-            // Re-attempt the transfer
-            let retry_result = if entry.direction == "push" {
-                // For push: local file must still exist
-                if Path::new(&entry.final_path).exists() || Path::new(&entry.file_path).exists() {
-                    let local = if Path::new(&entry.final_path).exists() {
-                        // final_path for push is the remote path, file_path is relative
-                        // We need to find the local source — look up the pair
-                        None // Will use re-query below
-                    } else {
-                        None
-                    };
-                    // Mark old entry as superseded, create fresh attempt
-                    let _ = self.db.update_transfer_status(&entry.id, "failed", Some("Superseded by recovery"));
-                    // We cannot easily re-derive local paths here without the pair context.
-                    // Skip entries that need pair context — they'll be retried on next sync.
-                    Err(FolderSyncError::TransferInterrupted("Will retry on next sync".to_string()))
-                } else {
-                    Err(FolderSyncError::TransferInterrupted("Source file no longer exists".to_string()))
-                }
-            } else {
-                // For pull: remote file must still exist, we know the final local path
-                let local_path = &entry.final_path;
-                if let Some(parent) = Path::new(local_path).parent() {
-                    let _ = std::fs::create_dir_all(parent);
-                }
-                // Reconstruct remote path from file_path + pair info
-                let _ = self.db.update_transfer_status(&entry.id, "failed", Some("Superseded by recovery"));
-                Err(FolderSyncError::TransferInterrupted("Will retry on next sync".to_string()))
-            };
+            // Mark entry as pending for retry on next sync.
+            // We cannot fully re-derive local/remote paths here without the sync pair context,
+            // but the next sync_pair() call will detect these files as out-of-sync and re-transfer
+            // them using verified_push/verified_pull with fresh journal entries.
+            let _ = self.db.update_transfer_status(&entry.id, "failed", Some("Marked for retry by recovery"));
+            let retry_result: std::result::Result<(), FolderSyncError> =
+                Err(FolderSyncError::TransferInterrupted("Will retry on next sync".to_string()));
 
             match retry_result {
                 Ok(_) => result.recovered += 1,
