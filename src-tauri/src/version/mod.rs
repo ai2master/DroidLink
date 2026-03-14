@@ -37,6 +37,7 @@ pub type Result<T> = std::result::Result<T, VersionError>;
 
 /// Detailed version information including snapshot data
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct VersionDetail {
     pub record: VersionRecord,
     pub snapshot_data: Option<serde_json::Value>,

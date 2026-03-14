@@ -39,6 +39,7 @@ impl Default for InputMode {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ScrcpyOptions {
     pub max_size: u32,         // 最大分辨率 (0=不限) / Max dimension (0=no limit)
     pub bit_rate: u32,         // 视频码率 bps / Video bit rate in bps

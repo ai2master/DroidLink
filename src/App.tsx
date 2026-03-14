@@ -68,7 +68,7 @@ function App() {
           setCompanionDeviceSerial(status.serial || '');
           tauriInvoke<any>('get_device_info', { serial: status.serial })
             .then((info: any) => {
-              setCompanionDeviceName(info?.display_name || info?.model || status.serial);
+              setCompanionDeviceName(info?.displayName || info?.model || status.serial);
               setCompanionPromptVisible(true);
             })
             .catch(() => {

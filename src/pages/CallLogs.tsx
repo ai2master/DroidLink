@@ -24,19 +24,19 @@ interface CallLog {
   id: string;
   number: string;
   contactName?: string;
-  type: number; // 1=incoming, 2=outgoing, 3=missed
+  callType: number; // 1=incoming, 2=outgoing, 3=missed
   date: string;
   duration: number; // seconds
 }
 
 interface Version {
   id: string;
-  created_at: string;
+  createdAt: string;
   action: string;
   description?: string;
   source: string;
-  data_before?: string;
-  data_after?: string;
+  dataBefore?: string;
+  dataAfter?: string;
 }
 
 type CallTypeFilter = 'all' | 'incoming' | 'outgoing' | 'missed';
@@ -99,7 +99,7 @@ export const CallLogs: React.FC = () => {
       outgoing: 2,
       missed: 3,
     };
-    const filtered = callLogs.filter((log) => log.type === typeMap[typeFilter]);
+    const filtered = callLogs.filter((log) => log.callType === typeMap[typeFilter]);
     setFilteredLogs(filtered);
   };
 
@@ -396,9 +396,9 @@ export const CallLogs: React.FC = () => {
                     <tr key={log.id} className="border-b border-border hover:bg-gray-50">
                       <td className="px-3 py-2">
                         <div className="flex items-center gap-2">
-                          {getCallTypeIcon(log.type)}
-                          <span className={cn("inline-flex items-center px-2 py-0.5 rounded text-xs font-medium", getCallTypeBadgeClass(log.type))}>
-                            {callTypeText(log.type)}
+                          {getCallTypeIcon(log.callType)}
+                          <span className={cn("inline-flex items-center px-2 py-0.5 rounded text-xs font-medium", getCallTypeBadgeClass(log.callType))}>
+                            {callTypeText(log.callType)}
                           </span>
                         </div>
                       </td>
@@ -491,7 +491,7 @@ export const CallLogs: React.FC = () => {
                                 {v.action}
                               </span>
                               <span>{v.description}</span>
-                              <span className="text-gray-400 text-xs">{formatDate(v.created_at)}</span>
+                              <span className="text-gray-400 text-xs">{formatDate(v.createdAt)}</span>
                             </div>
                             <div className="flex gap-1">
                               <Button variant="ghost" size="sm" onClick={() => handleViewVersionDetail(v.id)}>
@@ -527,8 +527,8 @@ export const CallLogs: React.FC = () => {
           <DialogBody>
             {selectedVersionDetail && (() => {
               const record = selectedVersionDetail.record || selectedVersionDetail;
-              const beforeData = record.data_before ? (typeof record.data_before === 'string' ? JSON.parse(record.data_before) : record.data_before) : null;
-              const afterData = record.data_after ? (typeof record.data_after === 'string' ? JSON.parse(record.data_after) : record.data_after) : null;
+              const beforeData = record.dataBefore ? (typeof record.dataBefore === 'string' ? JSON.parse(record.dataBefore) : record.dataBefore) : null;
+              const afterData = record.dataAfter ? (typeof record.dataAfter === 'string' ? JSON.parse(record.dataAfter) : record.dataAfter) : null;
               return (
                 <>
                   {beforeData && (

@@ -152,19 +152,19 @@ function getFieldDefs(dataType: string, t: (key: string) => string): FieldDef[] 
   switch (dataType) {
     case 'contacts':
       return [
-        { key: 'display_name', label: t('contacts.name') },
-        { key: 'phone_numbers', label: t('contacts.phone'), render: renderJsonArray },
+        { key: 'displayName', label: t('contacts.name') },
+        { key: 'phoneNumbers', label: t('contacts.phone'), render: renderJsonArray },
         { key: 'emails', label: t('contacts.email'), render: renderJsonArray },
         { key: 'organization', label: t('contacts.organization') },
       ];
     case 'messages':
       return [
         { key: 'address', label: t('messages.address') },
-        { key: 'contact_name', label: t('messages.contact') },
+        { key: 'contactName', label: t('messages.contact') },
         { key: 'body', label: t('messages.body') },
         { key: 'date', label: t('messages.date'), render: (v: any) => <span>{v ? formatDate(v) : '-'}</span> },
         {
-          key: 'msg_type',
+          key: 'msgType',
           label: t('messages.type'),
           render: (v: any) => (
             <span className={cn("inline-flex items-center px-2 py-0.5 rounded text-xs font-medium", v === 2 ? 'bg-blue-50 text-blue-700' : 'bg-green-50 text-green-700')}>
@@ -176,8 +176,8 @@ function getFieldDefs(dataType: string, t: (key: string) => string): FieldDef[] 
     case 'call_logs':
       return [
         { key: 'number', label: t('callLogs.number') },
-        { key: 'contact_name', label: t('callLogs.contact') },
-        { key: 'call_type', label: t('callLogs.type'), render: renderCallType(t) },
+        { key: 'contactName', label: t('callLogs.contact') },
+        { key: 'callType', label: t('callLogs.type'), render: renderCallType(t) },
         { key: 'date', label: t('callLogs.date'), render: (v: any) => <span>{v ? formatDate(v) : '-'}</span> },
         { key: 'duration', label: t('callLogs.duration'), render: (v: any) => <span>{v > 0 ? `${v}s` : '-'}</span> },
       ];

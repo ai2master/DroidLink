@@ -45,7 +45,7 @@ export const VersionPreview: React.FC<VersionPreviewProps> = ({ dataType, data, 
 
 const ContactPreview: React.FC<{ data: any; compact: boolean }> = ({ data, compact }) => {
   const { t } = useTranslation();
-  const phones = parseJsonArray(data.phone_numbers);
+  const phones = parseJsonArray(data.phoneNumbers);
   const emails = parseJsonArray(data.emails);
 
   if (compact) {
@@ -53,7 +53,7 @@ const ContactPreview: React.FC<{ data: any; compact: boolean }> = ({ data, compa
       <div className="space-y-1 w-full">
         <div className="flex items-center gap-2">
           <User className="w-4 h-4" />
-          <span className="font-semibold">{data.display_name || '-'}</span>
+          <span className="font-semibold">{data.displayName || '-'}</span>
         </div>
         {phones.length > 0 && (
           <div className="flex items-center gap-2">
@@ -76,7 +76,7 @@ const ContactPreview: React.FC<{ data: any; compact: boolean }> = ({ data, compa
       <dt className="font-medium text-gray-500 flex items-center gap-2">
         <User className="w-4 h-4" /> {t('contacts.name')}
       </dt>
-      <dd className="text-gray-900">{data.display_name || '-'}</dd>
+      <dd className="text-gray-900">{data.displayName || '-'}</dd>
 
       <dt className="font-medium text-gray-500 flex items-center gap-2">
         <Phone className="w-4 h-4" /> {t('contacts.phone')}
@@ -110,14 +110,14 @@ const ContactPreview: React.FC<{ data: any; compact: boolean }> = ({ data, compa
 
 const MessagePreview: React.FC<{ data: any; compact: boolean }> = ({ data, compact }) => {
   const { t } = useTranslation();
-  const isSent = data.msg_type === 2;
+  const isSent = data.msgType === 2;
 
   if (compact) {
     return (
       <div className="space-y-1 w-full">
         <div className="flex items-center gap-2">
           <MessageSquare className="w-4 h-4" />
-          <span className="font-semibold">{data.contact_name || data.address || '-'}</span>
+          <span className="font-semibold">{data.contactName || data.address || '-'}</span>
           <span className={cn("inline-flex items-center px-2 py-0.5 rounded text-xs font-medium", isSent ? 'bg-blue-50 text-blue-700' : 'bg-green-50 text-green-700')}>
             {isSent ? t('messages.sent') : t('messages.received')}
           </span>
@@ -131,7 +131,7 @@ const MessagePreview: React.FC<{ data: any; compact: boolean }> = ({ data, compa
     <div>
       <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 mb-2 p-3 border border-border rounded-md text-[var(--font-size-sm)]">
         <dt className="font-medium text-gray-500">{t('messages.contact')}</dt>
-        <dd className="text-gray-900">{data.contact_name || data.address || '-'}</dd>
+        <dd className="text-gray-900">{data.contactName || data.address || '-'}</dd>
 
         <dt className="font-medium text-gray-500">{t('messages.address')}</dt>
         <dd className="text-gray-900">{data.address || '-'}</dd>
@@ -162,7 +162,7 @@ const MessagePreview: React.FC<{ data: any; compact: boolean }> = ({ data, compa
 
 const CallLogPreview: React.FC<{ data: any; compact: boolean }> = ({ data, compact }) => {
   const { t } = useTranslation();
-  const callType = data.call_type ?? 0;
+  const callType = data.callType ?? 0;
   const color = callTypeColor(callType);
   const typeLabel = callType === 1 ? t('callLogs.incoming')
     : callType === 2 ? t('callLogs.outgoing')
@@ -186,7 +186,7 @@ const CallLogPreview: React.FC<{ data: any; compact: boolean }> = ({ data, compa
         <span className={cn("inline-flex items-center px-2 py-0.5 rounded text-xs font-medium", getBadgeClass())}>
           {typeLabel}
         </span>
-        <span className="font-semibold">{data.contact_name || data.number || '-'}</span>
+        <span className="font-semibold">{data.contactName || data.number || '-'}</span>
         {data.duration > 0 && (
           <span className="text-gray-400 flex items-center gap-1">
             <Clock className="w-4 h-4" /> {formatDuration(data.duration)}
@@ -213,7 +213,7 @@ const CallLogPreview: React.FC<{ data: any; compact: boolean }> = ({ data, compa
       <dd className="text-gray-900">{data.number || '-'}</dd>
 
       <dt className="font-medium text-gray-500">{t('callLogs.contact')}</dt>
-      <dd className="text-gray-900">{data.contact_name || '-'}</dd>
+      <dd className="text-gray-900">{data.contactName || '-'}</dd>
 
       <dt className="font-medium text-gray-500">{t('callLogs.date')}</dt>
       <dd className="text-gray-900">{data.date ? formatDate(data.date) : '-'}</dd>

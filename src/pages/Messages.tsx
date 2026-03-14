@@ -28,8 +28,7 @@ interface Conversation {
   address: string;
   contactName?: string;
   lastMessage: string;
-  lastMessageDate: string;
-  unreadCount?: number;
+  lastDate: string;
   messageCount: number;
 }
 
@@ -45,12 +44,12 @@ interface Message {
 
 interface Version {
   id: string;
-  created_at: string;
+  createdAt: string;
   action: string;
   description?: string;
   source: string;
-  data_before?: string;
-  data_after?: string;
+  dataBefore?: string;
+  dataAfter?: string;
 }
 
 export const Messages: React.FC = () => {
@@ -343,15 +342,8 @@ export const Messages: React.FC = () => {
                     )}
                   >
                     <div className="flex gap-3 items-start">
-                      <div className="relative">
-                        <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center shrink-0">
-                          <User className="w-5 h-5 text-gray-500" />
-                        </div>
-                        {conv.unreadCount && conv.unreadCount > 0 ? (
-                          <Badge variant="error" className="absolute -top-1 -right-1 min-w-[20px] h-5 flex items-center justify-center text-xs">
-                            {conv.unreadCount}
-                          </Badge>
-                        ) : null}
+                      <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center shrink-0">
+                        <User className="w-5 h-5 text-gray-500" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex justify-between items-center mb-1">
@@ -359,7 +351,7 @@ export const Messages: React.FC = () => {
                             {conv.contactName || conv.address}
                           </span>
                           <span className="text-gray-400 text-xs shrink-0 ml-2">
-                            {formatRelativeTime(conv.lastMessageDate)}
+                            {formatRelativeTime(conv.lastDate)}
                           </span>
                         </div>
                         <p className="text-gray-500 text-[var(--font-size-sm)] truncate mb-1">
@@ -489,7 +481,7 @@ export const Messages: React.FC = () => {
                                 {v.action}
                               </span>
                               <span>{v.description}</span>
-                              <span className="text-gray-400 text-xs">{formatDate(v.created_at)}</span>
+                              <span className="text-gray-400 text-xs">{formatDate(v.createdAt)}</span>
                             </div>
                             <div className="flex gap-1">
                               <Button variant="ghost" size="sm" onClick={() => handleViewVersionDetail(v.id)}>
@@ -525,8 +517,8 @@ export const Messages: React.FC = () => {
           <DialogBody>
             {selectedVersionDetail && (() => {
               const record = selectedVersionDetail.record || selectedVersionDetail;
-              const beforeData = record.data_before ? (typeof record.data_before === 'string' ? JSON.parse(record.data_before) : record.data_before) : null;
-              const afterData = record.data_after ? (typeof record.data_after === 'string' ? JSON.parse(record.data_after) : record.data_after) : null;
+              const beforeData = record.dataBefore ? (typeof record.dataBefore === 'string' ? JSON.parse(record.dataBefore) : record.dataBefore) : null;
+              const afterData = record.dataAfter ? (typeof record.dataAfter === 'string' ? JSON.parse(record.dataAfter) : record.dataAfter) : null;
               return (
                 <>
                   {beforeData && (

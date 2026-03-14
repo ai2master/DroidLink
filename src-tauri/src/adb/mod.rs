@@ -55,6 +55,7 @@ pub enum AdbError {
 pub type Result<T> = std::result::Result<T, AdbError>;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct DeviceInfo {
     pub serial: String,
     pub model: String,

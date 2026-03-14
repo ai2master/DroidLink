@@ -19,6 +19,7 @@ pub enum DbError {
 pub type DbResult<T> = std::result::Result<T, DbError>;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ContactRecord {
     pub id: i64,
     pub device_serial: String,
@@ -36,6 +37,7 @@ pub struct ContactRecord {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct MessageRecord {
     pub id: i64,
     pub device_serial: String,
@@ -54,6 +56,7 @@ pub struct MessageRecord {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CallLogRecord {
     pub id: i64,
     pub device_serial: String,
@@ -69,6 +72,7 @@ pub struct CallLogRecord {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct VersionRecord {
     pub id: String,
     pub device_serial: String,
@@ -84,6 +88,7 @@ pub struct VersionRecord {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct FolderSyncPair {
     pub id: String,
     pub device_serial: String,
@@ -109,6 +114,7 @@ pub struct FolderSyncEntry {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct SyncState {
     pub device_serial: String,
     pub data_type: String,
@@ -120,6 +126,7 @@ pub struct SyncState {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Conversation {
     pub thread_id: String,
     pub address: String,

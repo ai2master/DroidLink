@@ -17,7 +17,7 @@ import { cn } from '../utils/cn';
 
 interface Version {
   id: string;
-  timestamp: string;
+  createdAt: string;
   action: string;
   description: string;
   source: string;
@@ -26,13 +26,17 @@ interface Version {
 }
 
 interface VersionDetail {
-  id: string;
-  timestamp: string;
-  action: string;
-  description: string;
-  before: any;
-  after: any;
-  changes: string[];
+  record: {
+    id: string;
+    createdAt: string;
+    action: string;
+    description?: string;
+    dataBefore?: string;
+    dataAfter?: string;
+    dataType: string;
+    source: string;
+  };
+  snapshotData?: any;
 }
 
 interface CompareResult {
@@ -211,7 +215,7 @@ export const VersionHistory: React.FC = () => {
         {versionList.map((version) => (
           <div key={version.id} className="flex gap-4">
             <div className="text-xs text-gray-500 w-32 text-right pt-1">
-              {formatDate(version.timestamp)}
+              {formatDate(version.createdAt)}
             </div>
             <div className="relative flex-1">
               <div className="absolute left-0 top-0 bottom-0 w-px bg-border" />
@@ -274,11 +278,12 @@ export const VersionHistory: React.FC = () => {
   const renderDetailModal = () => {
     if (!selectedVersion) return null;
 
-    const beforeData = selectedVersion.before
-      ? (typeof selectedVersion.before === 'string' ? JSON.parse(selectedVersion.before) : selectedVersion.before)
+    const rec = selectedVersion.record;
+    const beforeData = rec.dataBefore
+      ? (typeof rec.dataBefore === 'string' ? JSON.parse(rec.dataBefore) : rec.dataBefore)
       : null;
-    const afterData = selectedVersion.after
-      ? (typeof selectedVersion.after === 'string' ? JSON.parse(selectedVersion.after) : selectedVersion.after)
+    const afterData = rec.dataAfter
+      ? (typeof rec.dataAfter === 'string' ? JSON.parse(rec.dataAfter) : rec.dataAfter)
       : null;
 
     return (
@@ -293,23 +298,12 @@ export const VersionHistory: React.FC = () => {
             <div className="space-y-4">
               <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 border border-border rounded-[var(--border-radius)] p-3 text-sm">
                 <dt className="text-gray-500 font-medium">{t('versionHistory.operation')}</dt>
-                <dd><Badge variant={getActionColor(selectedVersion.action)}>{selectedVersion.action}</Badge></dd>
+                <dd><Badge variant={getActionColor(rec.action)}>{rec.action}</Badge></dd>
                 <dt className="text-gray-500 font-medium">{t('versionHistory.description')}</dt>
-                <dd>{selectedVersion.description}</dd>
+                <dd>{rec.description}</dd>
                 <dt className="text-gray-500 font-medium">{t('versionHistory.time')}</dt>
-                <dd>{formatDate(selectedVersion.timestamp)}</dd>
+                <dd>{formatDate(rec.createdAt)}</dd>
               </dl>
-
-              {selectedVersion.changes && selectedVersion.changes.length > 0 && (
-                <>
-                  <div className="font-semibold text-sm border-t border-border pt-3">{t('versionHistory.changes')}</div>
-                  <div className="flex flex-col gap-1">
-                    {selectedVersion.changes.map((change, index) => (
-                      <div key={index} className="text-sm">{change}</div>
-                    ))}
-                  </div>
-                </>
-              )}
 
               {beforeData && (
                 <>
@@ -334,7 +328,7 @@ export const VersionHistory: React.FC = () => {
               variant="primary"
               onClick={() => {
                 if (selectedVersion) {
-                  handleRestore(selectedVersion.id, selectedVersion.description);
+                  handleRestore(selectedVersion.record.id, selectedVersion.record.description || '');
                   setDetailModalVisible(false);
                 }
               }}

@@ -37,11 +37,11 @@ interface Contact {
 
 interface Version {
   id: string;
-  timestamp: string;
+  createdAt: string;
   action: string;
   changes: string;
-  data_before?: string;
-  data_after?: string;
+  dataBefore?: string;
+  dataAfter?: string;
 }
 
 export const Contacts: React.FC = () => {
@@ -465,7 +465,7 @@ export const Contacts: React.FC = () => {
                                                   </span>
                                                   <span>{version.changes}</span>
                                                   <span className="text-gray-400 text-xs">
-                                                    {formatDate(version.timestamp)}
+                                                    {formatDate(version.createdAt)}
                                                   </span>
                                                 </div>
                                                 <div className="flex gap-1">
@@ -584,8 +584,8 @@ export const Contacts: React.FC = () => {
           <DialogBody>
             {selectedVersionDetail && (() => {
               const record = selectedVersionDetail.record || selectedVersionDetail;
-              const beforeData = record.data_before ? (typeof record.data_before === 'string' ? JSON.parse(record.data_before) : record.data_before) : null;
-              const afterData = record.data_after ? (typeof record.data_after === 'string' ? JSON.parse(record.data_after) : record.data_after) : null;
+              const beforeData = record.dataBefore ? (typeof record.dataBefore === 'string' ? JSON.parse(record.dataBefore) : record.dataBefore) : null;
+              const afterData = record.dataAfter ? (typeof record.dataAfter === 'string' ? JSON.parse(record.dataAfter) : record.dataAfter) : null;
               const color = getActionColor(record.action);
               return (
                 <>
@@ -599,7 +599,7 @@ export const Contacts: React.FC = () => {
                     <dt className="font-medium text-gray-500">{t('versionHistory.description')}</dt>
                     <dd className="text-gray-900">{record.description}</dd>
                     <dt className="font-medium text-gray-500">{t('versionHistory.time')}</dt>
-                    <dd className="text-gray-900">{formatDate(record.created_at)}</dd>
+                    <dd className="text-gray-900">{formatDate(record.createdAt)}</dd>
                   </dl>
                   {beforeData && (
                     <>

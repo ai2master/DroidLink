@@ -21,13 +21,13 @@ import { cn } from '../utils/cn';
 
 interface SyncPair {
   id: string;
-  device_serial: string;
-  local_path: string;
-  remote_path: string;
+  deviceSerial: string;
+  localPath: string;
+  remotePath: string;
   direction: string;
   enabled: boolean;
-  last_synced: string | null;
-  created_at: string;
+  lastSynced: string | null;
+  createdAt: string;
 }
 
 interface SyncProgress {
@@ -388,10 +388,10 @@ export default function FolderSync() {
                           <TooltipTrigger asChild>
                             <div className="flex items-center gap-2 truncate max-w-xs">
                               <FolderOpen size={16} />
-                              <span className="truncate">{record.local_path}</span>
+                              <span className="truncate">{record.localPath}</span>
                             </div>
                           </TooltipTrigger>
-                          <TooltipContent>{record.local_path}</TooltipContent>
+                          <TooltipContent>{record.localPath}</TooltipContent>
                         </Tooltip>
                       </td>
                       <td className="p-3">
@@ -402,14 +402,14 @@ export default function FolderSync() {
                           </span>
                         </Badge>
                       </td>
-                      <td className="p-3 truncate max-w-xs">{record.remote_path}</td>
+                      <td className="p-3 truncate max-w-xs">{record.remotePath}</td>
                       <td className="p-3">
-                        {record.last_synced ? (
+                        {record.lastSynced ? (
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <span className="text-gray-600">{formatRelativeTime(record.last_synced)}</span>
+                              <span className="text-gray-600">{formatRelativeTime(record.lastSynced)}</span>
                             </TooltipTrigger>
-                            <TooltipContent>{formatDate(record.last_synced)}</TooltipContent>
+                            <TooltipContent>{formatDate(record.lastSynced)}</TooltipContent>
                           </Tooltip>
                         ) : (
                           <span className="text-gray-400">{t('common.never')}</span>
@@ -459,7 +459,7 @@ export default function FolderSync() {
                           </Tooltip>
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <Button variant="ghost" size="sm" onClick={() => openIgnoreEditor(record.local_path)}>
+                              <Button variant="ghost" size="sm" onClick={() => openIgnoreEditor(record.localPath)}>
                                 <FileText size={16} />
                               </Button>
                             </TooltipTrigger>
@@ -467,7 +467,7 @@ export default function FolderSync() {
                           </Tooltip>
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <Button variant="ghost" size="sm" onClick={() => { setCleanupPath(record.local_path); setCleanupVisible(true); }}>
+                              <Button variant="ghost" size="sm" onClick={() => { setCleanupPath(record.localPath); setCleanupVisible(true); }}>
                                 <Eraser size={16} />
                               </Button>
                             </TooltipTrigger>
