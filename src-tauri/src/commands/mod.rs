@@ -780,8 +780,11 @@ pub async fn get_tool_sources(app_handle: tauri::AppHandle) -> Result<Value, Str
 
     let adb_sources = crate::adb::get_available_sources(&resource_dir);
 
-    // scrcpy: 检查系统是否有 scrcpy / Check if system has scrcpy
+    // scrcpy: 检查内置和系统 scrcpy / Check bundled and system scrcpy
     let mut scrcpy_sources = Vec::new();
+    if crate::scrcpy::has_bundled_scrcpy() {
+        scrcpy_sources.push("bundled".to_string());
+    }
     if which::which(if cfg!(target_os = "windows") { "scrcpy.exe" } else { "scrcpy" }).is_ok() {
         scrcpy_sources.push("system".to_string());
     }

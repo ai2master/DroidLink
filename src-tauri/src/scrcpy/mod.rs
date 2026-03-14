@@ -604,6 +604,12 @@ fn default_scrcpy_name() -> String {
     }
 }
 
+/// 检查是否有打包的 scrcpy
+/// Check if bundled scrcpy binary exists
+pub fn has_bundled_scrcpy() -> bool {
+    bundled_scrcpy_path().is_some()
+}
+
 /// 获取打包的 scrcpy 路径
 /// Get bundled scrcpy binary path
 fn bundled_scrcpy_path() -> Option<String> {
