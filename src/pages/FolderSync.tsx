@@ -45,23 +45,23 @@ interface SyncProgress {
 interface SyncResultData {
   pushed: number;
   pulled: number;
-  deleted_local: number;
-  deleted_remote: number;
+  deletedLocal: number;
+  deletedRemote: number;
   conflicts: number;
   skipped: number;
   errors: string[];
-  bytes_pushed: number;
-  bytes_pulled: number;
-  duration_ms: number;
-  speed_mbps: number;
+  bytesPushed: number;
+  bytesPulled: number;
+  durationMs: number;
+  speedMbps: number;
 }
 
 interface TransferInfo {
-  usb_speed: string;
-  estimated_speed: string;
-  max_file_size: string;
+  usbSpeed: string;
+  estimatedSpeed: string;
+  maxFileSize: string;
   filesystem: string;
-  has_fat32_limit: boolean;
+  hasFat32Limit: boolean;
 }
 
 function formatBytes(bytes: number): string {
@@ -162,8 +162,8 @@ export default function FolderSync() {
             t('folderSync.syncComplete', {
               pushed: r.pushed,
               pulled: r.pulled,
-              deleted: r.deleted_local + r.deleted_remote,
-            }) + ` ${formatBytes(r.bytes_pushed + r.bytes_pulled)} @ ${r.speed_mbps.toFixed(1)} MB/s`
+              deleted: r.deletedLocal + r.deletedRemote,
+            }) + ` ${formatBytes(r.bytesPushed + r.bytesPulled)} @ ${r.speedMbps.toFixed(1)} MB/s`
           );
         }
         if (data.type === 'error') {
@@ -324,12 +324,12 @@ export default function FolderSync() {
                 <div className="text-gray-500 text-[var(--font-size-xs)]">{t('folderSync.transferInfo.usbSpeed')}</div>
                 <div className="text-base font-semibold flex items-center gap-1">
                   <Zap size={16} className="text-yellow-500" />
-                  {transferInfo.usb_speed}
+                  {transferInfo.usbSpeed}
                 </div>
               </div>
               <div>
                 <div className="text-gray-500 text-[var(--font-size-xs)]">{t('folderSync.transferInfo.estimatedSpeed')}</div>
-                <div className="text-base font-semibold">{transferInfo.estimated_speed}</div>
+                <div className="text-base font-semibold">{transferInfo.estimatedSpeed}</div>
               </div>
               <div>
                 <div className="text-gray-500 text-[var(--font-size-xs)]">{t('folderSync.transferInfo.filesystem')}</div>
@@ -337,12 +337,12 @@ export default function FolderSync() {
               </div>
               <div>
                 <div className="text-gray-500 text-[var(--font-size-xs)]">{t('folderSync.transferInfo.maxFileSize')}</div>
-                <div className={cn("text-base font-semibold", transferInfo.has_fat32_limit && "text-red-500")}>
-                  {transferInfo.max_file_size}
+                <div className={cn("text-base font-semibold", transferInfo.hasFat32Limit && "text-red-500")}>
+                  {transferInfo.maxFileSize}
                 </div>
               </div>
               <div className="flex items-center">
-                {transferInfo.has_fat32_limit && (
+                {transferInfo.hasFat32Limit && (
                   <div className="flex gap-2 p-2 rounded-[var(--border-radius)] bg-yellow-50 border border-yellow-200 text-[var(--font-size-xs)]">
                     <AlertTriangle size={14} className="text-yellow-600 flex-shrink-0 mt-0.5" />
                     <span className="text-yellow-800">{t('folderSync.transferInfo.fat32Warning')}</span>
@@ -436,11 +436,11 @@ export default function FolderSync() {
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <Badge variant="success">
-                                {t('folderSync.itemsSynced', { count: last.pushed + last.pulled + last.deleted_local + last.deleted_remote })}
+                                {t('folderSync.itemsSynced', { count: last.pushed + last.pulled + last.deletedLocal + last.deletedRemote })}
                               </Badge>
                             </TooltipTrigger>
                             <TooltipContent>
-                              {formatBytes(last.bytes_pushed + last.bytes_pulled)} @ {last.speed_mbps.toFixed(1)} MB/s, {formatDurationMs(last.duration_ms)}
+                              {formatBytes(last.bytesPushed + last.bytesPulled)} @ {last.speedMbps.toFixed(1)} MB/s, {formatDurationMs(last.durationMs)}
                             </TooltipContent>
                           </Tooltip>
                         ) : (
@@ -499,12 +499,12 @@ export default function FolderSync() {
                           <div className="grid grid-cols-8 gap-4">
                             <div><div className="text-gray-500 text-xs">{t('folderSync.pushed')}</div><div className="text-sm font-semibold">{last.pushed}</div></div>
                             <div><div className="text-gray-500 text-xs">{t('folderSync.pulled')}</div><div className="text-sm font-semibold">{last.pulled}</div></div>
-                            <div><div className="text-gray-500 text-xs">{t('folderSync.localDeleted')}</div><div className="text-sm font-semibold">{last.deleted_local}</div></div>
-                            <div><div className="text-gray-500 text-xs">{t('folderSync.remoteDeleted')}</div><div className="text-sm font-semibold">{last.deleted_remote}</div></div>
+                            <div><div className="text-gray-500 text-xs">{t('folderSync.localDeleted')}</div><div className="text-sm font-semibold">{last.deletedLocal}</div></div>
+                            <div><div className="text-gray-500 text-xs">{t('folderSync.remoteDeleted')}</div><div className="text-sm font-semibold">{last.deletedRemote}</div></div>
                             <div><div className="text-gray-500 text-xs">{t('folderSync.conflicts')}</div><div className="text-sm font-semibold">{last.conflicts}</div></div>
-                            <div><div className="text-gray-500 text-xs">{t('folderSync.pushVolume')}</div><div className="text-sm font-semibold">{formatBytes(last.bytes_pushed)}</div></div>
-                            <div><div className="text-gray-500 text-xs">{t('folderSync.pullVolume')}</div><div className="text-sm font-semibold">{formatBytes(last.bytes_pulled)}</div></div>
-                            <div><div className="text-gray-500 text-xs">{t('folderSync.speed')}</div><div className="text-sm font-semibold">{last.speed_mbps.toFixed(1)} MB/s</div></div>
+                            <div><div className="text-gray-500 text-xs">{t('folderSync.pushVolume')}</div><div className="text-sm font-semibold">{formatBytes(last.bytesPushed)}</div></div>
+                            <div><div className="text-gray-500 text-xs">{t('folderSync.pullVolume')}</div><div className="text-sm font-semibold">{formatBytes(last.bytesPulled)}</div></div>
+                            <div><div className="text-gray-500 text-xs">{t('folderSync.speed')}</div><div className="text-sm font-semibold">{last.speedMbps.toFixed(1)} MB/s</div></div>
                           </div>
                           {last.errors.length > 0 && (
                             <div className="flex gap-2 p-3 rounded-[var(--border-radius)] bg-red-50 border border-red-200 text-sm mt-3">

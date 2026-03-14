@@ -25,9 +25,9 @@ interface ClipboardResult {
 }
 
 interface ClipboardInfo {
-  max_size: number;
+  maxSize: number;
   method: string;
-  companion_installed: boolean;
+  companionInstalled: boolean;
 }
 
 export default function Transfer() {
@@ -74,7 +74,7 @@ export default function Transfer() {
 
   const textByteSize = new TextEncoder().encode(clipText).length;
   const textCharCount = clipText.length;
-  const maxSize = clipInfo?.max_size || 10 * 1024 * 1024;
+  const maxSize = clipInfo?.maxSize || 10 * 1024 * 1024;
   const isOverLimit = textByteSize > maxSize;
 
   const handleSendToDevice = async () => {
@@ -215,7 +215,7 @@ export default function Transfer() {
               <Usb size={14} className="mr-1" />
               {t('transfer.pureUsb')}
             </Badge>
-            {clipInfo.companion_installed && (
+            {clipInfo.companionInstalled && (
               <Badge variant="info">{t('transfer.companionInstalled')}</Badge>
             )}
             <Tooltip>
@@ -224,7 +224,7 @@ export default function Transfer() {
                   <Info size={16} />
                 </button>
               </TooltipTrigger>
-              <TooltipContent>{t('transfer.maxTransferInfo', { size: formatFileSize(clipInfo.max_size) })}</TooltipContent>
+              <TooltipContent>{t('transfer.maxTransferInfo', { size: formatFileSize(clipInfo.maxSize) })}</TooltipContent>
             </Tooltip>
           </div>
         )}

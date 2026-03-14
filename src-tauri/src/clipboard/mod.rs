@@ -37,6 +37,7 @@ const TEMP_CLIPBOARD_PATH: &str = "/data/local/tmp/.droidlink_clipboard";
 const TEMP_CLIPBOARD_OUT_PATH: &str = "/data/local/tmp/.droidlink_clipboard_out";
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ClipboardContent {
     pub text: String,
     pub source: String,
@@ -46,6 +47,7 @@ pub struct ClipboardContent {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ClipboardInfo {
     pub max_size: usize,
     pub method: String, // "broadcast" or "file_transfer"

@@ -101,6 +101,7 @@ pub struct FolderSyncPair {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct FolderSyncEntry {
     pub pair_id: String,
     pub relative_path: String,

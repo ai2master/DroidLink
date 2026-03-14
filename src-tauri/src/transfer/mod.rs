@@ -55,6 +55,7 @@ pub enum FolderSyncError {
 pub type Result<T> = std::result::Result<T, FolderSyncError>;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct SyncResult {
     pub pushed: u64,
     pub pulled: u64,
@@ -249,6 +250,7 @@ struct RemoteFileInfo {
 // ========== Transfer Info ==========
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct TransferInfo {
     pub usb_speed: String,
     pub estimated_speed: String,

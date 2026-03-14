@@ -17,6 +17,7 @@ pub enum FileManagerError {
 pub type Result<T> = std::result::Result<T, FileManagerError>;
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct FileInfo {
     pub entry: FileEntry,
     pub mime_type: String,

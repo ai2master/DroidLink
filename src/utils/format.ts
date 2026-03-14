@@ -1,3 +1,9 @@
+export function safeJsonParse(val: unknown): any {
+  if (!val) return null;
+  if (typeof val !== 'string') return val;
+  try { return JSON.parse(val); } catch { return null; }
+}
+
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import 'dayjs/locale/zh-cn';

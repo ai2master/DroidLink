@@ -4,7 +4,7 @@ import {
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { tauriInvoke } from '../utils/tauri';
-import { formatDate } from '../utils/format';
+import { formatDate, safeJsonParse } from '../utils/format';
 import { VersionPreview } from '../components/VersionPreview';
 import { VersionDiffView } from '../components/VersionDiffView';
 import { Button } from '../components/ui/button';
@@ -278,13 +278,10 @@ export const VersionHistory: React.FC = () => {
   const renderDetailModal = () => {
     if (!selectedVersion) return null;
 
-    const rec = selectedVersion.record;
-    const beforeData = rec.dataBefore
-      ? (typeof rec.dataBefore === 'string' ? JSON.parse(rec.dataBefore) : rec.dataBefore)
-      : null;
-    const afterData = rec.dataAfter
-      ? (typeof rec.dataAfter === 'string' ? JSON.parse(rec.dataAfter) : rec.dataAfter)
-      : null;
+    const rec = selectedVersion?.record;
+    if (!rec) return null;
+    const beforeData = safeJsonParse(rec.dataBefore);
+    const afterData = safeJsonParse(rec.dataAfter);
 
     return (
       <Dialog open={detailModalVisible} onOpenChange={setDetailModalVisible}>

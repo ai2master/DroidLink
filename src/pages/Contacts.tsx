@@ -13,7 +13,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { tauriInvoke } from '../utils/tauri';
 import { useStore } from '../stores/useStore';
-import { formatDate } from '../utils/format';
+import { formatDate, safeJsonParse } from '../utils/format';
 import { VersionPreview } from '../components/VersionPreview';
 import { VersionDiffView } from '../components/VersionDiffView';
 import { Button } from '../components/ui/button';
@@ -583,9 +583,9 @@ export const Contacts: React.FC = () => {
           </DialogHeader>
           <DialogBody>
             {selectedVersionDetail && (() => {
-              const record = selectedVersionDetail.record || selectedVersionDetail;
-              const beforeData = record.dataBefore ? (typeof record.dataBefore === 'string' ? JSON.parse(record.dataBefore) : record.dataBefore) : null;
-              const afterData = record.dataAfter ? (typeof record.dataAfter === 'string' ? JSON.parse(record.dataAfter) : record.dataAfter) : null;
+              const record = selectedVersionDetail?.record || selectedVersionDetail;
+              const beforeData = safeJsonParse(record?.dataBefore);
+              const afterData = safeJsonParse(record?.dataAfter);
               const color = getActionColor(record.action);
               return (
                 <>

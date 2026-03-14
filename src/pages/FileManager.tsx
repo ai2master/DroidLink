@@ -19,14 +19,14 @@ import { cn } from '../utils/cn';
 interface FileEntry {
   name: string;
   path: string;
-  file_type: string;
+  fileType: string;
   size: number;
   modified: string;
   permissions: string;
 }
 
 const fileIcon = (entry: FileEntry) => {
-  if (entry.file_type === 'directory') return <Folder className="text-[#faad14]" size={18} />;
+  if (entry.fileType === 'directory') return <Folder className="text-[#faad14]" size={18} />;
   const ext = entry.name.split('.').pop()?.toLowerCase() || '';
   if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg'].includes(ext))
     return <FileImage className="text-[#1677ff]" size={18} />;
@@ -92,7 +92,7 @@ export default function FileManager() {
   };
 
   const handleDoubleClick = (record: FileEntry) => {
-    if (record.file_type === 'directory') {
+    if (record.fileType === 'directory') {
       navigateTo(record.path);
     }
   };
@@ -128,7 +128,7 @@ export default function FileManager() {
       title: t('common.deleteConfirmTitle'),
       content: t('fileManager.deleteConfirm', {
         name: record.name,
-        extra: record.file_type === 'directory' ? t('fileManager.deleteConfirmDir') : '',
+        extra: record.fileType === 'directory' ? t('fileManager.deleteConfirmDir') : '',
       }),
       okText: t('common.delete'),
       cancelText: t('common.cancel'),
@@ -259,19 +259,19 @@ export default function FileManager() {
                     <td className="p-3">
                       <div className="flex items-center gap-2">
                         {fileIcon(record)}
-                        <span className={cn(record.file_type === 'directory' && 'cursor-pointer')}>
+                        <span className={cn(record.fileType === 'directory' && 'cursor-pointer')}>
                           {record.name}
                         </span>
                       </div>
                     </td>
                     <td className="p-3">
-                      {record.file_type === 'directory' ? '-' : formatFileSize(record.size)}
+                      {record.fileType === 'directory' ? '-' : formatFileSize(record.size)}
                     </td>
                     <td className="p-3">{formatDate(record.modified)}</td>
                     <td className="p-3 hidden lg:table-cell">{record.permissions}</td>
                     <td className="p-3">
                       <div className="flex items-center gap-1">
-                        {record.file_type !== 'directory' && (
+                        {record.fileType !== 'directory' && (
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <Button

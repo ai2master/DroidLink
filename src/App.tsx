@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useStore } from './stores/useStore';
 import { tauriInvoke, tauriListen } from './utils/tauri';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import Sidebar from './components/Sidebar';
 import StatusBar from './components/StatusBar';
 import CompanionInstallPrompt from './components/CompanionInstallPrompt';
@@ -132,7 +133,9 @@ function App() {
       <Sidebar />
       <div className="app-content">
         <div className="app-page-scroll">
-          {renderPage()}
+          <ErrorBoundary key={currentPage}>
+            {renderPage()}
+          </ErrorBoundary>
         </div>
         <StatusBar />
       </div>

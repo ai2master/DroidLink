@@ -12,7 +12,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { tauriInvoke } from '../utils/tauri';
 import { useStore } from '../stores/useStore';
-import { formatDate, formatRelativeTime } from '../utils/format';
+import { formatDate, formatRelativeTime, safeJsonParse } from '../utils/format';
 import { VersionPreview } from '../components/VersionPreview';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -516,9 +516,9 @@ export const Messages: React.FC = () => {
           </DialogHeader>
           <DialogBody>
             {selectedVersionDetail && (() => {
-              const record = selectedVersionDetail.record || selectedVersionDetail;
-              const beforeData = record.dataBefore ? (typeof record.dataBefore === 'string' ? JSON.parse(record.dataBefore) : record.dataBefore) : null;
-              const afterData = record.dataAfter ? (typeof record.dataAfter === 'string' ? JSON.parse(record.dataAfter) : record.dataAfter) : null;
+              const record = selectedVersionDetail?.record || selectedVersionDetail;
+              const beforeData = safeJsonParse(record?.dataBefore);
+              const afterData = safeJsonParse(record?.dataAfter);
               return (
                 <>
                   {beforeData && (
