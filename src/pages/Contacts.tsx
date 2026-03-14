@@ -171,6 +171,7 @@ export const Contacts: React.FC = () => {
       setVersions((prev) => ({ ...prev, [contactId]: history || [] }));
     } catch (error) {
       console.error('Failed to load version history:', error);
+      toast.error(t('common.loadFailed'));
     }
   };
 

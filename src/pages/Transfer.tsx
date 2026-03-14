@@ -11,6 +11,7 @@ import { open } from '@tauri-apps/plugin-dialog';
 import { Button } from '../components/ui/button';
 import { Input, Textarea } from '../components/ui/input';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '../components/ui/tabs';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogBody } from '../components/ui/dialog';
 import { useToast } from '../components/ui/toast';
 import { Badge } from '../components/ui/badge';
 import { Tooltip, TooltipTrigger, TooltipContent } from '../components/ui/tooltip';
@@ -41,6 +42,8 @@ export default function Transfer() {
   const [sending, setSending] = useState(false);
   const [receiving, setReceiving] = useState(false);
   const [fileSending, setFileSending] = useState(false);
+  const [receiveDialogOpen, setReceiveDialogOpen] = useState(false);
+  const [receiveDevicePath, setReceiveDevicePath] = useState('/sdcard/');
   const [transferHistory, setTransferHistory] = useState<Array<{
     type: string; name: string; time: string; direction: string; method?: string; size?: string;
   }>>([]);
@@ -176,16 +179,21 @@ export default function Transfer() {
     }
   };
 
-  const handleReceiveFile = async () => {
-    const remotePath = window.prompt(t('transfer.enterDevicePath'), '/sdcard/');
-    if (!remotePath) return;
+  const handleReceiveFile = () => {
+    setReceiveDevicePath('/sdcard/');
+    setReceiveDialogOpen(true);
+  };
+
+  const handleReceiveConfirm = async () => {
+    if (!receiveDevicePath.trim()) return;
+    setReceiveDialogOpen(false);
     try {
       const savePath = await open({ directory: true, title: t('transfer.selectSaveLocation') });
       if (!savePath) return;
       setFileSending(true);
-      const fileName = remotePath.split('/').pop() || 'file';
+      const fileName = receiveDevicePath.split('/').pop() || 'file';
       const localPath = `${savePath}/${fileName}`;
-      await tauriInvoke('receive_file_from_device', { serial: device.serial, remotePath, localPath });
+      await tauriInvoke('receive_file_from_device', { serial: device.serial, remotePath: receiveDevicePath, localPath });
       toast.success(t('transfer.fileReceived', { name: fileName }));
       setTransferHistory((prev) => [{
         type: 'file', name: fileName, time: new Date().toLocaleTimeString(), direction: 'receive',
@@ -408,6 +416,26 @@ export default function Transfer() {
           </TabsContent>
         </Tabs>
       </div>
+      {/* Device path input dialog */}
+      <Dialog open={receiveDialogOpen} onOpenChange={setReceiveDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t('transfer.enterDevicePath')}</DialogTitle>
+          </DialogHeader>
+          <DialogBody>
+            <Input
+              value={receiveDevicePath}
+              onChange={(e) => setReceiveDevicePath(e.target.value)}
+              placeholder="/sdcard/filename.txt"
+              onKeyDown={(e) => { if (e.key === 'Enter') handleReceiveConfirm(); }}
+            />
+          </DialogBody>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setReceiveDialogOpen(false)}>{t('common.cancel')}</Button>
+            <Button variant="primary" onClick={handleReceiveConfirm}>{t('common.confirm')}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

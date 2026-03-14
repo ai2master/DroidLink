@@ -39,7 +39,7 @@ interface Activity {
 export const Dashboard: React.FC = () => {
   const { t } = useTranslation();
   const toast = useToast();
-  const { connectedDevice, syncStatuses, companionInstalled, setShowCompanionPrompt } = useStore();
+  const { connectedDevice, syncStatuses, companionInstalled, setShowCompanionPrompt, setCurrentPage } = useStore();
   const [stats, setStats] = useState<Stats>({
     contactCount: 0,
     messageCount: 0,
@@ -127,11 +127,11 @@ export const Dashboard: React.FC = () => {
   };
 
   const handleScreenMirror = () => {
-    toast.info(t('dashboard.startMirrorMsg'));
+    setCurrentPage('screenmirror');
   };
 
   const handleFileManager = () => {
-    toast.info(t('dashboard.openFileManagerMsg'));
+    setCurrentPage('filemanager');
   };
 
   const getSyncStatusIcon = (status?: string) => {

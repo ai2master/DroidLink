@@ -365,6 +365,9 @@ pub fn run() {
             commands::get_tool_sources,
             commands::update_tool_paths,
             commands::validate_tool_path,
+            // 文件读写命令 / File I/O commands
+            commands::read_text_file,
+            commands::write_text_file,
         ])
         .run(tauri::generate_context!())
         .expect("error while running DroidLink");

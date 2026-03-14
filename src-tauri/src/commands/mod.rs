@@ -852,3 +852,26 @@ pub async fn validate_tool_path(tool: String, path: String) -> Result<bool, Stri
         _ => Err(format!("Unknown tool: {}", tool)),
     }
 }
+
+// ========== 文件读写命令 ==========
+// ========== File I/O Commands ==========
+
+/// 读取本地文本文件
+/// Read a local text file
+#[tauri::command]
+pub async fn read_text_file(path: String) -> Result<String, String> {
+    std::fs::read_to_string(&path)
+        .map_err(|e| format!("Failed to read {}: {}", path, e))
+}
+
+/// 写入本地文本文件
+/// Write a local text file
+#[tauri::command]
+pub async fn write_text_file(path: String, content: String) -> Result<(), String> {
+    if let Some(parent) = std::path::Path::new(&path).parent() {
+        std::fs::create_dir_all(parent)
+            .map_err(|e| format!("Failed to create directory: {}", e))?;
+    }
+    std::fs::write(&path, &content)
+        .map_err(|e| format!("Failed to write {}: {}", path, e))
+}
