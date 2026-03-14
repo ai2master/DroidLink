@@ -8,6 +8,7 @@
 // - 所有设备通信仅通过 adb shell / adb push / adb pull (All device comms via adb shell/push/pull)
 
 use crossbeam_channel::Sender;
+use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
@@ -520,6 +521,22 @@ pub fn push(serial: &str, local: &str, remote: &str) -> Result<()> {
     Ok(())
 }
 
+/// 递归拉取目录 (手机 -> 电脑)
+/// Recursively pull a directory from device to local (phone -> PC)
+pub fn pull_directory(serial: &str, remote: &str, local: &str) -> Result<()> {
+    let _ = sanitize_device_path(remote)?;
+    let local_path = Path::new(local);
+    if local_path.to_string_lossy().contains("..") {
+        return Err(AdbError::InvalidPath("Local path traversal not allowed".to_string()));
+    }
+    // adb pull supports recursive directory pull natively
+    let output = run_adb_command(&["-s", serial, "pull", remote, local])?;
+    if output.contains("error") && !output.contains("pulled") {
+        return Err(AdbError::FileOperationFailed(output));
+    }
+    Ok(())
+}
+
 /// 从设备拉取文件 (手机 -> 电脑)
 /// Pull a file from device to local (phone -> PC)
 pub fn pull(serial: &str, remote: &str, local: &str) -> Result<()> {
@@ -544,7 +561,9 @@ pub fn pull(serial: &str, remote: &str, local: &str) -> Result<()> {
 /// List files in a directory on the device (path sanitized)
 pub fn list_files(serial: &str, path: &str) -> Result<Vec<FileEntry>> {
     let safe_path = sanitize_device_path(path)?;
-    let output = shell(serial, &format!("ls -la '{}'", safe_path))?;
+    // Trailing slash ensures we list directory contents, not the directory entry itself
+    let trailing = if safe_path.ends_with('/') { "" } else { "/" };
+    let output = shell(serial, &format!("ls -la '{}{}'", safe_path, trailing))?;
     parse_file_list(&output, path)
 }
 
@@ -804,6 +823,13 @@ fn parse_storage_info(output: &str) -> Result<(u64, u64)> {
 
 fn parse_file_list(output: &str, base_path: &str) -> Result<Vec<FileEntry>> {
     let mut entries = Vec::new();
+    // Android ls -la format varies across versions. Common formats:
+    //   drwxrwx--x  5 root sdcard_rw      4096 2024-01-15 10:30 Download
+    //   -rw-rw----  1 root sdcard_rw     12345 2024-01-15 10:30 photo.jpg
+    //   drwxrwx--x  5 root     sdcard_rw      4096 2024-01-15 10:30 Download
+    // Strategy: find the date pattern (YYYY-MM-DD) to anchor column positions,
+    // then extract size (before date), time (after date), and name (after time).
+    let date_re = Regex::new(r"\d{4}-\d{2}-\d{2}").unwrap();
 
     for line in output.lines() {
         let line = line.trim();
@@ -811,15 +837,46 @@ fn parse_file_list(output: &str, base_path: &str) -> Result<Vec<FileEntry>> {
             continue;
         }
 
-        let parts: Vec<&str> = line.split_whitespace().collect();
-        if parts.len() < 7 {
-            continue;
-        }
+        let permissions = match line.split_whitespace().next() {
+            Some(p) if p.len() >= 9 && (p.starts_with('-') || p.starts_with('d') || p.starts_with('l') || p.starts_with('c') || p.starts_with('b') || p.starts_with('s') || p.starts_with('p')) => p,
+            _ => continue,
+        };
 
-        let permissions = parts[0];
-        let name = parts[6..].join(" ");
+        // Find date pattern position to anchor parsing
+        let date_match = match date_re.find(line) {
+            Some(m) => m,
+            None => continue,
+        };
 
-        if name == "." || name == ".." {
+        let before_date = &line[..date_match.start()].trim_end();
+        let after_date = &line[date_match.end()..];
+
+        // Size is the last whitespace-separated token before the date
+        let size = before_date
+            .split_whitespace()
+            .last()
+            .and_then(|s| s.parse::<u64>().ok())
+            .unwrap_or(0);
+
+        // Time is right after the date (e.g. " 10:30")
+        let after_date_trimmed = after_date.trim_start();
+        let (modified, name_part) = if let Some(space_pos) = after_date_trimmed.find(' ') {
+            let time = &after_date_trimmed[..space_pos];
+            let name = after_date_trimmed[space_pos..].trim_start();
+            (format!("{} {}", date_match.as_str(), time), name.to_string())
+        } else {
+            // No time found, just date
+            (date_match.as_str().to_string(), after_date_trimmed.to_string())
+        };
+
+        // Handle symlinks: "name -> target"
+        let name = if permissions.starts_with('l') {
+            name_part.split(" -> ").next().unwrap_or(&name_part).to_string()
+        } else {
+            name_part
+        };
+
+        if name.is_empty() || name == "." || name == ".." {
             continue;
         }
 
@@ -828,9 +885,6 @@ fn parse_file_list(output: &str, base_path: &str) -> Result<Vec<FileEntry>> {
             Some('l') => "link",
             _ => "file",
         };
-
-        let size = parts[3].parse::<u64>().unwrap_or(0);
-        let modified = format!("{} {}", parts[4], parts[5]);
 
         let path = if base_path.ends_with('/') {
             format!("{}{}", base_path, name)

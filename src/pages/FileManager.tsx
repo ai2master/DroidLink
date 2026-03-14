@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
   Folder, File, ArrowUp, RotateCw, Trash2, FolderPlus, Download, Upload,
-  Home, FileArchive, FileImage, FileText, Video, Music, MoreHorizontal,
+  Home, FileArchive, FileImage, FileText, Video, Music,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { tauriInvoke } from '../utils/tauri';
@@ -102,7 +102,11 @@ export default function FileManager() {
       const savePath = await open({ directory: true, title: t('fileManager.selectSaveLocation') });
       if (!savePath) return;
       const localPath = `${savePath}/${record.name}`;
-      await tauriInvoke('pull_file', { serial: device.serial, remotePath: record.path, localPath });
+      if (record.fileType === 'directory') {
+        await tauriInvoke('pull_directory', { serial: device.serial, remotePath: record.path, localPath });
+      } else {
+        await tauriInvoke('pull_file', { serial: device.serial, remotePath: record.path, localPath });
+      }
       toast.success(t('fileManager.downloaded', { name: record.name }));
     } catch (err: any) {
       toast.error(t('fileManager.downloadFailed', { error: err }));
@@ -259,9 +263,16 @@ export default function FileManager() {
                     <td className="p-3">
                       <div className="flex items-center gap-2">
                         {fileIcon(record)}
-                        <span className={cn(record.fileType === 'directory' && 'cursor-pointer')}>
-                          {record.name}
-                        </span>
+                        {record.fileType === 'directory' ? (
+                          <button
+                            className="cursor-pointer hover:text-[#1677ff] hover:underline text-left"
+                            onClick={(e) => { e.stopPropagation(); navigateTo(record.path); }}
+                          >
+                            {record.name}
+                          </button>
+                        ) : (
+                          <span>{record.name}</span>
+                        )}
                       </div>
                     </td>
                     <td className="p-3">
@@ -271,20 +282,18 @@ export default function FileManager() {
                     <td className="p-3 hidden lg:table-cell">{record.permissions}</td>
                     <td className="p-3">
                       <div className="flex items-center gap-1">
-                        {record.fileType !== 'directory' && (
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={(e) => { e.stopPropagation(); handleDownload(record); }}
-                              >
-                                <Download size={16} />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>{t('fileManager.download')}</TooltipContent>
-                          </Tooltip>
-                        )}
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={(e) => { e.stopPropagation(); handleDownload(record); }}
+                            >
+                              <Download size={16} />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>{t('fileManager.download')}</TooltipContent>
+                        </Tooltip>
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <Button

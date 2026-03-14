@@ -398,6 +398,11 @@ pub async fn pull_file(serial: String, remote_path: String, local_path: String) 
 }
 
 #[tauri::command]
+pub async fn pull_directory(serial: String, remote_path: String, local_path: String) -> Result<(), String> {
+    adb::pull_directory(&serial, &remote_path, &local_path).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 pub async fn push_file(serial: String, local_path: String, remote_path: String) -> Result<(), String> {
     adb::push(&serial, &local_path, &remote_path).map_err(|e| e.to_string())
 }

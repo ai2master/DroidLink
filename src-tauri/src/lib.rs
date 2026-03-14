@@ -317,6 +317,7 @@ pub fn run() {
             // 文件管理命令 / File manager commands
             commands::list_files,
             commands::pull_file,
+            commands::pull_directory,
             commands::push_file,
             commands::delete_file,
             commands::create_folder,
