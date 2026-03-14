@@ -309,7 +309,7 @@ impl FolderSync {
 
     /// Calculate MD5 hash of a local file (for integrity verification against device md5sum)
     fn md5_local_file(path: &Path) -> Result<String> {
-        use std::io::BufReader;
+        use std::io::{BufReader, Read};
         let file = std::fs::File::open(path)?;
         let mut reader = BufReader::new(file);
         let mut context = md5::Context::new();
