@@ -509,44 +509,90 @@ impl ScrcpyManager {
     /// Keyboard passthrough: send ASCII text (English/digits/symbols only, via input text)
     /// 注意: `input text` 不支持空格和部分特殊字符，空格需要用 keyevent 62
     /// Note: `input text` doesn't support spaces and some special chars, space needs keyevent 62
+    ///
+    /// 安全策略: 使用白名单验证，只允许安全字符通过 `input text` 命令。
+    /// 非安全字符(shell 特殊字符)通过逐个 keyevent 发送，完全避免 shell 注入风险。
+    /// Security: Whitelist validation. Safe chars go through `input text`.
+    /// Unsafe chars (shell metacharacters) are sent via individual keyevent codes,
+    /// completely avoiding shell injection risk.
     pub fn passthrough_text(serial: &str, text: &str) -> ScrcpyResult<()> {
         // 安全: 限制最大长度 / Security: limit max length
         if text.len() > 1000 {
             return Err(ScrcpyError::StartFailed("Text too long for passthrough (max 1000 chars)".to_string()));
         }
 
-        // 将文本按空格分段处理
-        // Split text by spaces for handling
-        for segment in text.split(' ') {
-            if !segment.is_empty() {
-                // 转义 shell 特殊字符 (完整列表) / Escape shell special characters (complete list)
-                let escaped = segment.replace('\\', "\\\\")
-                    .replace('\'', "\\'")
-                    .replace('"', "\\\"")
-                    .replace('&', "\\&")
-                    .replace('|', "\\|")
-                    .replace(';', "\\;")
-                    .replace('(', "\\(")
-                    .replace(')', "\\)")
-                    .replace('<', "\\<")
-                    .replace('>', "\\>")
-                    .replace('$', "\\$")
-                    .replace('`', "\\`")
-                    .replace('!', "\\!")
-                    .replace('{', "\\{")
-                    .replace('}', "\\}")
-                    .replace('#', "\\#")
-                    .replace('~', "\\~");
-                let cmd = format!("input text '{}'", escaped);
-                crate::adb::shell(serial, &cmd)
-                    .map_err(|e| ScrcpyError::StartFailed(e.to_string()))?;
+        // 安全字符白名单: 只有这些字符可以直接传给 `input text`
+        // Safe char whitelist: only these can be passed to `input text`
+        fn is_safe_for_input_text(c: char) -> bool {
+            matches!(c,
+                'a'..='z' | 'A'..='Z' | '0'..='9' |
+                '.' | '-' | '_' | '+' | '=' | '@' | ',' | ':' | '/' | '?' |
+                '[' | ']' | '(' | ')' // Android input text supports these
+            )
+        }
+
+        // Android keyevent 映射表 (用于无法安全通过 shell 的字符)
+        // Android keyevent mapping (for chars unsafe to pass through shell)
+        fn char_to_keyevent(c: char) -> Option<&'static str> {
+            match c {
+                ' '  => Some("input keyevent 62"),  // KEYCODE_SPACE
+                '\n' => Some("input keyevent 66"),  // KEYCODE_ENTER
+                '\t' => Some("input keyevent 61"),  // KEYCODE_TAB
+                _    => None,
             }
-            // 发送空格键 (keyevent 62 = KEYCODE_SPACE)
-            // Send space key (keyevent 62 = KEYCODE_SPACE)
-            let cmd = "input keyevent 62";
-            crate::adb::shell(serial, cmd)
+        }
+
+        // 将文本分成安全段和非安全字符，批量处理
+        // Split text into safe segments and unsafe chars, process in batches
+        let mut safe_buf = String::new();
+
+        for ch in text.chars() {
+            if is_safe_for_input_text(ch) {
+                safe_buf.push(ch);
+            } else {
+                // 先刷出安全缓冲区 / Flush safe buffer first
+                if !safe_buf.is_empty() {
+                    let cmd = format!("input text '{}'", safe_buf);
+                    crate::adb::shell(serial, &cmd)
+                        .map_err(|e| ScrcpyError::StartFailed(e.to_string()))?;
+                    safe_buf.clear();
+                }
+
+                // 处理非安全字符 / Handle unsafe character
+                if let Some(keyevent_cmd) = char_to_keyevent(ch) {
+                    crate::adb::shell(serial, keyevent_cmd)
+                        .map_err(|e| ScrcpyError::StartFailed(e.to_string()))?;
+                } else if (ch as u32) > 127 {
+                    // Unicode 字符通过 DroidLink IME 的 base64 方式发送，更安全
+                    // Unicode chars sent via DroidLink IME's base64 method, safer
+                    let encoded = base64_encode(ch.to_string().as_bytes());
+                    let cmd = format!(
+                        "am broadcast -a com.droidlink.INPUT_TEXT --es text_b64 '{}' 2>/dev/null",
+                        encoded
+                    );
+                    crate::adb::shell(serial, &cmd)
+                        .map_err(|e| ScrcpyError::StartFailed(e.to_string()))?;
+                } else {
+                    // ASCII 特殊字符: 通过 base64 广播发送，避免 shell 注入
+                    // ASCII special chars: send via base64 broadcast to avoid shell injection
+                    let encoded = base64_encode(ch.to_string().as_bytes());
+                    let cmd = format!(
+                        "am broadcast -a com.droidlink.INPUT_TEXT --es text_b64 '{}' 2>/dev/null",
+                        encoded
+                    );
+                    crate::adb::shell(serial, &cmd)
+                        .map_err(|e| ScrcpyError::StartFailed(e.to_string()))?;
+                }
+            }
+        }
+
+        // 刷出剩余的安全缓冲区 / Flush remaining safe buffer
+        if !safe_buf.is_empty() {
+            let cmd = format!("input text '{}'", safe_buf);
+            crate::adb::shell(serial, &cmd)
                 .map_err(|e| ScrcpyError::StartFailed(e.to_string()))?;
         }
+
         Ok(())
     }
 

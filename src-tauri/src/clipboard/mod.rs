@@ -289,9 +289,13 @@ fn receive_via_binder(serial: &str) -> ClipResult<String> {
         }
 
         // 解析 hex 数据为 UTF-16 / Parse hex data to UTF-16
+        // 限制最大字符数防止恶意 Parcel 导致 OOM / Limit max chars to prevent OOM from malformed Parcels
+        const MAX_BINDER_CHARS: usize = 1_000_000; // 1M chars = ~2MB, far exceeds any clipboard
         let mut text_chars = Vec::new();
         let mut is_first_word = true;
+        let mut exceeded_limit = false;
         for line in &hex_lines {
+            if exceeded_limit { break; }
             if let Some(hex_part) = line.split(':').nth(1) {
                 let hex_data = if let Some(ascii_start) = hex_part.find('\'') {
                     &hex_part[..ascii_start]
@@ -321,6 +325,12 @@ fn receive_via_binder(serial: &str) -> ClipResult<String> {
                             if b3 != 0 || b2 != 0 {
                                 let c2 = u16::from_le_bytes([b2, b3]);
                                 if c2 != 0 { text_chars.push(c2); }
+                            }
+
+                            if text_chars.len() > MAX_BINDER_CHARS {
+                                log::warn!("Binder response exceeds {} char limit, truncating", MAX_BINDER_CHARS);
+                                exceeded_limit = true;
+                                break;
                             }
                         }
                     }
@@ -369,8 +379,11 @@ fn receive_via_binder(serial: &str) -> ClipResult<String> {
 fn send_via_broadcast(serial: &str, content: &str) -> ClipResult<()> {
     let encoded = base64_encode(content.as_bytes());
 
-    if encoded.len() > 500_000 {
-        return Err(ClipboardError::TooLarge(encoded.len(), 500_000));
+    // Base64 扩展约 33%，100KB 明文 -> ~137KB 编码，使用 150KB 作为安全上限
+    // Base64 expands ~33%, 100KB plaintext -> ~137KB encoded, use 150KB as safe limit
+    const BROADCAST_MAX_ENCODED: usize = 150 * 1024;
+    if encoded.len() > BROADCAST_MAX_ENCODED {
+        return Err(ClipboardError::TooLarge(encoded.len(), BROADCAST_MAX_ENCODED));
     }
 
     let cmd = format!(
@@ -471,29 +484,34 @@ fn send_via_file_transfer(serial: &str, content: &str) -> ClipResult<()> {
     let local_temp = temp_dir.join(format!(".droidlink_clip_send_{}", unique_id));
     std::fs::write(&local_temp, content.as_bytes())?;
 
-    // Push to device via adb push (pure USB transfer)
-    adb::push(serial, &local_temp.to_string_lossy(), TEMP_CLIPBOARD_PATH)?;
+    // 使用闭包确保错误路径也清理临时文件 / Use closure to ensure temp file cleanup on error paths
+    let result = (|| -> ClipResult<()> {
+        // Push to device via adb push (pure USB transfer)
+        adb::push(serial, &local_temp.to_string_lossy(), TEMP_CLIPBOARD_PATH)?;
 
-    // Tell companion app to read from the file and set clipboard
-    let cmd = format!(
-        "am broadcast -a com.droidlink.SET_CLIPBOARD_FILE \
-         --es file_path '{}' \
-         -n com.droidlink.companion/.clipboard.ClipboardReceiver",
-        TEMP_CLIPBOARD_PATH
-    );
-    let output = adb::shell(serial, &cmd)?;
+        // Tell companion app to read from the file and set clipboard
+        let cmd = format!(
+            "am broadcast -a com.droidlink.SET_CLIPBOARD_FILE \
+             --es file_path '{}' \
+             -n com.droidlink.companion/.clipboard.ClipboardReceiver",
+            TEMP_CLIPBOARD_PATH
+        );
+        let output = adb::shell(serial, &cmd)?;
 
+        // 验证广播结果 / Verify broadcast result
+        if !output.contains("Broadcast completed") || output.contains("Error") {
+            log::warn!("File transfer broadcast not delivered: {}", output.trim());
+            return Err(ClipboardError::Encoding(
+                "File transfer broadcast not delivered".into()
+            ));
+        }
+
+        Ok(())
+    })();
+
+    // 总是清理临时文件 / Always clean up temp file
     let _ = std::fs::remove_file(&local_temp);
-
-    // 验证广播结果 / Verify broadcast result
-    if !output.contains("Broadcast completed") || output.contains("Error") {
-        log::warn!("File transfer broadcast not delivered: {}", output.trim());
-        return Err(ClipboardError::Encoding(
-            "File transfer broadcast not delivered".into()
-        ));
-    }
-
-    Ok(())
+    result
 }
 
 fn receive_via_file_transfer(serial: &str) -> ClipResult<String> {
@@ -515,14 +533,19 @@ fn receive_via_file_transfer(serial: &str) -> ClipResult<String> {
         .unwrap_or_default()
         .as_nanos();
     let local_temp = temp_dir.join(format!(".droidlink_clip_recv_{}", unique_id));
-    adb::pull(serial, TEMP_CLIPBOARD_OUT_PATH, &local_temp.to_string_lossy())?;
 
-    let content = std::fs::read_to_string(&local_temp)?;
+    // 使用闭包确保错误路径也清理临时文件 / Use closure to ensure temp file cleanup on error paths
+    let result = (|| -> ClipResult<String> {
+        adb::pull(serial, TEMP_CLIPBOARD_OUT_PATH, &local_temp.to_string_lossy())?;
+        let content = std::fs::read_to_string(&local_temp)?;
+        Ok(content)
+    })();
 
+    // 总是清理临时文件 (本地 + 设备端) / Always clean up temp files (local + device)
     let _ = std::fs::remove_file(&local_temp);
     let _ = adb::shell(serial, &format!("rm -f '{}' 2>/dev/null", TEMP_CLIPBOARD_OUT_PATH));
 
-    Ok(content)
+    result
 }
 
 /// Send clipboard via transparent Activity (最可靠的方法 / most reliable method).
@@ -538,37 +561,42 @@ fn send_via_activity(serial: &str, content: &str) -> ClipResult<()> {
     let local_temp = temp_dir.join(format!(".droidlink_clip_act_{}", unique_id));
     std::fs::write(&local_temp, content.as_bytes())?;
 
-    // Push to device via adb push (pure USB transfer)
-    adb::push(serial, &local_temp.to_string_lossy(), TEMP_CLIPBOARD_PATH)?;
+    // 使用闭包确保错误路径也清理临时文件 / Use closure to ensure temp file cleanup on error paths
+    let result = (|| -> ClipResult<()> {
+        // Push to device via adb push (pure USB transfer)
+        adb::push(serial, &local_temp.to_string_lossy(), TEMP_CLIPBOARD_PATH)?;
 
-    // Launch the transparent ClipboardActivity with SET action
-    let cmd = format!(
-        "am start -n com.droidlink.companion/.clipboard.ClipboardActivity \
-         --es action SET \
-         --es input_path '{}'",
-        TEMP_CLIPBOARD_PATH
-    );
-    let output = adb::shell(serial, &cmd)?;
+        // Launch the transparent ClipboardActivity with SET action
+        let cmd = format!(
+            "am start -n com.droidlink.companion/.clipboard.ClipboardActivity \
+             --es action SET \
+             --es input_path '{}'",
+            TEMP_CLIPBOARD_PATH
+        );
+        let output = adb::shell(serial, &cmd)?;
 
-    // 验证 Activity 启动成功 / Verify Activity started successfully
-    // 成功时: "Starting: Intent { ... }"
-    // 失败时: "Error" 或 "does not exist" 等
-    if output.contains("Error") || output.contains("does not exist") {
-        log::warn!("Activity launch failed: {}", output.trim());
-        let _ = std::fs::remove_file(&local_temp);
-        return Err(ClipboardError::Encoding(
-            "Failed to launch ClipboardActivity - companion app may not be installed".into()
-        ));
-    }
+        // 验证 Activity 启动成功 / Verify Activity started successfully
+        // 成功时: "Starting: Intent { ... }"
+        // 失败时: "Error" 或 "does not exist" 等
+        if output.contains("Error") || output.contains("does not exist") {
+            log::warn!("Activity launch failed: {}", output.trim());
+            return Err(ClipboardError::Encoding(
+                "Failed to launch ClipboardActivity - companion app may not be installed".into()
+            ));
+        }
 
-    // Wait for the Activity to launch, read file, set clipboard, and finish
-    // Activity 启动、读文件、设剪贴板、关闭需要一点时间
-    std::thread::sleep(std::time::Duration::from_millis(800));
+        // Wait for the Activity to launch, read file, set clipboard, and finish
+        // Activity 启动、读文件、设剪贴板、关闭需要一点时间
+        std::thread::sleep(std::time::Duration::from_millis(800));
 
+        Ok(())
+    })();
+
+    // 总是清理临时文件 (本地 + 设备端) / Always clean up temp files (local + device)
     let _ = std::fs::remove_file(&local_temp);
     let _ = adb::shell(serial, &format!("rm -f '{}' 2>/dev/null", TEMP_CLIPBOARD_PATH));
 
-    Ok(())
+    result
 }
 
 // ========================
