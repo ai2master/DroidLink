@@ -89,13 +89,21 @@ class ClipboardActivity : Activity() {
                 File(outputPath).writeText(text, Charsets.UTF_8)
                 Log.i(TAG, "Clipboard read and written to $outputPath (${text.length} chars)")
             } else {
-                // Clipboard is empty or access denied - write marker so desktop can distinguish
+                // Clipboard is empty (no text content) - write CLIPBOARD_EMPTY marker
+                // This is distinct from CLIPBOARD_ACCESS_DENIED (SecurityException)
+                File(outputPath).writeText("CLIPBOARD_EMPTY", Charsets.UTF_8)
+                Log.i(TAG, "Clipboard is empty, wrote CLIPBOARD_EMPTY marker to $outputPath")
+            }
+        } catch (e: SecurityException) {
+            // Actual access denied by Android security policy
+            Log.e(TAG, "Clipboard access denied by security policy", e)
+            try {
                 File(outputPath).writeText("CLIPBOARD_ACCESS_DENIED", Charsets.UTF_8)
-                Log.w(TAG, "Clipboard empty or access denied, wrote marker to $outputPath")
+            } catch (writeError: Exception) {
+                Log.e(TAG, "Error writing access denied marker", writeError)
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error reading clipboard", e)
-            // Write error marker so desktop side knows the Activity tried but failed
             try {
                 File(outputPath).writeText("CLIPBOARD_READ_ERROR", Charsets.UTF_8)
             } catch (writeError: Exception) {

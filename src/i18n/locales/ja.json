@@ -416,6 +416,7 @@
     "getFailed": "取得に失敗しました: {{error}}",
     "clipboardAccessDenied": "Androidがクリップボードへのアクセスを拒否しました。コンパニオンアプリがインストールされ、画面がロック解除されていることを確認してください。",
     "clipboardReadError": "デバイスのクリップボードの読み取りに失敗しました。再試行するか、コンパニオンアプリが実行中か確認してください。",
+    "clipboardEmpty": "デバイスのクリップボードは空です。",
     "copiedToPC": "PCのクリップボードにコピーしました",
     "cannotReadClipboard": "PCのクリップボードを読み取れません。手動で貼り付けてください (Ctrl+V)",
     "selectFile": "送信するファイルを選択",

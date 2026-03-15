@@ -110,13 +110,18 @@ export default function Transfer() {
       const result = await tauriInvoke<ClipboardResult>('get_clipboard_content', {
         serial: device.serial,
       });
-      setDeviceClipText(result.text || '');
+      const text = result.text ?? '';
+      setDeviceClipText(text);
       setLastReceiveResult(result);
-      toast.success(t('transfer.gotClipboard', { length: result.length, method: methodLabels[result.method] || result.method }));
-      setTransferHistory((prev) => [{
-        type: 'clipboard', name: `${result.length} ${t('common.chars')}`, time: new Date().toLocaleTimeString(),
-        direction: 'receive', method: result.method, size: formatFileSize(result.byteSize),
-      }, ...prev]);
+      if (text === '') {
+        toast.info(t('transfer.clipboardEmpty'));
+      } else {
+        toast.success(t('transfer.gotClipboard', { length: result.length, method: methodLabels[result.method] || result.method }));
+        setTransferHistory((prev) => [{
+          type: 'clipboard', name: `${result.length} ${t('common.chars')}`, time: new Date().toLocaleTimeString(),
+          direction: 'receive', method: result.method, size: formatFileSize(result.byteSize),
+        }, ...prev]);
+      }
     } catch (err: any) {
       const errorMsg = String(err);
       if (errorMsg.includes('CLIPBOARD_ACCESS_DENIED')) {

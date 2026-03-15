@@ -416,6 +416,7 @@
     "getFailed": "가져오기 실패: {{error}}",
     "clipboardAccessDenied": "Android에서 클립보드 접근을 거부했습니다. 컴패니언 앱이 설치되어 있고 화면이 잠금 해제되어 있는지 확인하세요.",
     "clipboardReadError": "기기 클립보드 읽기에 실패했습니다. 다시 시도하거나 컴패니언 앱이 실행 중인지 확인하세요.",
+    "clipboardEmpty": "기기 클립보드가 비어 있습니다.",
     "copiedToPC": "PC 클립보드에 복사됨",
     "cannotReadClipboard": "PC 클립보드를 읽을 수 없습니다. 수동으로 붙여넣으세요 (Ctrl+V)",
     "selectFile": "전송할 파일 선택",

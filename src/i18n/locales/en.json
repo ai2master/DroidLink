@@ -416,6 +416,7 @@
     "getFailed": "Get failed: {{error}}",
     "clipboardAccessDenied": "Clipboard access denied by Android. Please ensure the companion app is installed and the phone screen is unlocked.",
     "clipboardReadError": "Failed to read device clipboard. Please try again or check if the companion app is running.",
+    "clipboardEmpty": "Device clipboard is empty.",
     "copiedToPC": "Copied to PC clipboard",
     "cannotReadClipboard": "Cannot read PC clipboard, please paste manually (Ctrl+V)",
     "selectFile": "Select file to send",

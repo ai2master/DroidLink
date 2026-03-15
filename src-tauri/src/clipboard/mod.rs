@@ -185,12 +185,9 @@ impl ClipboardBridge {
         // Activity runs in foreground, not affected by Android 10+ clipboard bg restrictions
         match receive_via_activity(serial) {
             Ok(content) => {
-                if content == "CLIPBOARD_ACCESS_DENIED" {
-                    log::warn!("Activity returned CLIPBOARD_ACCESS_DENIED, trying other methods");
-                } else if !content.is_empty() {
-                    log::info!("Clipboard received via Activity: {} bytes", content.len());
-                    return Ok((content, "activity".to_string()));
-                }
+                // 空字符串 = 剪贴板为空（合法结果）/ Empty string = clipboard is empty (valid result)
+                log::info!("Clipboard received via Activity: {} bytes", content.len());
+                return Ok((content, "activity".to_string()));
             }
             Err(e) => {
                 log::debug!("Activity method failed: {}, trying broadcast", e);
@@ -202,7 +199,7 @@ impl ClipboardBridge {
             Ok(content) => {
                 if content == "CLIPBOARD_ACCESS_DENIED" {
                     log::warn!("Broadcast method blocked by Android 10+ restrictions");
-                } else if !content.is_empty() {
+                } else {
                     log::info!("Clipboard received via broadcast: {} bytes", content.len());
                     return Ok((content, "broadcast".to_string()));
                 }
@@ -414,26 +411,51 @@ fn send_via_broadcast(serial: &str, content: &str) -> ClipResult<()> {
 }
 
 fn receive_via_broadcast(serial: &str) -> ClipResult<String> {
-    let cmd = "am broadcast -a com.droidlink.GET_CLIPBOARD \
-               --es output_path /data/local/tmp/.droidlink_clipboard_out \
-               -n com.droidlink.companion/.clipboard.ClipboardReceiver";
-    let output = adb::shell(serial, cmd)?;
+    let output_path = TEMP_CLIPBOARD_OUT_PATH;
+
+    // 同 Activity 方式一样，预创建文件（BroadcastReceiver 也以 app UID 运行）
+    // Same as Activity method - pre-create file (BroadcastReceiver also runs as app UID)
+    let sentinel = "DROIDLINK_PENDING";
+    let pre_create_cmd = format!(
+        "echo -n '{}' > '{}' && chmod 666 '{}'",
+        sentinel, output_path, output_path
+    );
+    let _ = adb::shell(serial, &pre_create_cmd);
+
+    let cmd = format!(
+        "am broadcast -a com.droidlink.GET_CLIPBOARD \
+         --es output_path '{}' \
+         -n com.droidlink.companion/.clipboard.ClipboardReceiver",
+        output_path
+    );
+    let output = adb::shell(serial, &cmd)?;
 
     // 验证广播送达 / Verify broadcast delivered
     if !output.contains("Broadcast completed") || output.contains("Error") {
         log::warn!("GET_CLIPBOARD broadcast not delivered: {}", output.trim());
+        let _ = adb::shell(serial, &format!("rm -f '{}' 2>/dev/null", output_path));
         return Err(ClipboardError::ReadFailed);
     }
 
-    std::thread::sleep(std::time::Duration::from_millis(300));
+    // 轮询等待内容变化 / Poll for content change
+    let max_polls = 5;
+    let poll_interval = std::time::Duration::from_millis(200);
+    for _ in 0..max_polls {
+        std::thread::sleep(poll_interval);
+        let check = adb::shell(serial, &format!("cat '{}' 2>/dev/null", output_path))
+            .unwrap_or_default();
+        let trimmed = check.trim();
+        if trimmed != sentinel {
+            let _ = adb::shell(serial, &format!("rm -f '{}' 2>/dev/null", output_path));
+            if trimmed == "CLIPBOARD_EMPTY" {
+                return Ok(String::new());
+            }
+            return Ok(trimmed.to_string());
+        }
+    }
 
-    // Read the output file directly via adb shell cat (pure ADB)
-    let content = adb::shell(serial, "cat /data/local/tmp/.droidlink_clipboard_out 2>/dev/null")?;
-    let _ = adb::shell(serial, "rm -f /data/local/tmp/.droidlink_clipboard_out 2>/dev/null");
-
-    // Check for Android 10+ access denied marker
-    // If present, the BroadcastReceiver couldn't read clipboard (background restriction)
-    Ok(content.trim().to_string())
+    let _ = adb::shell(serial, &format!("rm -f '{}' 2>/dev/null", output_path));
+    Err(ClipboardError::ReadFailed)
 }
 
 // ========================
@@ -443,14 +465,33 @@ fn receive_via_broadcast(serial: &str) -> ClipResult<String> {
 /// Receive clipboard via transparent Activity (Android 10+ workaround).
 /// BroadcastReceivers can't read clipboard on Android 10+ when in background.
 /// Activities can read clipboard when in foreground (even briefly).
+///
+/// 关键: ClipboardActivity 以 companion app 的 UID 运行，不是 shell 用户。
+/// /data/local/tmp/ 目录权限为 drwx--x--x shell:shell，app 无法在此创建文件。
+/// 必须先用 adb shell (shell用户) 预创建文件并设置 666 权限，
+/// 这样 Activity 才能写入已存在的文件。
+///
+/// KEY: ClipboardActivity runs as companion app's UID, not shell user.
+/// /data/local/tmp/ has permissions drwx--x--x shell:shell, app cannot CREATE files there.
+/// Must pre-create the file via adb shell (as shell user) with 666 permissions,
+/// so the Activity can WRITE to the already-existing file.
 fn receive_via_activity(serial: &str) -> ClipResult<String> {
     let output_path = TEMP_CLIPBOARD_OUT_PATH;
 
-    // 清理旧文件 / Clean up any existing output file
-    let _ = adb::shell(serial, &format!("rm -f '{}' 2>/dev/null", output_path));
+    // 用 sentinel 值预创建文件，设置 world-writable 权限
+    // Pre-create file with sentinel value and world-writable permissions
+    let sentinel = "DROIDLINK_PENDING";
+    let pre_create_cmd = format!(
+        "echo -n '{}' > '{}' && chmod 666 '{}'",
+        sentinel, output_path, output_path
+    );
+    if let Err(e) = adb::shell(serial, &pre_create_cmd) {
+        log::warn!("Failed to pre-create output file: {}", e);
+        return Err(ClipboardError::ReadFailed);
+    }
 
-    // 启动透明 ClipboardActivity (不抑制 stderr，需要验证启动结果)
-    // Launch transparent ClipboardActivity (don't suppress stderr, need to verify launch)
+    // 启动透明 ClipboardActivity
+    // Launch transparent ClipboardActivity
     let cmd = format!(
         "am start -n com.droidlink.companion/.clipboard.ClipboardActivity \
          --es action GET \
@@ -462,44 +503,55 @@ fn receive_via_activity(serial: &str) -> ClipResult<String> {
     // 验证 Activity 启动成功 / Verify Activity started successfully
     if output.contains("Error") || output.contains("does not exist") || output.contains("Exception") {
         log::warn!("ClipboardActivity GET launch failed: {}", output.trim());
+        let _ = adb::shell(serial, &format!("rm -f '{}' 2>/dev/null", output_path));
         return Err(ClipboardError::Encoding(
             format!("Failed to launch ClipboardActivity: {}", output.trim())
         ));
     }
 
-    // 轮询等待文件创建，而不是固定 sleep / Poll for file creation instead of fixed sleep
-    // Activity 写文件后立即 finish()，但启动+写入需要时间
-    let max_polls = 10;
+    // 轮询等待 Activity 写入完成（文件内容不再是 sentinel）
+    // Poll until Activity writes content (file content changes from sentinel)
+    let max_polls = 15; // 15 × 200ms = 3 seconds
     let poll_interval = std::time::Duration::from_millis(200);
-    let mut file_found = false;
+    let mut content_ready = false;
+    let mut final_content = String::new();
     for _ in 0..max_polls {
         std::thread::sleep(poll_interval);
-        let check = adb::shell(serial, &format!("[ -f '{}' ] && echo EXISTS", output_path))
+        let check = adb::shell(serial, &format!("cat '{}'", output_path))
             .unwrap_or_default();
-        if check.contains("EXISTS") {
-            file_found = true;
+        let trimmed = check.trim();
+        if trimmed != sentinel {
+            content_ready = true;
+            final_content = trimmed.to_string();
             break;
         }
     }
 
-    if !file_found {
-        log::warn!("ClipboardActivity GET: output file not created after {}ms", max_polls * 200);
+    // 清理 / Clean up
+    let _ = adb::shell(serial, &format!("rm -f '{}' 2>/dev/null", output_path));
+
+    if !content_ready {
+        log::warn!("ClipboardActivity GET: content not changed after {}ms", max_polls * 200);
         return Err(ClipboardError::ReadFailed);
     }
 
-    // 读取输出文件 / Read the output file
-    let content = adb::shell(serial, &format!("cat '{}'", output_path))?;
-    let _ = adb::shell(serial, &format!("rm -f '{}' 2>/dev/null", output_path));
-
-    let trimmed = content.trim().to_string();
-
     // 检查错误标记 / Check for error markers
-    if trimmed == "CLIPBOARD_READ_ERROR" || trimmed == "CLIPBOARD_ACCESS_DENIED" {
-        log::warn!("ClipboardActivity returned error marker: {}", trimmed);
-        return Err(ClipboardError::Encoding(trimmed));
+    if final_content == "CLIPBOARD_READ_ERROR" {
+        log::warn!("ClipboardActivity returned CLIPBOARD_READ_ERROR");
+        return Err(ClipboardError::Encoding(final_content));
+    }
+    if final_content == "CLIPBOARD_ACCESS_DENIED" {
+        log::warn!("ClipboardActivity returned CLIPBOARD_ACCESS_DENIED");
+        return Err(ClipboardError::Encoding(final_content));
     }
 
-    Ok(trimmed)
+    // 空剪贴板返回空字符串（成功） / Empty clipboard returns empty string (success)
+    if final_content == "CLIPBOARD_EMPTY" {
+        log::info!("Clipboard is empty on device");
+        return Ok(String::new());
+    }
+
+    Ok(final_content)
 }
 
 // ========================

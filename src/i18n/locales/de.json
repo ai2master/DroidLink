@@ -416,6 +416,7 @@
     "getFailed": "Abrufen fehlgeschlagen: {{error}}",
     "clipboardAccessDenied": "Android hat den Zugriff auf die Zwischenablage verweigert. Stellen Sie sicher, dass die Begleit-App installiert ist und der Bildschirm entsperrt ist.",
     "clipboardReadError": "Lesen der Geräte-Zwischenablage fehlgeschlagen. Bitte erneut versuchen oder prüfen, ob die Begleit-App läuft.",
+    "clipboardEmpty": "Die Geräte-Zwischenablage ist leer.",
     "copiedToPC": "In PC-Zwischenablage kopiert",
     "cannotReadClipboard": "Kann PC-Zwischenablage nicht lesen, bitte manuell einfügen (Strg+V)",
     "selectFile": "Datei zum Senden auswählen",

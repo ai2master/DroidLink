@@ -416,6 +416,7 @@
     "getFailed": "获取失败: {{error}}",
     "clipboardAccessDenied": "Android 拒绝了剪贴板访问。请确保配套应用已安装且手机屏幕已解锁。",
     "clipboardReadError": "读取设备剪贴板失败。请重试或检查配套应用是否正在运行。",
+    "clipboardEmpty": "设备剪贴板为空。",
     "copiedToPC": "已复制到电脑剪贴板",
     "cannotReadClipboard": "无法读取电脑剪贴板，请手动粘贴 (Ctrl+V)",
     "selectFile": "选择要发送的文件",

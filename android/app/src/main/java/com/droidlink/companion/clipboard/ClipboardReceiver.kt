@@ -93,10 +93,9 @@ class ClipboardReceiver : BroadcastReceiver() {
      * so the desktop side knows to fall back to the Activity-based approach.
      */
     private fun handleGetClipboard(clipboardManager: ClipboardManager, intent: Intent) {
+        val outputPath = intent.getStringExtra("output_path")
+            ?: "/data/local/tmp/.droidlink_clipboard_out"
         try {
-            val outputPath = intent.getStringExtra("output_path")
-                ?: "/data/local/tmp/.droidlink_clipboard_out"
-
             val clipData = clipboardManager.primaryClip
             val text = if (clipData != null && clipData.itemCount > 0) {
                 clipData.getItemAt(0).text?.toString()
@@ -104,22 +103,25 @@ class ClipboardReceiver : BroadcastReceiver() {
                 null
             }
 
-            // Android 10+ restriction: If clipboard read fails (returns null),
-            // write a special marker so desktop knows to use Activity fallback
-            if (text == null) {
-                File(outputPath).writeText("CLIPBOARD_ACCESS_DENIED", Charsets.UTF_8)
-                Log.w(TAG, "Clipboard access denied (Android 10+ restriction), wrote marker to $outputPath")
-            } else {
+            if (text != null) {
                 File(outputPath).writeText(text, Charsets.UTF_8)
                 Log.i(TAG, "Clipboard written to $outputPath (${text.length} chars)")
+            } else {
+                // Clipboard is empty or Android 10+ background restriction
+                File(outputPath).writeText("CLIPBOARD_EMPTY", Charsets.UTF_8)
+                Log.w(TAG, "Clipboard empty or restricted, wrote CLIPBOARD_EMPTY to $outputPath")
+            }
+        } catch (e: SecurityException) {
+            Log.e(TAG, "Clipboard access denied", e)
+            try {
+                File(outputPath).writeText("CLIPBOARD_ACCESS_DENIED", Charsets.UTF_8)
+            } catch (writeError: Exception) {
+                Log.e(TAG, "Error writing access denied marker", writeError)
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error getting clipboard", e)
-            // Write the marker on any error as well
             try {
-                val outputPath = intent.getStringExtra("output_path")
-                    ?: "/data/local/tmp/.droidlink_clipboard_out"
-                File(outputPath).writeText("CLIPBOARD_ACCESS_DENIED", Charsets.UTF_8)
+                File(outputPath).writeText("CLIPBOARD_READ_ERROR", Charsets.UTF_8)
             } catch (writeError: Exception) {
                 Log.e(TAG, "Error writing error marker", writeError)
             }
@@ -163,10 +165,9 @@ class ClipboardReceiver : BroadcastReceiver() {
      * so the desktop side knows to fall back to the Activity-based approach.
      */
     private fun handleGetClipboardToFile(clipboardManager: ClipboardManager, intent: Intent) {
+        val filePath = intent.getStringExtra("file_path")
+            ?: "/data/local/tmp/.droidlink_clipboard_out"
         try {
-            val filePath = intent.getStringExtra("file_path")
-                ?: "/data/local/tmp/.droidlink_clipboard_out"
-
             val clipData = clipboardManager.primaryClip
             val text = if (clipData != null && clipData.itemCount > 0) {
                 clipData.getItemAt(0).text?.toString()
@@ -174,22 +175,24 @@ class ClipboardReceiver : BroadcastReceiver() {
                 null
             }
 
-            // Android 10+ restriction: If clipboard read fails (returns null),
-            // write a special marker so desktop knows to use Activity fallback
-            if (text == null) {
-                File(filePath).writeText("CLIPBOARD_ACCESS_DENIED", Charsets.UTF_8)
-                Log.w(TAG, "Clipboard access denied (Android 10+ restriction), wrote marker to $filePath")
-            } else {
+            if (text != null) {
                 File(filePath).writeText(text, Charsets.UTF_8)
                 Log.i(TAG, "Clipboard written to file $filePath (${text.length} chars)")
+            } else {
+                File(filePath).writeText("CLIPBOARD_EMPTY", Charsets.UTF_8)
+                Log.w(TAG, "Clipboard empty or restricted, wrote CLIPBOARD_EMPTY to $filePath")
+            }
+        } catch (e: SecurityException) {
+            Log.e(TAG, "Clipboard access denied", e)
+            try {
+                File(filePath).writeText("CLIPBOARD_ACCESS_DENIED", Charsets.UTF_8)
+            } catch (writeError: Exception) {
+                Log.e(TAG, "Error writing access denied marker", writeError)
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error writing clipboard to file", e)
-            // Write the marker on any error as well
             try {
-                val filePath = intent.getStringExtra("file_path")
-                    ?: "/data/local/tmp/.droidlink_clipboard_out"
-                File(filePath).writeText("CLIPBOARD_ACCESS_DENIED", Charsets.UTF_8)
+                File(filePath).writeText("CLIPBOARD_READ_ERROR", Charsets.UTF_8)
             } catch (writeError: Exception) {
                 Log.e(TAG, "Error writing error marker", writeError)
             }
