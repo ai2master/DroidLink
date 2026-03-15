@@ -511,7 +511,9 @@ fn receive_via_activity(serial: &str) -> ClipResult<String> {
 
     // 轮询等待 Activity 写入完成（文件内容不再是 sentinel）
     // Poll until Activity writes content (file content changes from sentinel)
-    let max_polls = 15; // 15 × 200ms = 3 seconds
+    // Activity defers clipboard read to onWindowFocusChanged() for Android 10+ reliability,
+    // with a 3s fallback timeout. Allow 5s total to cover both paths.
+    let max_polls = 25; // 25 × 200ms = 5 seconds
     let poll_interval = std::time::Duration::from_millis(200);
     let mut content_ready = false;
     let mut final_content = String::new();

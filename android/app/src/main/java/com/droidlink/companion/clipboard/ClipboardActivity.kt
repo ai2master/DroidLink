@@ -5,20 +5,31 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import java.io.File
 
 /**
  * Transparent Activity for clipboard operations on Android 10+.
  *
- * Android 10+ restricts background clipboard reading. BroadcastReceivers can't reliably
- * read clipboard content. Only foreground Activities can access clipboard.
+ * Android 10+ restricts background clipboard reading. Only foreground Activities
+ * with **window focus** can reliably access the clipboard.
+ * (Reference: https://github.com/majido/clipper, Android issue 123461156)
+ *
+ * Critical: Clipboard must NOT be read in onCreate() - the window may not have
+ * focus yet. Instead, clipboard operations are deferred to onWindowFocusChanged()
+ * which fires when the Activity's window actually gains focus.
  *
  * This Activity:
  * - Is started via `adb shell am start -n com.droidlink.companion/.clipboard.ClipboardActivity`
- * - Performs clipboard operation (GET or SET)
+ * - Waits for window focus before performing clipboard operations
  * - Finishes immediately after completing the operation
  * - Uses a transparent theme so it's invisible to the user
+ *
+ * File permission note: The output file at /data/local/tmp/ must be pre-created
+ * by the desktop (via adb shell) with chmod 666, because this Activity runs as
+ * the companion app's UID which cannot create files in that shell-owned directory.
  *
  * Supported actions (passed via intent extra):
  * - GET: Read clipboard, write to output file, finish
@@ -38,13 +49,43 @@ class ClipboardActivity : Activity() {
         const val ACTION_SET_TEXT = "SET_TEXT"
         private const val DEFAULT_OUTPUT_PATH = "/data/local/tmp/.droidlink_clipboard_out"
         private const val DEFAULT_INPUT_PATH = "/data/local/tmp/.droidlink_clipboard"
+        private const val FOCUS_TIMEOUT_MS = 3000L
+    }
+
+    private var operationDone = false
+    private val handler = Handler(Looper.getMainLooper())
+    private val timeoutRunnable = Runnable {
+        // Fallback: if onWindowFocusChanged never fires, try from here
+        if (!operationDone) {
+            Log.w(TAG, "Window focus timeout after ${FOCUS_TIMEOUT_MS}ms, attempting clipboard operation anyway")
+            performOperation()
+        }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // This Activity is transparent and finishes immediately
-        // No UI is shown to the user
+        val action = intent.getStringExtra(EXTRA_ACTION) ?: ""
+        Log.d(TAG, "ClipboardActivity started with action: $action")
+
+        // Don't perform clipboard operations here.
+        // On Android 10+, the window must have focus before clipboard can be read.
+        // Schedule a timeout fallback in case onWindowFocusChanged never fires.
+        handler.postDelayed(timeoutRunnable, FOCUS_TIMEOUT_MS)
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus && !operationDone) {
+            Log.d(TAG, "Window focus gained, performing clipboard operation")
+            handler.removeCallbacks(timeoutRunnable)
+            performOperation()
+        }
+    }
+
+    private fun performOperation() {
+        if (operationDone) return
+        operationDone = true
 
         try {
             val clipboardManager = getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
@@ -54,26 +95,22 @@ class ClipboardActivity : Activity() {
                 return
             }
 
-            val action = intent.getStringExtra(EXTRA_ACTION) ?: ""
-            Log.d(TAG, "ClipboardActivity started with action: $action")
-
-            when (action) {
+            when (intent.getStringExtra(EXTRA_ACTION) ?: "") {
                 ACTION_GET -> handleGet(clipboardManager)
                 ACTION_SET -> handleSet(clipboardManager)
                 ACTION_SET_TEXT -> handleSetText(clipboardManager)
-                else -> Log.w(TAG, "Unknown action: $action")
+                else -> Log.w(TAG, "Unknown action: ${intent.getStringExtra(EXTRA_ACTION)}")
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error in ClipboardActivity", e)
         } finally {
-            // Always finish immediately - this Activity should not be visible
             finish()
         }
     }
 
     /**
      * GET action: Read clipboard and write to output file.
-     * The Activity can read clipboard because it's in the foreground (Android 10+ requirement).
+     * Must be called after window focus is confirmed (Android 10+ requirement).
      */
     private fun handleGet(clipboardManager: ClipboardManager) {
         val outputPath = intent.getStringExtra(EXTRA_OUTPUT_PATH) ?: DEFAULT_OUTPUT_PATH
@@ -150,5 +187,10 @@ class ClipboardActivity : Activity() {
         } catch (e: Exception) {
             Log.e(TAG, "Error setting clipboard from text", e)
         }
+    }
+
+    override fun onDestroy() {
+        handler.removeCallbacks(timeoutRunnable)
+        super.onDestroy()
     }
 }
