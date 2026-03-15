@@ -77,7 +77,7 @@ export const Settings: React.FC = () => {
     adbInfo: null,
     scrcpyVersion: null,
     dataPath: '',
-    appVersion: '1.0.0',
+    appVersion: '2.0.0',
   });
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);

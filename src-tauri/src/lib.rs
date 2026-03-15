@@ -187,7 +187,9 @@ pub fn run() {
                                             };
 
                                             // 读取内置 APK 版本号 / Read bundled APK version
-                                            let bundled_version = crate::commands::get_bundled_companion_version_public();
+                                            let resource_dir = app_handle_for_check.path().resource_dir()
+                                                .unwrap_or_else(|_| std::path::PathBuf::from("."));
+                                            let bundled_version = crate::commands::get_bundled_companion_version_public(&resource_dir);
 
                                             let needs_update = installed
                                                 && !device_version.is_empty()

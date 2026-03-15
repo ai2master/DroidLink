@@ -216,8 +216,8 @@ impl ScrcpyManager {
         // ========== 触摸屏传递选项 ==========
         // ========== Touch screen passthrough options ==========
         if opts.forward_all_clicks {
-            // scrcpy v2.5+ 移除了 --forward-all-clicks，使用 --mouse-bind=++++ 替代
-            // scrcpy v2.5+ removed --forward-all-clicks, use --mouse-bind=++++ instead
+            // scrcpy v3.0+ 移除了 --forward-all-clicks，使用 --mouse-bind=++++ 替代
+            // scrcpy v3.0+ removed --forward-all-clicks, use --mouse-bind=++++ instead
             cmd.arg("--mouse-bind=++++");
         }
         if opts.no_mouse_hover {

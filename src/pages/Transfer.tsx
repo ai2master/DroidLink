@@ -118,7 +118,14 @@ export default function Transfer() {
         direction: 'receive', method: result.method, size: formatFileSize(result.byteSize),
       }, ...prev]);
     } catch (err: any) {
-      toast.error(t('transfer.getFailed', { error: err }));
+      const errorMsg = String(err);
+      if (errorMsg.includes('CLIPBOARD_ACCESS_DENIED')) {
+        toast.error(t('transfer.clipboardAccessDenied'));
+      } else if (errorMsg.includes('CLIPBOARD_READ_ERROR')) {
+        toast.error(t('transfer.clipboardReadError'));
+      } else {
+        toast.error(t('transfer.getFailed', { error: err }));
+      }
     } finally {
       setReceiving(false);
     }

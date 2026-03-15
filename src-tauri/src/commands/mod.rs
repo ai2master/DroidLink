@@ -751,7 +751,7 @@ const COMPANION_PACKAGE: &str = "com.droidlink.companion";
 /// 检查手机上是否已安装 DroidLink Companion，返回安装状态和版本
 /// Check if DroidLink Companion is installed on the device, return status and version
 #[tauri::command]
-pub async fn check_companion_app(serial: String) -> Result<Value, String> {
+pub async fn check_companion_app(serial: String, app_handle: tauri::AppHandle) -> Result<Value, String> {
     // Check if package is installed
     let output = adb::shell(&serial, &format!("pm list packages {}", COMPANION_PACKAGE))
         .map_err(|e| e.to_string())?;
@@ -776,8 +776,10 @@ pub async fn check_companion_app(serial: String) -> Result<Value, String> {
         .map(|v| v.trim().to_string())
         .unwrap_or_default();
 
-    // Read bundled version from resources
-    let bundled_version = get_bundled_companion_version();
+    // Read bundled version from resources (using app_handle for correct path in packaged builds)
+    let resource_dir = app_handle.path().resource_dir()
+        .map_err(|e| format!("Failed to get resource dir: {}", e))?;
+    let bundled_version = get_bundled_companion_version(&resource_dir);
 
     let needs_update = !device_version.is_empty()
         && !bundled_version.is_empty()
@@ -842,22 +844,18 @@ pub async fn install_companion_app(serial: String, app_handle: tauri::AppHandle)
 
 /// 获取内置 companion APK 的版本号 (公开版本供 lib.rs 调用)
 /// Get the bundled companion APK version (public for lib.rs)
-pub fn get_bundled_companion_version_public() -> String {
-    get_bundled_companion_version()
+pub fn get_bundled_companion_version_public(resource_dir: &std::path::Path) -> String {
+    get_bundled_companion_version(resource_dir)
 }
 
 /// 获取内置 companion APK 的版本号
 /// Get the bundled companion APK version
-fn get_bundled_companion_version() -> String {
-    let paths = [
-        "resources/companion/version.txt",
-        "../resources/companion/version.txt",
-    ];
-    for path in &paths {
-        if let Ok(content) = std::fs::read_to_string(path) {
-            return content.trim().to_string();
-        }
+fn get_bundled_companion_version(resource_dir: &std::path::Path) -> String {
+    let version_path = resource_dir.join("resources").join("companion").join("version.txt");
+    if let Ok(content) = std::fs::read_to_string(&version_path) {
+        return content.trim().to_string();
     }
+    log::warn!("Failed to read bundled companion version from {:?}", version_path);
     String::new()
 }
 

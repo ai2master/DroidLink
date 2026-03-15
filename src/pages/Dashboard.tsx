@@ -92,8 +92,9 @@ export const Dashboard: React.FC = () => {
       messages: t('dashboard.syncMessages'),
       call_logs: t('dashboard.syncCallLogs'),
     };
+    const serial = connectedDevice?.serial || '';
     for (const [type, label] of Object.entries(typeLabels)) {
-      const status = syncStatuses?.[type] as (SyncStatus & { status?: string; lastSync?: string }) | undefined;
+      const status = syncStatuses?.[`${serial}_${type}`] as (SyncStatus & { status?: string; lastSync?: string }) | undefined;
       if (status?.lastSync && status?.status) {
         realActivities.push({
           id: type,
@@ -357,7 +358,8 @@ export const Dashboard: React.FC = () => {
           <div className="font-semibold text-[var(--font-size-base)] mb-3">{t('dashboard.syncStatus')}</div>
           <div className="flex flex-col gap-3">
             {['contacts', 'messages', 'call_logs', 'folders'].map((type) => {
-              const status = syncStatuses?.[type] as (SyncStatus & { status?: string; lastSync?: string }) | undefined;
+              const statusKey = connectedDevice ? `${connectedDevice.serial}_${type}` : type;
+              const status = syncStatuses?.[statusKey] as (SyncStatus & { status?: string; lastSync?: string }) | undefined;
               const labelKey = `dashboard.${type === 'call_logs' ? 'callLogs' : type === 'folders' ? 'folderSync' : type}`;
               return (
                 <div
