@@ -137,16 +137,18 @@ impl ScrcpyManager {
     /// 检查 scrcpy 是否可用（不执行 scrcpy，避免 snap notice 弹窗）
     /// Check if scrcpy is installed (without executing it, to avoid snap notice popups)
     pub fn check_available() -> ScrcpyResult<String> {
-        let binary = scrcpy_binary();
-        // 检查路径是否为文件或是否在 PATH 中
-        // Check if path exists as file or is in PATH
-        let path = std::path::Path::new(&binary);
-        if path.is_absolute() && path.exists() {
-            Ok("installed (bundled)".to_string())
-        } else if which::which(&binary).is_ok() {
-            Ok("installed".to_string())
-        } else {
-            Err(ScrcpyError::NotFound)
+        match scrcpy_binary_or_error() {
+            Ok(binary) => {
+                let path = std::path::Path::new(&binary);
+                if path.is_absolute() && path.exists() {
+                    Ok("installed (bundled)".to_string())
+                } else if which::which(&binary).is_ok() {
+                    Ok("installed (system)".to_string())
+                } else {
+                    Err(ScrcpyError::NotFound)
+                }
+            }
+            Err(e) => Err(e),
         }
     }
 
@@ -160,7 +162,8 @@ impl ScrcpyManager {
         }
 
         let opts = options.unwrap_or_default();
-        let mut cmd = Command::new(&scrcpy_binary());
+        let binary_path = scrcpy_binary_or_error()?;
+        let mut cmd = Command::new(&binary_path);
 
         // 设置 scrcpy-server 路径 (使用打包的服务端)
         // Set scrcpy-server path (use bundled server)
@@ -213,7 +216,9 @@ impl ScrcpyManager {
         // ========== 触摸屏传递选项 ==========
         // ========== Touch screen passthrough options ==========
         if opts.forward_all_clicks {
-            cmd.arg("--forward-all-clicks");
+            // scrcpy v2.5+ 移除了 --forward-all-clicks，使用 --mouse-bind=++++ 替代
+            // scrcpy v2.5+ removed --forward-all-clicks, use --mouse-bind=++++ instead
+            cmd.arg("--mouse-bind=++++");
         }
         if opts.no_mouse_hover {
             cmd.arg("--no-mouse-hover");
@@ -246,8 +251,7 @@ impl ScrcpyManager {
             cmd.arg("--rotation").arg(rot.to_string());
         }
 
-        let binary = scrcpy_binary();
-        log::info!("scrcpy 二进制路径 / scrcpy binary path: {}", binary);
+        log::info!("scrcpy 二进制路径 / scrcpy binary path: {}", binary_path);
 
         let mut child = cmd
             .stdin(std::process::Stdio::null())
@@ -255,7 +259,7 @@ impl ScrcpyManager {
             .stderr(std::process::Stdio::piped())
             .spawn()
             .map_err(|e| ScrcpyError::StartFailed(
-                format!("Failed to start scrcpy (binary: {}): {}", binary, e)
+                format!("Failed to start scrcpy (binary: {}): {}", binary_path, e)
             ))?;
 
         // 等待一小段时间，检查进程是否立即崩溃
@@ -678,7 +682,15 @@ pub fn set_resource_dir(path: &str) {
     }
 }
 
-fn scrcpy_binary() -> String {
+/// 获取 scrcpy 二进制路径（可能失败）
+/// Get scrcpy binary path (may fail)
+///
+/// 当用户选择 "bundled" 时，如果打包的 scrcpy 不存在，返回错误而不是静默回退到系统版本。
+/// 回退到系统 PATH 会意外使用 snap/flatpak 版本（有沙盒限制且版本可能不匹配）。
+/// When user selects "bundled", if bundled scrcpy is missing, return error instead of
+/// silently falling back to system PATH. Fallback to system PATH would unexpectedly use
+/// snap/flatpak versions (with sandbox restrictions and version mismatches).
+fn scrcpy_binary_or_error() -> ScrcpyResult<String> {
     let source = SCRCPY_SOURCE.lock().ok()
         .map(|s| if s.is_empty() { "bundled".to_string() } else { s.clone() })
         .unwrap_or_else(|| "bundled".to_string());
@@ -686,22 +698,59 @@ fn scrcpy_binary() -> String {
         "bundled" => {
             // 尝试使用打包的 scrcpy / Try bundled scrcpy
             if let Some(path) = bundled_scrcpy_path() {
-                return path;
+                return Ok(path);
             }
-            // 回退到系统 PATH / Fall back to system PATH
-            log::warn!("Bundled scrcpy not found, falling back to system PATH");
-            default_scrcpy_name()
+            // 不再回退到系统 PATH！用户明确选择了 "bundled"，如果没找到就报错
+            // Do NOT fall back to system PATH! User explicitly selected "bundled",
+            // if not found return a clear error
+            let mut searched = Vec::new();
+            if let Ok(dir) = RESOURCE_DIR.lock() {
+                if !dir.is_empty() {
+                    let binary_name = if cfg!(target_os = "windows") { "scrcpy.exe" } else { "scrcpy" };
+                    searched.push(format!("{}/scrcpy/{}", dir, binary_name));
+                }
+            }
+            if let Some(exe_dir) = std::env::current_exe().ok().and_then(|p| p.parent().map(|d| d.to_path_buf())) {
+                searched.push(format!("{}/scrcpy/scrcpy", exe_dir.display()));
+                searched.push(format!("{}/resources/scrcpy/scrcpy", exe_dir.display()));
+            }
+            Err(ScrcpyError::StartFailed(format!(
+                "Bundled scrcpy not found. Searched paths:\n{}\n\
+                 Please reinstall DroidLink or switch to 'system' scrcpy in Settings.",
+                searched.join("\n")
+            )))
+        }
+        "system" => {
+            // 系统 PATH 模式 / System PATH mode
+            if which::which(default_scrcpy_name()).is_ok() {
+                Ok(default_scrcpy_name())
+            } else {
+                Err(ScrcpyError::NotFound)
+            }
         }
         "custom" => {
             if let Ok(custom) = SCRCPY_CUSTOM_PATH.lock() {
                 if !custom.is_empty() {
-                    return custom.clone();
+                    if std::path::Path::new(custom.as_str()).exists() {
+                        return Ok(custom.clone());
+                    }
+                    return Err(ScrcpyError::StartFailed(
+                        format!("Custom scrcpy path not found: {}", custom)
+                    ));
                 }
             }
-            default_scrcpy_name()
+            Err(ScrcpyError::StartFailed("Custom scrcpy path not configured".into()))
         }
-        _ => default_scrcpy_name(),
+        other => {
+            Err(ScrcpyError::StartFailed(format!("Unknown scrcpy source: {}", other)))
+        }
     }
+}
+
+/// 向后兼容: 返回 scrcpy 路径字符串 (用于 check_available 等不需要精确错误的场景)
+/// Backward compat: return scrcpy path string (for check_available etc.)
+fn scrcpy_binary() -> String {
+    scrcpy_binary_or_error().unwrap_or_else(|_| default_scrcpy_name())
 }
 
 fn default_scrcpy_name() -> String {
