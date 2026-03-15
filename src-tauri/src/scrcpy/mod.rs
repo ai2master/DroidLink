@@ -707,11 +707,10 @@ fn scrcpy_binary_or_error() -> ScrcpyResult<String> {
             if let Ok(dir) = RESOURCE_DIR.lock() {
                 if !dir.is_empty() {
                     let binary_name = if cfg!(target_os = "windows") { "scrcpy.exe" } else { "scrcpy" };
-                    searched.push(format!("{}/scrcpy/{}", dir, binary_name));
+                    searched.push(format!("{}/resources/scrcpy/{}", dir, binary_name));
                 }
             }
             if let Some(exe_dir) = std::env::current_exe().ok().and_then(|p| p.parent().map(|d| d.to_path_buf())) {
-                searched.push(format!("{}/scrcpy/scrcpy", exe_dir.display()));
                 searched.push(format!("{}/resources/scrcpy/scrcpy", exe_dir.display()));
             }
             Err(ScrcpyError::StartFailed(format!(
@@ -779,11 +778,13 @@ fn bundled_scrcpy_path() -> Option<String> {
 
     // 优先使用 Tauri resource_dir（正确路径）
     // Prefer Tauri resource_dir (correct path)
+    // tauri.conf.json 配置 "resources/scrcpy/*" → 运行时在 $RESOURCE_DIR/resources/scrcpy/
+    // tauri.conf.json bundles "resources/scrcpy/*" → at runtime they're at $RESOURCE_DIR/resources/scrcpy/
     if let Ok(dir) = RESOURCE_DIR.lock() {
         if !dir.is_empty() {
             let res_dir = std::path::PathBuf::from(dir.as_str());
             let binary_name = if cfg!(target_os = "windows") { "scrcpy.exe" } else { "scrcpy" };
-            candidates.push(res_dir.join("scrcpy").join(binary_name));
+            candidates.push(res_dir.join("resources").join("scrcpy").join(binary_name));
         }
     }
 
@@ -791,13 +792,11 @@ fn bundled_scrcpy_path() -> Option<String> {
     // Fallback: use exe_dir relative paths (dev mode or certain package formats)
     if let Some(exe_dir) = std::env::current_exe().ok().and_then(|p| p.parent().map(|d| d.to_path_buf())) {
         if cfg!(target_os = "macos") {
-            candidates.push(exe_dir.join("../Resources/scrcpy/scrcpy"));
-            candidates.push(exe_dir.join("scrcpy/scrcpy"));
+            candidates.push(exe_dir.join("../Resources/resources/scrcpy/scrcpy"));
+            candidates.push(exe_dir.join("resources/scrcpy/scrcpy"));
         } else if cfg!(target_os = "windows") {
-            candidates.push(exe_dir.join("scrcpy/scrcpy.exe"));
             candidates.push(exe_dir.join("resources/scrcpy/scrcpy.exe"));
         } else {
-            candidates.push(exe_dir.join("scrcpy/scrcpy"));
             candidates.push(exe_dir.join("resources/scrcpy/scrcpy"));
         }
     }
@@ -823,7 +822,7 @@ fn bundled_scrcpy_server_path() -> Option<String> {
     if let Ok(dir) = RESOURCE_DIR.lock() {
         if !dir.is_empty() {
             let res_dir = std::path::PathBuf::from(dir.as_str());
-            candidates.push(res_dir.join("scrcpy").join("scrcpy-server"));
+            candidates.push(res_dir.join("resources").join("scrcpy").join("scrcpy-server"));
         }
     }
 
@@ -831,10 +830,9 @@ fn bundled_scrcpy_server_path() -> Option<String> {
     // Fallback: exe_dir relative paths
     if let Some(exe_dir) = std::env::current_exe().ok().and_then(|p| p.parent().map(|d| d.to_path_buf())) {
         if cfg!(target_os = "macos") {
-            candidates.push(exe_dir.join("../Resources/scrcpy/scrcpy-server"));
-            candidates.push(exe_dir.join("scrcpy/scrcpy-server"));
+            candidates.push(exe_dir.join("../Resources/resources/scrcpy/scrcpy-server"));
+            candidates.push(exe_dir.join("resources/scrcpy/scrcpy-server"));
         } else {
-            candidates.push(exe_dir.join("scrcpy/scrcpy-server"));
             candidates.push(exe_dir.join("resources/scrcpy/scrcpy-server"));
         }
     }

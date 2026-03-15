@@ -335,6 +335,7 @@
     "stopMirror": "Остановить зеркалирование",
     "scrcpyNotFound": "scrcpy не найден",
     "scrcpyInstallHint": "Пожалуйста, установите scrcpy и убедитесь, что он находится в PATH. Посетите https://github.com/Genymobile/scrcpy для загрузки.",
+    "bundledScrcpyNotFound": "Встроенный scrcpy не найден. Возможно, потребуется переустановить приложение или переключиться на «Системный PATH» в настройках.",
     "scrcpyVersion": "Версия scrcpy: {{version}}",
     "videoSettings": "Настройки видео",
     "maxResolution": "Максимальное разрешение",

@@ -274,11 +274,13 @@ pub fn get_available_sources(bundled_adb_dir: &Path) -> Vec<String> {
 
 /// 获取内置 ADB 二进制路径
 /// Get bundled ADB binary path
+/// tauri.conf.json 配置 "resources/adb/*" → 运行时在 $RESOURCE_DIR/resources/adb/
+/// tauri.conf.json bundles "resources/adb/*" → at runtime they're at $RESOURCE_DIR/resources/adb/
 fn bundled_adb_binary(base_dir: &Path) -> PathBuf {
     if cfg!(target_os = "windows") {
-        base_dir.join("adb").join("adb.exe")
+        base_dir.join("resources").join("adb").join("adb.exe")
     } else {
-        base_dir.join("adb").join("adb")
+        base_dir.join("resources").join("adb").join("adb")
     }
 }
 

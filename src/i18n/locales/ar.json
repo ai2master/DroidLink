@@ -335,6 +335,7 @@
     "stopMirror": "إيقاف العرض",
     "scrcpyNotFound": "لم يتم العثور على scrcpy",
     "scrcpyInstallHint": "يرجى تثبيت scrcpy والتأكد من أنه في PATH. قم بزيارة https://github.com/Genymobile/scrcpy للتنزيل.",
+    "bundledScrcpyNotFound": "لم يتم العثور على scrcpy المدمج. قد تحتاج إلى إعادة تثبيت التطبيق أو التبديل إلى 'مسار النظام' في الإعدادات.",
     "scrcpyVersion": "إصدار scrcpy: {{version}}",
     "videoSettings": "إعدادات الفيديو",
     "maxResolution": "الدقة القصوى",

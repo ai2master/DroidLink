@@ -335,6 +335,7 @@
     "stopMirror": "미러링 중지",
     "scrcpyNotFound": "scrcpy를 찾을 수 없음",
     "scrcpyInstallHint": "scrcpy를 설치하고 PATH에 있는지 확인해주세요.",
+    "bundledScrcpyNotFound": "내장 scrcpy 바이너리를 찾을 수 없습니다. 앱을 다시 설치하거나 설정에서 '시스템 PATH'로 전환하세요.",
     "scrcpyVersion": "scrcpy 버전: {{version}}",
     "videoSettings": "비디오 설정",
     "maxResolution": "최대 해상도",

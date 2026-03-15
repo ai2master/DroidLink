@@ -335,6 +335,7 @@
     "stopMirror": "ミラーリング停止",
     "scrcpyNotFound": "scrcpyが見つかりません",
     "scrcpyInstallHint": "scrcpyをインストールしてPATHに追加してください。https://github.com/Genymobile/scrcpy からダウンロードできます。",
+    "bundledScrcpyNotFound": "内蔵scrcpyが見つかりません。アプリの再インストールが必要か、設定で「システムPATH」に切り替えてください。",
     "scrcpyVersion": "scrcpyバージョン: {{version}}",
     "videoSettings": "映像設定",
     "maxResolution": "最大解像度",

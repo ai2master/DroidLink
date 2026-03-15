@@ -335,6 +335,7 @@
     "stopMirror": "停止投射",
     "scrcpyNotFound": "未检测到 scrcpy",
     "scrcpyInstallHint": "请先安装 scrcpy 并确保其在 PATH 中。访问 https://github.com/Genymobile/scrcpy 下载安装。",
+    "bundledScrcpyNotFound": "未找到内置 scrcpy 文件。可能需要重新安装应用，或在设置中切换到「系统 PATH」模式。",
     "scrcpyVersion": "scrcpy 版本: {{version}}",
     "videoSettings": "视频设置",
     "maxResolution": "最大分辨率",

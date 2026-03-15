@@ -23,6 +23,7 @@ export default function ScreenMirror() {
   const [running, setRunning] = useState(false);
   const [scrcpyVersion, setScrcpyVersion] = useState('');
   const [scrcpyAvailable, setScrcpyAvailable] = useState(false);
+  const [scrcpyError, setScrcpyError] = useState('');
   const [options, setOptions] = useState({
     maxSize: 1920,
     bitRate: 8,
@@ -61,8 +62,10 @@ export default function ScreenMirror() {
       const version = await tauriInvoke<string>('check_scrcpy');
       setScrcpyVersion(version);
       setScrcpyAvailable(true);
-    } catch {
+      setScrcpyError('');
+    } catch (err: any) {
       setScrcpyAvailable(false);
+      setScrcpyError(String(err));
     }
   };
 
@@ -246,11 +249,16 @@ export default function ScreenMirror() {
       </div>
       <div className="page-body">
         {!scrcpyAvailable && (
-          <div className="flex gap-2 p-3 rounded-[var(--border-radius)] bg-yellow-50 border border-yellow-200 text-[var(--font-size-sm)] mb-4">
+          <div className="flex flex-col gap-2 p-3 rounded-[var(--border-radius)] bg-yellow-50 border border-yellow-200 text-[var(--font-size-sm)] mb-4">
             <span className="text-yellow-800">
               <strong>{t('screenMirror.scrcpyNotFound')}</strong><br />
-              {t('screenMirror.scrcpyInstallHint')}
+              {scrcpyError.includes('Bundled scrcpy not found')
+                ? t('screenMirror.bundledScrcpyNotFound')
+                : t('screenMirror.scrcpyInstallHint')}
             </span>
+            {scrcpyError && (
+              <pre className="text-xs text-yellow-700 bg-yellow-100 p-2 rounded overflow-x-auto whitespace-pre-wrap">{scrcpyError}</pre>
+            )}
           </div>
         )}
         {scrcpyAvailable && (
