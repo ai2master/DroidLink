@@ -579,6 +579,12 @@
     "installFailed": "설치 실패",
     "skipForNow": "나중에 하기",
     "updateAvailable": "컴패니언 앱의 새 버전을 사용할 수 있습니다",
-    "update": "업데이트"
+    "update": "업데이트",
+    "updateTitle": "컴패니언 앱 업데이트",
+    "updateSuccess": "업데이트 성공!",
+    "updateSuccessDesc": "DroidLink 컴패니언이 업데이트되었습니다. 모든 기능이 최신 상태입니다.",
+    "versionMismatch": "기기 버전: {{device}}, 사용 가능: {{bundled}}",
+    "installedVersion": "컴패니언 앱 v{{version}}",
+    "reinstall": "재설치"
   }
 }

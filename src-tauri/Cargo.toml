@@ -1,6 +1,6 @@
 [package]
 name = "droidlink"
-version = "1.0.0"
+version = "2.0.0"
 description = "Android Phone Manager - USB ADB based sync & management tool"
 authors = ["DroidLink"]
 edition = "2021"

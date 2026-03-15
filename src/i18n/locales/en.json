@@ -579,6 +579,12 @@
     "installFailed": "Installation failed",
     "skipForNow": "Skip for now",
     "updateAvailable": "A new version of the companion app is available",
-    "update": "Update"
+    "update": "Update",
+    "updateTitle": "Update Companion App",
+    "updateSuccess": "Update successful!",
+    "updateSuccessDesc": "DroidLink Companion has been updated. All features are up to date.",
+    "versionMismatch": "Device version: {{device}}, available: {{bundled}}",
+    "installedVersion": "Companion App v{{version}}",
+    "reinstall": "Reinstall"
   }
 }

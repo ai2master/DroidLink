@@ -177,7 +177,7 @@ pub fn run() {
                                             let output = adb::shell(&serial_for_check, "pm list packages com.droidlink.companion 2>/dev/null");
                                             let installed = output.as_ref().map(|o| o.contains("com.droidlink.companion")).unwrap_or(false);
 
-                                            let version = if installed {
+                                            let device_version = if installed {
                                                 adb::shell(&serial_for_check, "dumpsys package com.droidlink.companion | grep versionName")
                                                     .ok()
                                                     .and_then(|v| v.lines().find(|l| l.contains("versionName")).map(|l| l.split('=').last().unwrap_or("").trim().to_string()))
@@ -186,14 +186,26 @@ pub fn run() {
                                                 String::new()
                                             };
 
+                                            // 读取内置 APK 版本号 / Read bundled APK version
+                                            let bundled_version = crate::commands::get_bundled_companion_version_public();
+
+                                            let needs_update = installed
+                                                && !device_version.is_empty()
+                                                && !bundled_version.is_empty()
+                                                && device_version != bundled_version;
+
                                             let _ = app_handle_for_check.emit("companion-status", serde_json::json!({
                                                 "serial": serial_for_check,
                                                 "installed": installed,
-                                                "version": version,
+                                                "deviceVersion": device_version,
+                                                "bundledVersion": bundled_version,
+                                                "needsUpdate": needs_update,
                                             }));
 
                                             if !installed {
                                                 log::info!("Companion app NOT installed on {}. Frontend will prompt user.", serial_for_check);
+                                            } else if needs_update {
+                                                log::info!("Companion app on {} needs update: {} -> {}", serial_for_check, device_version, bundled_version);
                                             }
                                         });
 

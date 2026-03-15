@@ -579,6 +579,12 @@
     "installFailed": "インストール失敗",
     "skipForNow": "今はスキップ",
     "updateAvailable": "コンパニオンアプリの新しいバージョンが利用可能です",
-    "update": "アップデート"
+    "update": "アップデート",
+    "updateTitle": "コンパニオンアプリを更新",
+    "updateSuccess": "更新成功！",
+    "updateSuccessDesc": "DroidLink コンパニオンが更新されました。すべての機能が最新です。",
+    "versionMismatch": "デバイスバージョン: {{device}}、利用可能: {{bundled}}",
+    "installedVersion": "コンパニオンアプリ v{{version}}",
+    "reinstall": "再インストール"
   }
 }

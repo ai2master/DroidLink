@@ -840,6 +840,12 @@ pub async fn install_companion_app(serial: String, app_handle: tauri::AppHandle)
     }
 }
 
+/// 获取内置 companion APK 的版本号 (公开版本供 lib.rs 调用)
+/// Get the bundled companion APK version (public for lib.rs)
+pub fn get_bundled_companion_version_public() -> String {
+    get_bundled_companion_version()
+}
+
 /// 获取内置 companion APK 的版本号
 /// Get the bundled companion APK version
 fn get_bundled_companion_version() -> String {

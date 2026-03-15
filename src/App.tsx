@@ -21,6 +21,7 @@ function App() {
   const addDevice = useStore((s) => s.addDevice);
   const removeDevice = useStore((s) => s.removeDevice);
   const setCompanionInstalled = useStore((s) => s.setCompanionInstalled);
+  const setCompanionStatus = useStore((s) => s.setCompanionStatus);
   const updateSyncStatus = useStore((s) => s.updateSyncStatus);
   const setClipboardContent = useStore((s) => s.setClipboardContent);
   const setSettings = useStore((s) => s.setSettings);
@@ -33,6 +34,7 @@ function App() {
   const [companionPromptVisible, setCompanionPromptVisible] = useState(false);
   const [companionDeviceSerial, setCompanionDeviceSerial] = useState('');
   const [companionDeviceName, setCompanionDeviceName] = useState('');
+  const [companionPromptMode, setCompanionPromptMode] = useState<'install' | 'update'>('install');
 
   useEffect(() => {
     // Load initial settings
@@ -71,11 +73,17 @@ function App() {
     // Listen for companion status event - backend checks after device connects
     const unlistenCompanion = tauriListen('companion-status', (status: any) => {
       if (status) {
-        setCompanionInstalled(!!status.installed);
-        if (!status.installed) {
-          // Companion 未安装，弹出安装提示（需要用户同意才安装）
-          // Companion not installed, show install prompt (requires user consent)
+        // 更新完整的 companion 状态 / Update full companion status
+        setCompanionStatus(status.serial || '', {
+          installed: !!status.installed,
+          deviceVersion: status.deviceVersion || '',
+          bundledVersion: status.bundledVersion || '',
+          needsUpdate: !!status.needsUpdate,
+        });
+
+        const showPrompt = (mode: 'install' | 'update') => {
           setCompanionDeviceSerial(status.serial || '');
+          setCompanionPromptMode(mode);
           tauriInvoke<any>('get_device_info', { serial: status.serial })
             .then((info: any) => {
               setCompanionDeviceName(info?.displayName || info?.model || status.serial);
@@ -85,6 +93,12 @@ function App() {
               setCompanionDeviceName(status.serial);
               setCompanionPromptVisible(true);
             });
+        };
+
+        if (!status.installed) {
+          showPrompt('install');
+        } else if (status.needsUpdate) {
+          showPrompt('update');
         }
       }
     });
@@ -116,6 +130,7 @@ function App() {
     if (showCompanionPrompt && connectedDevice) {
       setCompanionDeviceSerial(connectedDevice.serial);
       setCompanionDeviceName(connectedDevice.displayName || connectedDevice.model);
+      setCompanionPromptMode('install');
       setCompanionPromptVisible(true);
       setShowCompanionPrompt(false);
     }
@@ -149,12 +164,13 @@ function App() {
         <StatusBar />
       </div>
 
-      {/* Companion App 安装提示 - 仅在用户同意后才安装 */}
-      {/* Companion App install prompt - installs ONLY after user consent */}
+      {/* Companion App 安装/更新提示 - 仅在用户同意后才安装 */}
+      {/* Companion App install/update prompt - installs ONLY after user consent */}
       <CompanionInstallPrompt
         visible={companionPromptVisible}
         serial={companionDeviceSerial}
         deviceName={companionDeviceName}
+        mode={companionPromptMode}
         onClose={() => setCompanionPromptVisible(false)}
         onInstalled={() => { setCompanionInstalled(true); setCompanionPromptVisible(false); }}
       />

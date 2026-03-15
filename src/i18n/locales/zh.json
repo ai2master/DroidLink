@@ -579,6 +579,12 @@
     "installFailed": "安装失败",
     "skipForNow": "暂时跳过",
     "updateAvailable": "手机端应用有新版本可用",
-    "update": "更新"
+    "update": "更新",
+    "updateTitle": "更新手机端应用",
+    "updateSuccess": "更新成功！",
+    "updateSuccessDesc": "DroidLink 手机端应用已更新，所有功能已是最新版本。",
+    "versionMismatch": "设备版本：{{device}}，可用版本：{{bundled}}",
+    "installedVersion": "手机端应用 v{{version}}",
+    "reinstall": "重新安装"
   }
 }

@@ -76,26 +76,30 @@ class ClipboardActivity : Activity() {
      * The Activity can read clipboard because it's in the foreground (Android 10+ requirement).
      */
     private fun handleGet(clipboardManager: ClipboardManager) {
+        val outputPath = intent.getStringExtra(EXTRA_OUTPUT_PATH) ?: DEFAULT_OUTPUT_PATH
         try {
-            val outputPath = intent.getStringExtra(EXTRA_OUTPUT_PATH) ?: DEFAULT_OUTPUT_PATH
-
             val clipData = clipboardManager.primaryClip
             val text = if (clipData != null && clipData.itemCount > 0) {
-                clipData.getItemAt(0).text?.toString() ?: ""
+                clipData.getItemAt(0).text?.toString()
             } else {
-                ""
+                null
             }
 
-            File(outputPath).writeText(text, Charsets.UTF_8)
-            Log.i(TAG, "Clipboard read and written to $outputPath (${text.length} chars)")
+            if (text != null) {
+                File(outputPath).writeText(text, Charsets.UTF_8)
+                Log.i(TAG, "Clipboard read and written to $outputPath (${text.length} chars)")
+            } else {
+                // Clipboard is empty or access denied - write marker so desktop can distinguish
+                File(outputPath).writeText("CLIPBOARD_ACCESS_DENIED", Charsets.UTF_8)
+                Log.w(TAG, "Clipboard empty or access denied, wrote marker to $outputPath")
+            }
         } catch (e: Exception) {
             Log.e(TAG, "Error reading clipboard", e)
-            // Write empty file on error so the desktop side knows we tried
+            // Write error marker so desktop side knows the Activity tried but failed
             try {
-                val outputPath = intent.getStringExtra(EXTRA_OUTPUT_PATH) ?: DEFAULT_OUTPUT_PATH
-                File(outputPath).writeText("", Charsets.UTF_8)
+                File(outputPath).writeText("CLIPBOARD_READ_ERROR", Charsets.UTF_8)
             } catch (writeError: Exception) {
-                Log.e(TAG, "Error writing error file", writeError)
+                Log.e(TAG, "Error writing error marker", writeError)
             }
         }
     }

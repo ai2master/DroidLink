@@ -444,30 +444,62 @@ fn receive_via_broadcast(serial: &str) -> ClipResult<String> {
 /// BroadcastReceivers can't read clipboard on Android 10+ when in background.
 /// Activities can read clipboard when in foreground (even briefly).
 fn receive_via_activity(serial: &str) -> ClipResult<String> {
-    let output_path = "/data/local/tmp/.droidlink_clipboard_out";
+    let output_path = TEMP_CLIPBOARD_OUT_PATH;
 
-    // Clean up any existing output file
+    // 清理旧文件 / Clean up any existing output file
     let _ = adb::shell(serial, &format!("rm -f '{}' 2>/dev/null", output_path));
 
-    // Launch the transparent ClipboardActivity with GET action
+    // 启动透明 ClipboardActivity (不抑制 stderr，需要验证启动结果)
+    // Launch transparent ClipboardActivity (don't suppress stderr, need to verify launch)
     let cmd = format!(
         "am start -n com.droidlink.companion/.clipboard.ClipboardActivity \
          --es action GET \
-         --es output_path '{}' \
-         2>/dev/null",
+         --es output_path '{}'",
         output_path
     );
-    adb::shell(serial, &cmd)?;
+    let output = adb::shell(serial, &cmd)?;
 
-    // Wait for the Activity to launch, read clipboard, write file, and finish
-    // The Activity finishes immediately after writing the file
-    std::thread::sleep(std::time::Duration::from_millis(500));
+    // 验证 Activity 启动成功 / Verify Activity started successfully
+    if output.contains("Error") || output.contains("does not exist") || output.contains("Exception") {
+        log::warn!("ClipboardActivity GET launch failed: {}", output.trim());
+        return Err(ClipboardError::Encoding(
+            format!("Failed to launch ClipboardActivity: {}", output.trim())
+        ));
+    }
 
-    // Read the output file
-    let content = adb::shell(serial, &format!("cat '{}' 2>/dev/null", output_path))?;
+    // 轮询等待文件创建，而不是固定 sleep / Poll for file creation instead of fixed sleep
+    // Activity 写文件后立即 finish()，但启动+写入需要时间
+    let max_polls = 10;
+    let poll_interval = std::time::Duration::from_millis(200);
+    let mut file_found = false;
+    for _ in 0..max_polls {
+        std::thread::sleep(poll_interval);
+        let check = adb::shell(serial, &format!("[ -f '{}' ] && echo EXISTS", output_path))
+            .unwrap_or_default();
+        if check.contains("EXISTS") {
+            file_found = true;
+            break;
+        }
+    }
+
+    if !file_found {
+        log::warn!("ClipboardActivity GET: output file not created after {}ms", max_polls * 200);
+        return Err(ClipboardError::ReadFailed);
+    }
+
+    // 读取输出文件 / Read the output file
+    let content = adb::shell(serial, &format!("cat '{}'", output_path))?;
     let _ = adb::shell(serial, &format!("rm -f '{}' 2>/dev/null", output_path));
 
-    Ok(content.trim().to_string())
+    let trimmed = content.trim().to_string();
+
+    // 检查错误标记 / Check for error markers
+    if trimmed == "CLIPBOARD_READ_ERROR" || trimmed == "CLIPBOARD_ACCESS_DENIED" {
+        log::warn!("ClipboardActivity returned error marker: {}", trimmed);
+        return Err(ClipboardError::Encoding(trimmed));
+    }
+
+    Ok(trimmed)
 }
 
 // ========================

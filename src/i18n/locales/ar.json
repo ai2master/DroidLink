@@ -579,6 +579,12 @@
     "installFailed": "فشل التثبيت",
     "skipForNow": "تخطي الآن",
     "updateAvailable": "تتوفر نسخة جديدة من التطبيق المساعد",
-    "update": "تحديث"
+    "update": "تحديث",
+    "updateTitle": "تحديث التطبيق المساعد",
+    "updateSuccess": "تم التحديث بنجاح!",
+    "updateSuccessDesc": "تم تحديث تطبيق DroidLink المساعد. جميع الميزات محدثة.",
+    "versionMismatch": "إصدار الجهاز: {{device}}، المتاح: {{bundled}}",
+    "installedVersion": "التطبيق المساعد v{{version}}",
+    "reinstall": "إعادة التثبيت"
   }
 }

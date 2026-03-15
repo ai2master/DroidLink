@@ -22,6 +22,13 @@ export interface SyncStatus {
   message?: string;
 }
 
+export interface CompanionStatus {
+  installed: boolean;
+  deviceVersion: string;
+  bundledVersion: string;
+  needsUpdate: boolean;
+}
+
 export type Density = 'compact' | 'comfortable';
 
 interface AppStore {
@@ -37,9 +44,13 @@ interface AppStore {
   setConnectedDevice: (device: DeviceInfo | null) => void;
 
   // Companion app 安装状态 (按设备) / Per-device companion status
-  companionStatuses: Record<string, boolean | null>;
+  companionStatuses: Record<string, CompanionStatus | null>;
   companionInstalled: boolean | null; // computed: active device's status
+  companionNeedsUpdate: boolean; // computed: active device needs companion update
+  companionDeviceVersion: string; // computed: active device's companion version
+  companionBundledVersion: string; // computed: bundled companion version
   setCompanionInstalled: (installed: boolean | null) => void;
+  setCompanionStatus: (serial: string, status: CompanionStatus) => void;
 
   // Current page
   currentPage: string;
@@ -82,9 +93,27 @@ const getActiveDevice = (state: { connectedDevices: DeviceInfo[]; activeDeviceSe
 };
 
 // 计算活跃设备的 companion 状态 / Compute companion status for active device
-const getCompanionInstalled = (state: { activeDeviceSerial: string | null; companionStatuses: Record<string, boolean | null> }): boolean | null => {
+const getCompanionInstalled = (state: { activeDeviceSerial: string | null; companionStatuses: Record<string, CompanionStatus | null> }): boolean | null => {
   if (!state.activeDeviceSerial) return null;
-  return state.companionStatuses[state.activeDeviceSerial] ?? null;
+  const status = state.companionStatuses[state.activeDeviceSerial];
+  if (!status) return null;
+  return status.installed;
+};
+
+// 计算活跃设备的 companion 更新状态 / Compute companion update fields for active device
+const getCompanionFields = (state: { activeDeviceSerial: string | null; companionStatuses: Record<string, CompanionStatus | null> }) => {
+  if (!state.activeDeviceSerial) {
+    return { companionNeedsUpdate: false, companionDeviceVersion: '', companionBundledVersion: '' };
+  }
+  const status = state.companionStatuses[state.activeDeviceSerial];
+  if (!status) {
+    return { companionNeedsUpdate: false, companionDeviceVersion: '', companionBundledVersion: '' };
+  }
+  return {
+    companionNeedsUpdate: status.needsUpdate,
+    companionDeviceVersion: status.deviceVersion,
+    companionBundledVersion: status.bundledVersion,
+  };
 };
 
 export const useStore = create<AppStore>((set, get) => ({
@@ -107,6 +136,7 @@ export const useStore = create<AppStore>((set, get) => ({
         activeDeviceSerial: activeSerial,
         connectedDevice: activeDevice,
         companionInstalled: getCompanionInstalled({ activeDeviceSerial: activeSerial, companionStatuses: state.companionStatuses }),
+        ...getCompanionFields({ activeDeviceSerial: activeSerial, companionStatuses: state.companionStatuses }),
       };
     }),
 
@@ -126,6 +156,7 @@ export const useStore = create<AppStore>((set, get) => ({
         connectedDevice: getActiveDevice({ connectedDevices: devices, activeDeviceSerial: activeSerial }),
         companionStatuses: remainingStatuses,
         companionInstalled: getCompanionInstalled({ activeDeviceSerial: activeSerial, companionStatuses: remainingStatuses }),
+        ...getCompanionFields({ activeDeviceSerial: activeSerial, companionStatuses: remainingStatuses }),
       };
     }),
 
@@ -136,6 +167,7 @@ export const useStore = create<AppStore>((set, get) => ({
         activeDeviceSerial: serial,
         connectedDevice: device,
         companionInstalled: getCompanionInstalled({ activeDeviceSerial: serial, companionStatuses: state.companionStatuses }),
+        ...getCompanionFields({ activeDeviceSerial: serial, companionStatuses: state.companionStatuses }),
       };
     }),
 
@@ -154,16 +186,39 @@ export const useStore = create<AppStore>((set, get) => ({
   // Companion 状态 (按设备) / Per-device companion status
   companionStatuses: {},
   companionInstalled: null,
+  companionNeedsUpdate: false,
+  companionDeviceVersion: '',
+  companionBundledVersion: '',
+
   setCompanionInstalled: (installed) =>
     set((state) => {
       if (!state.activeDeviceSerial) return {};
+      // 更新现有状态或创建新状态 / Update existing status or create new
+      const existing = state.companionStatuses[state.activeDeviceSerial];
+      const newStatus: CompanionStatus = existing
+        ? { ...existing, installed: !!installed, needsUpdate: false }
+        : { installed: !!installed, deviceVersion: '', bundledVersion: '', needsUpdate: false };
       const newStatuses = {
         ...state.companionStatuses,
-        [state.activeDeviceSerial]: installed,
+        [state.activeDeviceSerial]: newStatus,
       };
       return {
         companionStatuses: newStatuses,
         companionInstalled: installed,
+        ...getCompanionFields({ activeDeviceSerial: state.activeDeviceSerial, companionStatuses: newStatuses }),
+      };
+    }),
+
+  setCompanionStatus: (serial, status) =>
+    set((state) => {
+      const newStatuses = {
+        ...state.companionStatuses,
+        [serial]: status,
+      };
+      return {
+        companionStatuses: newStatuses,
+        companionInstalled: getCompanionInstalled({ activeDeviceSerial: state.activeDeviceSerial, companionStatuses: newStatuses }),
+        ...getCompanionFields({ activeDeviceSerial: state.activeDeviceSerial, companionStatuses: newStatuses }),
       };
     }),
 

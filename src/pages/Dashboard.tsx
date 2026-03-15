@@ -39,7 +39,7 @@ interface Activity {
 export const Dashboard: React.FC = () => {
   const { t } = useTranslation();
   const toast = useToast();
-  const { connectedDevice, syncStatuses, companionInstalled, setShowCompanionPrompt, setCurrentPage } = useStore();
+  const { connectedDevice, syncStatuses, companionInstalled, companionNeedsUpdate, companionDeviceVersion, companionBundledVersion, setShowCompanionPrompt, setCurrentPage } = useStore();
   const [stats, setStats] = useState<Stats>({
     contactCount: 0,
     messageCount: 0,
@@ -198,6 +198,36 @@ export const Dashboard: React.FC = () => {
           </div>
           <Button variant="primary" size="sm" onClick={() => setShowCompanionPrompt(true)}>
             {t('common.installCompanion')}
+          </Button>
+        </div>
+      )}
+
+      {/* Companion app version mismatch notice */}
+      {companionInstalled && companionNeedsUpdate && (
+        <div className="rounded-[var(--border-radius)] border border-blue-200 bg-blue-50 p-[var(--card-padding)] mb-[var(--card-gap)] flex items-center justify-between gap-4">
+          <div>
+            <div className="font-semibold text-blue-900 text-[var(--font-size-base)]">{t('companion.updateAvailable')}</div>
+            <div className="text-blue-700 text-[var(--font-size-sm)] mt-1">
+              {t('companion.versionMismatch', { device: companionDeviceVersion, bundled: companionBundledVersion })}
+            </div>
+          </div>
+          <Button variant="primary" size="sm" onClick={() => setShowCompanionPrompt(true)}>
+            {t('companion.update')}
+          </Button>
+        </div>
+      )}
+
+      {/* Always-available companion reinstall option */}
+      {companionInstalled && !companionNeedsUpdate && (
+        <div className="rounded-[var(--border-radius)] border border-border bg-white p-[var(--card-padding)] mb-[var(--card-gap)] flex items-center justify-between gap-4">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="h-4 w-4 text-success" />
+            <span className="text-[var(--font-size-sm)] text-gray-700">
+              {t('companion.installedVersion', { version: companionDeviceVersion || '?' })}
+            </span>
+          </div>
+          <Button variant="outline" size="sm" onClick={() => setShowCompanionPrompt(true)}>
+            {t('companion.reinstall')}
           </Button>
         </div>
       )}
