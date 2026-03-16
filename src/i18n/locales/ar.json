@@ -17,7 +17,8 @@
     "selectDevice": "اختر الجهاز",
     "devicesConnected": "{{count}} أجهزة متصلة",
     "switchDevice": "تبديل الجهاز",
-    "noDeviceSelected": "لم يتم اختيار جهاز"
+    "noDeviceSelected": "لم يتم اختيار جهاز",
+    "terminal": "الطرفية"
   },
   "common": {
     "loading": "جاري التحميل...",
@@ -427,7 +428,18 @@
     "advNoAudio": "تعطيل الصوت",
     "advNoAudioDesc": "تعطيل إعادة توجيه الصوت من الجهاز. يتم التحكم فيه عبر خانة الاختيار أعلاه.",
     "advOtg": "وضع OTG",
-    "advOtgDesc": "استخدام تمرير USB HID للإدخال (أقل زمن وصول). لا حاجة لمصادقة تصحيح ADB، لكن تعمل أجهزة HID فقط."
+    "advOtgDesc": "استخدام تمرير USB HID للإدخال (أقل زمن وصول). لا حاجة لمصادقة تصحيح ADB، لكن تعمل أجهزة HID فقط.",
+    "cameraTitle": "عرض الكاميرا",
+    "cameraMode": "وضع الكاميرا",
+    "cameraModeDesc": "عرض كاميرا الجهاز بدلاً من الشاشة (يتطلب Android 12+ و scrcpy 2.1+)",
+    "cameraFacing": "الكاميرا",
+    "cameraBack": "الكاميرا الخلفية",
+    "cameraFront": "الكاميرا الأمامية",
+    "cameraExternal": "كاميرا خارجية",
+    "cameraResolution": "الدقة (مثال: 1920x1080)",
+    "cameraFps": "FPS (0 = افتراضي)",
+    "cameraAspectRatio": "نسبة العرض (مثال: 16:9)",
+    "cameraRequirement": "يتطلب Android 12+ و scrcpy 2.1+"
   },
   "transfer": {
     "title": "النقل",
@@ -605,7 +617,13 @@
     "logging": "نظام السجلات",
     "logFilePath": "مسار ملف السجل",
     "openLogFile": "فتح ملف السجل",
-    "loggingDesc": "يتم تسجيل سجلات التطبيق في الملف المذكور أعلاه. يتم تدوير ملف السجل تلقائياً عند تجاوز 10 ميجابايت."
+    "loggingDesc": "يتم تسجيل سجلات التطبيق في الملف المذكور أعلاه. يتم تدوير ملف السجل تلقائياً عند تجاوز 10 ميجابايت.",
+    "importExport": "استيراد / تصدير",
+    "importExportDesc": "تصدير جميع الإعدادات إلى ملف JSON، أو استيراد الإعدادات من ملف تم تصديره مسبقاً.",
+    "exportSettings": "تصدير الإعدادات",
+    "importSettings": "استيراد الإعدادات",
+    "exportSuccess": "تم تصدير الإعدادات بنجاح",
+    "importSuccess": "تم استيراد {{count}} إعداد بنجاح"
   },
   "companion": {
     "title": "تثبيت التطبيق المساعد",
@@ -652,5 +670,10 @@
     "serviceLabel": "خدمة الخلفية",
     "startService": "تشغيل الخدمة",
     "serviceRunningHint": "الخدمة تعمل بشكل طبيعي"
+  },
+  "terminal": {
+    "title": "الطرفية",
+    "connected": "متصل بـ {{device}} ({{serial}})",
+    "hint": "اكتب أمراً واضغط Enter للتنفيذ. استخدم السهمين لأعلى/لأسفل لتصفح السجل. اكتب \"clear\" لمسح الشاشة."
   }
 }

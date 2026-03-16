@@ -17,7 +17,8 @@
     "selectDevice": "选择设备",
     "devicesConnected": "{{count}} 台设备已连接",
     "switchDevice": "切换设备",
-    "noDeviceSelected": "未选择设备"
+    "noDeviceSelected": "未选择设备",
+    "terminal": "终端"
   },
   "common": {
     "loading": "加载中...",
@@ -427,7 +428,18 @@
     "advNoAudio": "禁用音频",
     "advNoAudioDesc": "禁止从设备转发音频。由上方复选框控制。",
     "advOtg": "OTG 模式",
-    "advOtgDesc": "使用 USB HID 直通进行输入 (延迟最低)。无需 ADB 调试授权，但只有 HID 设备可用。"
+    "advOtgDesc": "使用 USB HID 直通进行输入 (延迟最低)。无需 ADB 调试授权，但只有 HID 设备可用。",
+    "cameraTitle": "摄像头镜像",
+    "cameraMode": "摄像头模式",
+    "cameraModeDesc": "镜像设备摄像头而非屏幕（需要 Android 12+ 和 scrcpy 2.1+）",
+    "cameraFacing": "摄像头",
+    "cameraBack": "后置摄像头",
+    "cameraFront": "前置摄像头",
+    "cameraExternal": "外部摄像头",
+    "cameraResolution": "分辨率（如 1920x1080）",
+    "cameraFps": "FPS（0 = 默认）",
+    "cameraAspectRatio": "宽高比（如 16:9）",
+    "cameraRequirement": "需要 Android 12+ 和 scrcpy 2.1+"
   },
   "transfer": {
     "title": "传输",
@@ -605,7 +617,13 @@
     "logging": "日志系统",
     "logFilePath": "日志文件路径",
     "openLogFile": "打开日志文件",
-    "loggingDesc": "应用日志记录到上述文件。日志文件超过 10MB 时自动轮转。"
+    "loggingDesc": "应用日志记录到上述文件。日志文件超过 10MB 时自动轮转。",
+    "importExport": "导入 / 导出",
+    "importExportDesc": "将所有设置导出为 JSON 文件，或从之前导出的文件中导入设置。",
+    "exportSettings": "导出设置",
+    "importSettings": "导入设置",
+    "exportSuccess": "设置导出成功",
+    "importSuccess": "成功导入 {{count}} 项设置"
   },
   "companion": {
     "title": "安装手机端应用",
@@ -634,7 +652,7 @@
     "step3Title": "完成",
     "step3Desc": "手机端应用已准备就绪",
     "permissionNote": "需要设备授权",
-    "permissionNoteDesc": "设备可能会要求您确认安装。如果手机屏幕上出现提示，请点击\u201c允许\u201d或\u201c安装\u201d。",
+    "permissionNoteDesc": "设备可能会要求您确认安装。如果手机屏幕上出现提示，请点击“允许”或“安装”。",
     "install": "安装手机端应用",
     "installing": "正在安装...",
     "installSuccess": "安装成功！",
@@ -652,5 +670,10 @@
     "serviceLabel": "后台服务",
     "startService": "启动服务",
     "serviceRunningHint": "服务正常运行中，用于数据同步和监控"
+  },
+  "terminal": {
+    "title": "终端",
+    "connected": "已连接到 {{device}} ({{serial}})",
+    "hint": "输入命令并按 Enter 执行。使用上下箭头翻阅历史。输入 \"clear\" 清屏。"
   }
 }

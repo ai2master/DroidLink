@@ -17,7 +17,8 @@
     "selectDevice": "Select Device",
     "devicesConnected": "{{count}} devices connected",
     "switchDevice": "Switch Device",
-    "noDeviceSelected": "No device selected"
+    "noDeviceSelected": "No device selected",
+    "terminal": "Terminal"
   },
   "common": {
     "loading": "Loading...",
@@ -427,7 +428,18 @@
     "advNoAudio": "Disable Audio",
     "advNoAudioDesc": "Disable audio forwarding from the device. Controlled via the checkbox above.",
     "advOtg": "OTG Mode",
-    "advOtgDesc": "Use USB HID passthrough for input (lowest latency). No ADB debug authorization needed, but only HID devices work."
+    "advOtgDesc": "Use USB HID passthrough for input (lowest latency). No ADB debug authorization needed, but only HID devices work.",
+    "cameraTitle": "Camera Mirroring",
+    "cameraMode": "Camera Mode",
+    "cameraModeDesc": "Mirror device camera instead of screen (Android 12+, scrcpy 2.1+)",
+    "cameraFacing": "Camera",
+    "cameraBack": "Back Camera",
+    "cameraFront": "Front Camera",
+    "cameraExternal": "External Camera",
+    "cameraResolution": "Resolution (e.g. 1920x1080)",
+    "cameraFps": "FPS (0 = default)",
+    "cameraAspectRatio": "Aspect Ratio (e.g. 16:9)",
+    "cameraRequirement": "Requires Android 12+ and scrcpy 2.1+"
   },
   "transfer": {
     "title": "Transfer",
@@ -605,7 +617,13 @@
     "logging": "Logging",
     "logFilePath": "Log File Path",
     "openLogFile": "Open Log File",
-    "loggingDesc": "Application logs are recorded to the file above. The log file auto-rotates when it exceeds 10MB."
+    "loggingDesc": "Application logs are recorded to the file above. The log file auto-rotates when it exceeds 10MB.",
+    "importExport": "Import / Export",
+    "importExportDesc": "Export all settings to a JSON file, or import settings from a previously exported file.",
+    "exportSettings": "Export Settings",
+    "importSettings": "Import Settings",
+    "exportSuccess": "Settings exported successfully",
+    "importSuccess": "{{count}} settings imported successfully"
   },
   "companion": {
     "title": "Install Companion App",
@@ -652,5 +670,10 @@
     "serviceLabel": "Background Service",
     "startService": "Start Service",
     "serviceRunningHint": "Service is running normally for data sync and monitoring"
+  },
+  "terminal": {
+    "title": "Terminal",
+    "connected": "Connected to {{device}} ({{serial}})",
+    "hint": "Type a command and press Enter. Use Up/Down arrows for history. Type \"clear\" to clear."
   }
 }

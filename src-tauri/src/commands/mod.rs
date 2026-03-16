@@ -403,7 +403,11 @@ pub async fn pull_directory(serial: String, remote_path: String, local_path: Str
 
 #[tauri::command]
 pub async fn push_file(serial: String, local_path: String, remote_path: String) -> Result<(), String> {
-    adb::push(&serial, &local_path, &remote_path).map_err(|e| e.to_string())
+    adb::push(&serial, &local_path, &remote_path).map_err(|e| e.to_string())?;
+    // 自动触发媒体扫描, 使推送的文件出现在相册/音乐等应用中
+    // Auto-trigger media scan so pushed files appear in Gallery/Music apps
+    let _ = adb::trigger_media_scan(&serial, &remote_path);
+    Ok(())
 }
 
 #[tauri::command]
@@ -1174,4 +1178,65 @@ pub async fn write_text_file(path: String, content: String) -> Result<(), String
     }
     std::fs::write(&path, &content)
         .map_err(|e| format!("Failed to write {}: {}", path, e))
+}
+
+// ========== 媒体扫描器通知命令 ==========
+// ========== Media Scanner Notification Commands ==========
+
+/// 触发 Android 媒体扫描器 (推送文件后使其出现在相册/音乐等)
+/// Trigger Android media scanner for a specific file
+#[tauri::command]
+pub async fn trigger_media_scan(serial: String, path: String) -> Result<String, String> {
+    crate::adb::trigger_media_scan(&serial, &path).map_err(|e| e.to_string())
+}
+
+/// 触发目录级媒体扫描
+/// Trigger directory-level media scan
+#[tauri::command]
+pub async fn trigger_media_scan_directory(serial: String, path: String) -> Result<String, String> {
+    crate::adb::trigger_media_scan_directory(&serial, &path).map_err(|e| e.to_string())
+}
+
+// ========== 终端模拟器命令 ==========
+// ========== Terminal Emulator Commands ==========
+
+/// 在设备上执行 shell 命令并返回输出 (终端模拟器用)
+/// Execute shell command on device and return output (for terminal emulator)
+#[tauri::command]
+pub async fn shell_execute(serial: String, command: String) -> Result<String, String> {
+    // 安全: 终端命令不做路径消毒, 由用户自行负责
+    // Security: terminal commands are not path-sanitized, user takes responsibility
+    crate::adb::shell(&serial, &command).map_err(|e| e.to_string())
+}
+
+// ========== 设置导入/导出命令 ==========
+// ========== Settings Import/Export Commands ==========
+
+/// 导出所有设置为 JSON 字符串
+/// Export all settings as JSON string
+#[tauri::command]
+pub async fn export_settings(state: tauri::State<'_, AppState>) -> Result<String, String> {
+    let settings = state.db.get_all_settings().map_err(|e| e.to_string())?;
+    serde_json::to_string_pretty(&settings)
+        .map_err(|e| format!("Failed to serialize settings: {}", e))
+}
+
+/// 从 JSON 字符串导入设置
+/// Import settings from JSON string
+#[tauri::command]
+pub async fn import_settings(json: String, state: tauri::State<'_, AppState>) -> Result<u32, String> {
+    let settings: std::collections::HashMap<String, String> = serde_json::from_str(&json)
+        .map_err(|e| format!("Invalid JSON: {}", e))?;
+
+    let mut count = 0u32;
+    for (key, value) in &settings {
+        // 跳过内部/危险的设置键 / Skip internal/dangerous setting keys
+        if key == "db_version" || key == "data_path" {
+            continue;
+        }
+        state.db.set_setting(key, value).map_err(|e| e.to_string())?;
+        count += 1;
+    }
+
+    Ok(count)
 }

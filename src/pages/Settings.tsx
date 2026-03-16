@@ -14,6 +14,8 @@ import {
   Loader2,
   AlertTriangle,
   FileText,
+  Download,
+  Upload,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { supportedLanguages } from '../i18n';
@@ -895,6 +897,62 @@ export const Settings: React.FC = () => {
                 </>
               )}
             </dl>
+          </div>
+
+          {/* 设置导入/导出 / Settings Import/Export */}
+          <div className="rounded-[var(--border-radius)] border border-border bg-white p-[var(--card-padding)]">
+            <div className="font-semibold text-[var(--font-size-base)] mb-3 flex items-center gap-2">
+              <FileText className="h-5 w-5" />
+              {t('settings.importExport')}
+            </div>
+            <div className="text-[var(--font-size-xs)] text-gray-500 mb-3">
+              {t('settings.importExportDesc')}
+            </div>
+            <div className="flex items-center gap-3">
+              <Button variant="outline" size="sm" onClick={async () => {
+                try {
+                  const json = await tauriInvoke<string>('export_settings');
+                  const blob = new Blob([json], { type: 'application/json' });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = `droidlink-settings-${new Date().toISOString().slice(0, 10)}.json`;
+                  a.click();
+                  URL.revokeObjectURL(url);
+                  toast.success(t('settings.exportSuccess'));
+                } catch (err: any) {
+                  toast.error(`${t('common.error')}: ${err}`);
+                }
+              }}>
+                <Download className="h-4 w-4 mr-1" />
+                {t('settings.exportSettings')}
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => {
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.accept = '.json';
+                input.onchange = async (e) => {
+                  const file = (e.target as HTMLInputElement).files?.[0];
+                  if (!file) return;
+                  try {
+                    const text = await file.text();
+                    // Validate JSON
+                    JSON.parse(text);
+                    const count = await tauriInvoke<number>('import_settings', { json: text });
+                    toast.success(t('settings.importSuccess', { count }));
+                    // Reload settings
+                    loadSettings();
+                    loadSystemInfo();
+                  } catch (err: any) {
+                    toast.error(`${t('common.error')}: ${err}`);
+                  }
+                };
+                input.click();
+              }}>
+                <Upload className="h-4 w-4 mr-1" />
+                {t('settings.importSettings')}
+              </Button>
+            </div>
           </div>
 
           {/* 关于 / About */}

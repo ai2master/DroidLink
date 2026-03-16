@@ -513,6 +513,14 @@ pub fn run() {
             // 文件读写命令 / File I/O commands
             commands::read_text_file,
             commands::write_text_file,
+            // 媒体扫描器命令 / Media scanner commands
+            commands::trigger_media_scan,
+            commands::trigger_media_scan_directory,
+            // 终端模拟器命令 / Terminal emulator commands
+            commands::shell_execute,
+            // 设置导入/导出命令 / Settings import/export commands
+            commands::export_settings,
+            commands::import_settings,
         ])
         .run(tauri::generate_context!())
         .expect("error while running DroidLink");

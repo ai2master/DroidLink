@@ -15,6 +15,7 @@ import ScreenMirror from './pages/ScreenMirror';
 import Transfer from './pages/Transfer';
 import { VersionHistory } from './pages/VersionHistory';
 import { Settings } from './pages/Settings';
+import Terminal from './pages/Terminal';
 
 function App() {
   const currentPage = useStore((s) => s.currentPage);
@@ -146,6 +147,7 @@ function App() {
       case 'foldersync': return <FolderSync />;
       case 'screenmirror': return <ScreenMirror />;
       case 'transfer': return <Transfer />;
+      case 'terminal': return <Terminal />;
       case 'versionhistory': return <VersionHistory />;
       case 'settings': return <Settings />;
       default: return <Dashboard />;

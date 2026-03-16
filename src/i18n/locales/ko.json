@@ -14,6 +14,7 @@
     "transfer": "전송",
     "versionHistory": "버전 기록",
     "settings": "설정",
+    "terminal": "터미널",
     "selectDevice": "기기 선택",
     "devicesConnected": "{{count}}대 기기 연결됨",
     "switchDevice": "기기 전환",
@@ -427,7 +428,18 @@
     "advNoAudio": "오디오 비활성화",
     "advNoAudioDesc": "기기에서 오디오 전달을 비활성화합니다. 위의 체크박스로 제어됩니다.",
     "advOtg": "OTG 모드",
-    "advOtgDesc": "입력에 USB HID 패스스루를 사용합니다 (최저 지연). ADB 디버그 인증이 필요 없지만 HID 기기만 작동합니다."
+    "advOtgDesc": "입력에 USB HID 패스스루를 사용합니다 (최저 지연). ADB 디버그 인증이 필요 없지만 HID 기기만 작동합니다.",
+    "cameraTitle": "카메라 미러링",
+    "cameraMode": "카메라 모드",
+    "cameraModeDesc": "화면 대신 기기 카메라를 미러링합니다 (Android 12+, scrcpy 2.1+ 필요)",
+    "cameraFacing": "카메라",
+    "cameraBack": "후면 카메라",
+    "cameraFront": "전면 카메라",
+    "cameraExternal": "외부 카메라",
+    "cameraResolution": "해상도 (예: 1920x1080)",
+    "cameraFps": "FPS (0 = 기본값)",
+    "cameraAspectRatio": "화면 비율 (예: 16:9)",
+    "cameraRequirement": "Android 12+ 및 scrcpy 2.1+ 필요"
   },
   "transfer": {
     "title": "전송",
@@ -605,7 +617,13 @@
     "logging": "로그 시스템",
     "logFilePath": "로그 파일 경로",
     "openLogFile": "로그 파일 열기",
-    "loggingDesc": "애플리케이션 로그는 위 파일에 기록됩니다. 로그 파일이 10MB를 초과하면 자동으로 순환됩니다."
+    "loggingDesc": "애플리케이션 로그는 위 파일에 기록됩니다. 로그 파일이 10MB를 초과하면 자동으로 순환됩니다.",
+    "importExport": "가져오기 / 내보내기",
+    "importExportDesc": "모든 설정을 JSON 파일로 내보내거나, 이전에 내보낸 파일에서 설정을 가져옵니다.",
+    "exportSettings": "설정 내보내기",
+    "importSettings": "설정 가져오기",
+    "exportSuccess": "설정 내보내기 성공",
+    "importSuccess": "{{count}}개의 설정을 가져왔습니다"
   },
   "companion": {
     "title": "컴패니언 앱 설치",
@@ -652,5 +670,10 @@
     "serviceLabel": "백그라운드 서비스",
     "startService": "서비스 시작",
     "serviceRunningHint": "서비스가 정상적으로 실행 중입니다"
+  },
+  "terminal": {
+    "title": "터미널",
+    "connected": "{{device}}에 연결됨 ({{serial}})",
+    "hint": "명령을 입력하고 Enter를 눌러 실행하세요. 위/아래 화살표로 기록을 탐색합니다. \"clear\"로 화면을 지웁니다."
   }
 }

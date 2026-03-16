@@ -14,6 +14,7 @@
     "transfer": "Übertragung",
     "versionHistory": "Versionsverlauf",
     "settings": "Einstellungen",
+    "terminal": "Terminal",
     "selectDevice": "Geraet auswaehlen",
     "devicesConnected": "{{count}} Geraete verbunden",
     "switchDevice": "Geraet wechseln",
@@ -427,7 +428,18 @@
     "advNoAudio": "Audio deaktivieren",
     "advNoAudioDesc": "Audioweiterleitung vom Geraet deaktivieren. Wird ueber das Kontrollkaestchen oben gesteuert.",
     "advOtg": "OTG-Modus",
-    "advOtgDesc": "USB HID-Durchleitung fuer die Eingabe verwenden (niedrigste Latenz). Keine ADB-Debug-Autorisierung erforderlich, aber nur HID-Geraete funktionieren."
+    "advOtgDesc": "USB HID-Durchleitung fuer die Eingabe verwenden (niedrigste Latenz). Keine ADB-Debug-Autorisierung erforderlich, aber nur HID-Geraete funktionieren.",
+    "cameraTitle": "Kameraspiegelung",
+    "cameraMode": "Kameramodus",
+    "cameraModeDesc": "Geraetekamera statt Bildschirm spiegeln (Android 12+, scrcpy 2.1+ erforderlich)",
+    "cameraFacing": "Kamera",
+    "cameraBack": "Rueckkamera",
+    "cameraFront": "Frontkamera",
+    "cameraExternal": "Externe Kamera",
+    "cameraResolution": "Aufloesung (z.B. 1920x1080)",
+    "cameraFps": "FPS (0 = Standard)",
+    "cameraAspectRatio": "Seitenverhaeltnis (z.B. 16:9)",
+    "cameraRequirement": "Erfordert Android 12+ und scrcpy 2.1+"
   },
   "transfer": {
     "title": "Übertragung",
@@ -605,7 +617,13 @@
     "logging": "Protokollierung",
     "logFilePath": "Protokolldateipfad",
     "openLogFile": "Protokolldatei oeffnen",
-    "loggingDesc": "Anwendungsprotokolle werden in der oben genannten Datei aufgezeichnet. Die Protokolldatei wird bei Ueberschreitung von 10 MB automatisch rotiert."
+    "loggingDesc": "Anwendungsprotokolle werden in der oben genannten Datei aufgezeichnet. Die Protokolldatei wird bei Ueberschreitung von 10 MB automatisch rotiert.",
+    "importExport": "Import / Export",
+    "importExportDesc": "Alle Einstellungen als JSON-Datei exportieren oder Einstellungen aus einer zuvor exportierten Datei importieren.",
+    "exportSettings": "Einstellungen exportieren",
+    "importSettings": "Einstellungen importieren",
+    "exportSuccess": "Einstellungen erfolgreich exportiert",
+    "importSuccess": "{{count}} Einstellungen erfolgreich importiert"
   },
   "companion": {
     "title": "Companion-App installieren",
@@ -652,5 +670,10 @@
     "serviceLabel": "Hintergrunddienst",
     "startService": "Dienst starten",
     "serviceRunningHint": "Dienst läuft normal"
+  },
+  "terminal": {
+    "title": "Terminal",
+    "connected": "Verbunden mit {{device}} ({{serial}})",
+    "hint": "Befehl eingeben und Enter druecken. Pfeiltasten hoch/runter fuer Verlauf. \"clear\" zum Loeschen."
   }
 }

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import {
   Play, Pause, Send, Trash2, CornerDownLeft, Eraser, Pen,
-  ChevronDown, ChevronRight, Settings,
+  ChevronDown, ChevronRight, Settings, Camera,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { tauriInvoke } from '../utils/tauri';
@@ -41,6 +41,15 @@ export default function ScreenMirror() {
     noMouseHover: false,
     otgMode: false,
   });
+  // 摄像头镜像选项 / Camera mirroring options
+  const [cameraMode, setCameraMode] = useState(false);
+  const [cameraOptions, setCameraOptions] = useState({
+    facing: 'back' as 'front' | 'back' | 'external',
+    size: '',
+    fps: 0,
+    ar: '',
+  });
+
   // 高级选项 / Advanced options
   const [advancedOptions, setAdvancedOptions] = useState({
     recordFile: '',
@@ -142,6 +151,12 @@ export default function ScreenMirror() {
           crop: advancedOptions.crop || null,
           displayId: advancedOptions.displayId ? Number(advancedOptions.displayId) : null,
           rotation: advancedOptions.rotation ? Number(advancedOptions.rotation) : null,
+          // 摄像头镜像 / Camera mirroring
+          videoSource: cameraMode ? 'camera' : null,
+          cameraFacing: cameraMode ? cameraOptions.facing : null,
+          cameraSize: cameraMode && cameraOptions.size ? cameraOptions.size : null,
+          cameraFps: cameraMode && cameraOptions.fps > 0 ? cameraOptions.fps : null,
+          cameraAr: cameraMode && cameraOptions.ar ? cameraOptions.ar : null,
         },
       });
       setRunning(true);
@@ -493,6 +508,78 @@ export default function ScreenMirror() {
                 <span>{t('screenMirror.disableAudio')}</span>
                 <Switch checked={options.noAudio} onCheckedChange={(v) => setOptions((o) => ({ ...o, noAudio: v }))} disabled={running} />
               </div>
+            </div>
+          </div>
+
+          {/* 摄像头镜像 / Camera Mirroring */}
+          <div className="rounded-[var(--border-radius)] border border-border bg-white p-[var(--card-padding)]">
+            <div className="font-semibold text-[var(--font-size-base)] mb-3 flex items-center gap-2">
+              <Camera className="h-5 w-5" />
+              {t('screenMirror.cameraTitle')}
+            </div>
+            <div className="flex flex-col gap-4">
+              <div className="flex justify-between items-center">
+                <div className="flex-1 mr-4">
+                  <span className="text-[var(--font-size-sm)]">{t('screenMirror.cameraMode')}</span>
+                  <div className="text-[var(--font-size-xs)] text-gray-500 mt-0.5">
+                    {t('screenMirror.cameraModeDesc')}
+                  </div>
+                </div>
+                <Switch checked={cameraMode} onCheckedChange={setCameraMode} disabled={running} />
+              </div>
+              {cameraMode && (
+                <>
+                  <div className="flex justify-between items-center">
+                    <span className="text-[var(--font-size-sm)]">{t('screenMirror.cameraFacing')}</span>
+                    <Select value={cameraOptions.facing} onValueChange={(v: 'front' | 'back' | 'external') => setCameraOptions((o) => ({ ...o, facing: v }))}>
+                      <SelectTrigger className="w-[180px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="back">{t('screenMirror.cameraBack')}</SelectItem>
+                        <SelectItem value="front">{t('screenMirror.cameraFront')}</SelectItem>
+                        <SelectItem value="external">{t('screenMirror.cameraExternal')}</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-[var(--font-size-sm)]">{t('screenMirror.cameraResolution')}</span>
+                    <Input
+                      value={cameraOptions.size}
+                      onChange={(e) => setCameraOptions((o) => ({ ...o, size: e.target.value }))}
+                      placeholder="1920x1080"
+                      className="w-[180px]"
+                      disabled={running}
+                    />
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-[var(--font-size-sm)]">{t('screenMirror.cameraFps')}</span>
+                    <Input
+                      type="number"
+                      min={0}
+                      max={120}
+                      value={cameraOptions.fps || ''}
+                      onChange={(e) => setCameraOptions((o) => ({ ...o, fps: parseInt(e.target.value) || 0 }))}
+                      placeholder="30"
+                      className="w-[180px]"
+                      disabled={running}
+                    />
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-[var(--font-size-sm)]">{t('screenMirror.cameraAspectRatio')}</span>
+                    <Input
+                      value={cameraOptions.ar}
+                      onChange={(e) => setCameraOptions((o) => ({ ...o, ar: e.target.value }))}
+                      placeholder="16:9"
+                      className="w-[180px]"
+                      disabled={running}
+                    />
+                  </div>
+                  <div className="text-[var(--font-size-xs)] text-gray-500 bg-gray-50 p-3 rounded-[var(--border-radius)]">
+                    {t('screenMirror.cameraRequirement')}
+                  </div>
+                </>
+              )}
             </div>
           </div>
 

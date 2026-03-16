@@ -87,6 +87,32 @@ pub struct ScrcpyOptions {
     /// scrcpy 2.x 中 --prefer-text 或 uhid 可改善触摸体验
     /// In scrcpy 2.x, --prefer-text or uhid can improve touch experience
     pub prefer_text: bool,
+
+    // ========== 摄像头镜像选项 (scrcpy 2.1+) ==========
+    // ========== Camera mirroring options (scrcpy 2.1+) ==========
+    //
+    // scrcpy 2.1+ 原生支持 Android 摄像头镜像 (需要 Android 12+)
+    // scrcpy 2.1+ natively supports Android camera mirroring (requires Android 12+)
+
+    /// 视频源: "display" (默认) 或 "camera"
+    /// Video source: "display" (default) or "camera"
+    pub video_source: Option<String>,
+
+    /// 摄像头朝向: "front", "back", "external"
+    /// Camera facing: "front", "back", "external"
+    pub camera_facing: Option<String>,
+
+    /// 摄像头分辨率 (如 "1920x1080")
+    /// Camera resolution (e.g. "1920x1080")
+    pub camera_size: Option<String>,
+
+    /// 摄像头帧率
+    /// Camera frame rate
+    pub camera_fps: Option<u32>,
+
+    /// 摄像头宽高比 (如 "16:9", "4:3")
+    /// Camera aspect ratio (e.g. "16:9", "4:3")
+    pub camera_ar: Option<String>,
 }
 
 impl Default for ScrcpyOptions {
@@ -113,6 +139,12 @@ impl Default for ScrcpyOptions {
             no_mouse_hover: false,
             otg_mode: false,
             prefer_text: false,
+            // 摄像头默认值 / Camera defaults
+            video_source: None,
+            camera_facing: None,
+            camera_size: None,
+            camera_fps: None,
+            camera_ar: None,
         }
     }
 }
@@ -230,6 +262,28 @@ impl ScrcpyManager {
         }
         if opts.prefer_text {
             cmd.arg("--prefer-text");
+        }
+
+        // ========== 摄像头镜像选项 (scrcpy 2.1+) ==========
+        // ========== Camera mirroring options (scrcpy 2.1+) ==========
+        if let Some(ref source) = opts.video_source {
+            if source == "camera" {
+                cmd.arg("--video-source=camera");
+            }
+        }
+        if let Some(ref facing) = opts.camera_facing {
+            cmd.arg("--camera-facing").arg(facing);
+        }
+        if let Some(ref size) = opts.camera_size {
+            cmd.arg("--camera-size").arg(size);
+        }
+        if let Some(fps) = opts.camera_fps {
+            if fps > 0 {
+                cmd.arg("--camera-fps").arg(fps.to_string());
+            }
+        }
+        if let Some(ref ar) = opts.camera_ar {
+            cmd.arg("--camera-ar").arg(ar);
         }
 
         // 可选设置 / Optional settings

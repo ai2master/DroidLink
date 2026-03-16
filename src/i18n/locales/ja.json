@@ -17,7 +17,8 @@
     "selectDevice": "デバイスを選択",
     "devicesConnected": "{{count}} 台のデバイスが接続中",
     "switchDevice": "デバイスを切り替え",
-    "noDeviceSelected": "デバイスが選択されていません"
+    "noDeviceSelected": "デバイスが選択されていません",
+    "terminal": "ターミナル"
   },
   "common": {
     "loading": "読み込み中...",
@@ -427,7 +428,18 @@
     "advNoAudio": "音声を無効化",
     "advNoAudioDesc": "デバイスからの音声転送を無効にします。上のチェックボックスで制御されます。",
     "advOtg": "OTGモード",
-    "advOtgDesc": "USB HIDパススルーを入力に使用します (最低遅延)。ADBデバッグ認証不要ですが、HIDデバイスのみ動作します。"
+    "advOtgDesc": "USB HIDパススルーを入力に使用します (最低遅延)。ADBデバッグ認証不要ですが、HIDデバイスのみ動作します。",
+    "cameraTitle": "カメラミラーリング",
+    "cameraMode": "カメラモード",
+    "cameraModeDesc": "画面の代わりにデバイスカメラをミラーリング（Android 12+、scrcpy 2.1+ が必要）",
+    "cameraFacing": "カメラ",
+    "cameraBack": "バックカメラ",
+    "cameraFront": "フロントカメラ",
+    "cameraExternal": "外部カメラ",
+    "cameraResolution": "解像度（例: 1920x1080）",
+    "cameraFps": "FPS（0 = デフォルト）",
+    "cameraAspectRatio": "アスペクト比（例: 16:9）",
+    "cameraRequirement": "Android 12+ および scrcpy 2.1+ が必要です"
   },
   "transfer": {
     "title": "転送",
@@ -605,7 +617,13 @@
     "logging": "ログシステム",
     "logFilePath": "ログファイルパス",
     "openLogFile": "ログファイルを開く",
-    "loggingDesc": "アプリケーションログは上記のファイルに記録されます。ログファイルが10MBを超えると自動でローテーションされます。"
+    "loggingDesc": "アプリケーションログは上記のファイルに記録されます。ログファイルが10MBを超えると自動でローテーションされます。",
+    "importExport": "インポート / エクスポート",
+    "importExportDesc": "すべての設定を JSON ファイルにエクスポートするか、以前エクスポートしたファイルから設定をインポートします。",
+    "exportSettings": "設定をエクスポート",
+    "importSettings": "設定をインポート",
+    "exportSuccess": "設定のエクスポートに成功しました",
+    "importSuccess": "{{count}} 件の設定をインポートしました"
   },
   "companion": {
     "title": "コンパニオンアプリをインストール",
@@ -652,5 +670,10 @@
     "serviceLabel": "バックグラウンドサービス",
     "startService": "サービスを開始",
     "serviceRunningHint": "サービスは正常に動作しています"
+  },
+  "terminal": {
+    "title": "ターミナル",
+    "connected": "{{device}} に接続しました ({{serial}})",
+    "hint": "コマンドを入力して Enter を押してください。上下矢印キーで履歴を参照。\"clear\" で画面をクリア。"
   }
 }

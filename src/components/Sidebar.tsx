@@ -2,6 +2,7 @@ import {
   LayoutDashboard, Users, MessageSquare, Phone,
   Folder, RefreshCw, Monitor, ArrowLeftRight,
   History, Settings, Smartphone, ChevronDown, Check,
+  TerminalSquare,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useStore } from '../stores/useStore';
@@ -23,6 +24,7 @@ const navConfig = [
   { key: 'foldersync', icon: <RefreshCw />, labelKey: 'sidebar.folderSync' },
   { section: 'tools' },
   { key: 'screenmirror', icon: <Monitor />, labelKey: 'sidebar.screenMirror' },
+  { key: 'terminal', icon: <TerminalSquare />, labelKey: 'sidebar.terminal' },
   { key: 'transfer', icon: <ArrowLeftRight />, labelKey: 'sidebar.transfer' },
   { key: 'versionhistory', icon: <History />, labelKey: 'sidebar.versionHistory' },
   { section: '' },
