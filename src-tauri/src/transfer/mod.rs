@@ -929,7 +929,7 @@ impl FolderSync {
 
         let local_path = Path::new(&pair.local_path);
         let remote_path = &pair.remote_path;
-        let serial = &pair.serial;
+        let serial = &pair.device_serial;
 
         if !local_path.exists() {
             return Err(FolderSyncError::InvalidPath(format!("Local path not found: {}", pair.local_path)));
