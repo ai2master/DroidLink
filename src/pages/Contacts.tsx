@@ -201,7 +201,7 @@ export const Contacts: React.FC = () => {
       content: (
         <div>
           <p>{t('versionHistory.restoreConfirm', { description })}</p>
-          <div className="mt-2 rounded-md border border-blue-200 bg-blue-50 p-3 text-sm text-blue-700">
+          <div className="mt-2 rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700">
             <span className="mr-2">ℹ</span>
             {t('versionHistory.restoreNote')}
           </div>
@@ -252,7 +252,7 @@ export const Contacts: React.FC = () => {
       case 'success':
         return 'bg-green-50 text-green-700';
       case 'warning':
-        return 'bg-blue-50 text-blue-700';
+        return 'bg-emerald-50 text-emerald-700';
       case 'error':
         return 'bg-red-50 text-red-700';
       default:
@@ -265,7 +265,7 @@ export const Contacts: React.FC = () => {
       case 'success':
         return 'bg-green-500';
       case 'warning':
-        return 'bg-blue-500';
+        return 'bg-emerald-500';
       case 'error':
         return 'bg-red-500';
       default:

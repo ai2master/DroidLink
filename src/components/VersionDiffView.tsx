@@ -167,7 +167,7 @@ function getFieldDefs(dataType: string, t: (key: string) => string): FieldDef[] 
           key: 'msgType',
           label: t('messages.type'),
           render: (v: any) => (
-            <span className={cn("inline-flex items-center px-2 py-0.5 rounded text-xs font-medium", v === 2 ? 'bg-blue-50 text-blue-700' : 'bg-green-50 text-green-700')}>
+            <span className={cn("inline-flex items-center px-2 py-0.5 rounded text-xs font-medium", v === 2 ? 'bg-emerald-50 text-emerald-700' : 'bg-green-50 text-green-700')}>
               {v === 2 ? t('messages.sent') : t('messages.received')}
             </span>
           ),

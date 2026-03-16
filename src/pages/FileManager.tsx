@@ -40,7 +40,7 @@ const fileIcon = (entry: FileEntry) => {
   if (entry.fileType === 'directory') return <Folder className="text-[#faad14]" size={18} />;
   const ext = entry.name.split('.').pop()?.toLowerCase() || '';
   if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg'].includes(ext))
-    return <FileImage className="text-[#1677ff]" size={18} />;
+    return <FileImage className="text-[#059669]" size={18} />;
   if (['mp4', 'avi', 'mkv', 'mov', 'wmv', 'flv'].includes(ext))
     return <Video className="text-[#722ed1]" size={18} />;
   if (['mp3', 'wav', 'flac', 'aac', 'ogg', 'm4a'].includes(ext))
@@ -596,8 +596,8 @@ export default function FileManager() {
 
       {/* 选择工具栏 / Selection toolbar */}
       {isSomeSelected && (
-        <div className="flex items-center gap-3 px-4 py-2 bg-blue-50 border-b border-blue-200">
-          <span className="text-[var(--font-size-sm)] font-medium text-blue-700">
+        <div className="flex items-center gap-3 px-4 py-2 bg-emerald-50 border-b border-emerald-200">
+          <span className="text-[var(--font-size-sm)] font-medium text-emerald-700">
             {t('fileManager.selectedCount', { count: selectedPaths.size })}
           </span>
           <Button size="sm" variant="outline" onClick={handleSelectAll}>
@@ -607,7 +607,7 @@ export default function FileManager() {
             <X size={14} />
             {t('common.clear')}
           </Button>
-          <div className="h-4 w-px bg-blue-200" />
+          <div className="h-4 w-px bg-emerald-200" />
           <Button size="sm" variant="outline" onClick={handleBatchDownload}>
             <Download size={14} />
             {t('fileManager.download')}
@@ -634,10 +634,10 @@ export default function FileManager() {
       >
         {/* 拖放覆盖层 / Drag-drop overlay */}
         {dragOver && (
-          <div className="absolute inset-0 z-50 flex items-center justify-center bg-blue-50/80 border-2 border-dashed border-blue-400 rounded-lg pointer-events-none">
+          <div className="absolute inset-0 z-50 flex items-center justify-center bg-emerald-50/80 border-2 border-dashed border-emerald-400 rounded-lg pointer-events-none">
             <div className="text-center">
-              <Upload size={48} className="mx-auto text-blue-500 mb-2" />
-              <p className="text-blue-700 font-medium">{t('fileManager.dropFilesHere')}</p>
+              <Upload size={48} className="mx-auto text-emerald-500 mb-2" />
+              <p className="text-emerald-700 font-medium">{t('fileManager.dropFilesHere')}</p>
             </div>
           </div>
         )}
@@ -678,7 +678,7 @@ export default function FileManager() {
                       key={record.path}
                       className={cn(
                         "border-b border-border transition-colors cursor-default",
-                        isSelected ? "bg-blue-50" : "hover:bg-gray-50"
+                        isSelected ? "bg-emerald-50" : "hover:bg-gray-50"
                       )}
                       onClick={(e) => handleRowClick(e, record, idx)}
                       onDoubleClick={() => { if (record.fileType === 'directory') navigateTo(record.path); }}
@@ -705,7 +705,7 @@ export default function FileManager() {
                           {fileIcon(record)}
                           {record.fileType === 'directory' ? (
                             <button
-                              className="cursor-pointer hover:text-[#1677ff] hover:underline text-left"
+                              className="cursor-pointer hover:text-[#059669] hover:underline text-left"
                               onClick={(e) => { e.stopPropagation(); navigateTo(record.path); }}
                             >
                               {record.name}

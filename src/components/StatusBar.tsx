@@ -23,7 +23,7 @@ export default function StatusBar() {
       <div className="sync-indicator">
         {activeSyncs.length > 0 ? (
           <>
-            <RefreshCw className="animate-spin" style={{ color: '#1677ff' }} />
+            <RefreshCw className="animate-spin" style={{ color: '#059669' }} />
             <span>
               {t('statusBar.syncing', { types: activeSyncs.map((s) => dataTypeLabels[s.dataType] || s.dataType).join(', ') })}
               {activeSyncs[0]?.current != null && activeSyncs[0]?.total != null && (

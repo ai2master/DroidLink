@@ -96,13 +96,13 @@ export const CompanionInstallPrompt: React.FC<CompanionInstallPromptProps> = ({
     return (
       <div className="space-y-6">
         {/* Info Alert */}
-        <div className={`flex gap-3 p-4 rounded-lg border ${isUpdate ? 'bg-amber-50 border-amber-200' : 'bg-blue-50 border-blue-200'}`}>
-          <Smartphone className={`w-5 h-5 flex-shrink-0 mt-0.5 ${isUpdate ? 'text-amber-600' : 'text-blue-600'}`} />
+        <div className={`flex gap-3 p-4 rounded-lg border ${isUpdate ? 'bg-amber-50 border-amber-200' : 'bg-emerald-50 border-emerald-200'}`}>
+          <Smartphone className={`w-5 h-5 flex-shrink-0 mt-0.5 ${isUpdate ? 'text-amber-600' : 'text-emerald-600'}`} />
           <div className="flex-1 space-y-1">
-            <div className={`text-sm font-medium ${isUpdate ? 'text-amber-900' : 'text-blue-900'}`}>
+            <div className={`text-sm font-medium ${isUpdate ? 'text-amber-900' : 'text-emerald-900'}`}>
               {t('companion.detected', { device: deviceName })}
             </div>
-            <div className={`text-sm ${isUpdate ? 'text-amber-700' : 'text-blue-700'}`}>
+            <div className={`text-sm ${isUpdate ? 'text-amber-700' : 'text-emerald-700'}`}>
               {isUpdate ? t('companion.updateAvailable') : t('companion.notInstalled')}
             </div>
           </div>
@@ -135,7 +135,7 @@ export const CompanionInstallPrompt: React.FC<CompanionInstallPromptProps> = ({
                   <ul className="space-y-1.5 text-sm text-gray-700">
                     {['featureScreenMirror', 'featureFileManager', 'featureFileTransfer', 'featureScreenshot'].map((key) => (
                       <li key={key} className="flex gap-2 items-start">
-                        <CheckCircle2 className="w-4 h-4 text-blue-500 flex-shrink-0 mt-0.5" />
+                        <CheckCircle2 className="w-4 h-4 text-emerald-500 flex-shrink-0 mt-0.5" />
                         <span>{t(`companion.${key}`)}</span>
                       </li>
                     ))}
@@ -160,9 +160,9 @@ export const CompanionInstallPrompt: React.FC<CompanionInstallPromptProps> = ({
               </div>
             </div>
             <div className="flex gap-3">
-              <div className={`flex items-center justify-center w-8 h-8 rounded-full flex-shrink-0 ${installing ? 'bg-blue-100' : 'bg-gray-100'}`}>
+              <div className={`flex items-center justify-center w-8 h-8 rounded-full flex-shrink-0 ${installing ? 'bg-emerald-100' : 'bg-gray-100'}`}>
                 {installing ? (
-                  <Loader2 className="w-4 h-4 text-blue-600 animate-spin" />
+                  <Loader2 className="w-4 h-4 text-emerald-600 animate-spin" />
                 ) : (
                   <span className="text-sm font-medium text-gray-600">2</span>
                 )}
@@ -221,7 +221,7 @@ export const CompanionInstallPrompt: React.FC<CompanionInstallPromptProps> = ({
           {installing && installResult !== 'success' ? (
             <div className="space-y-4">
               <div className="flex items-center justify-center py-8">
-                <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
+                <Loader2 className="w-8 h-8 text-emerald-600 animate-spin" />
               </div>
               <p className="text-center text-sm text-gray-600">{t('companion.installing')}</p>
               {renderContent()}

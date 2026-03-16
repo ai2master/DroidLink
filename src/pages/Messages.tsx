@@ -224,7 +224,7 @@ export const Messages: React.FC = () => {
       case 'success':
         return 'bg-green-50 text-green-700';
       case 'warning':
-        return 'bg-blue-50 text-blue-700';
+        return 'bg-emerald-50 text-emerald-700';
       case 'error':
         return 'bg-red-50 text-red-700';
       default:
@@ -237,7 +237,7 @@ export const Messages: React.FC = () => {
       case 'success':
         return 'bg-green-500';
       case 'warning':
-        return 'bg-blue-500';
+        return 'bg-emerald-500';
       case 'error':
         return 'bg-red-500';
       default:
@@ -338,7 +338,7 @@ export const Messages: React.FC = () => {
                     onClick={() => loadMessages(conv.threadId)}
                     className={cn(
                       "cursor-pointer p-3 border-b border-border hover:bg-gray-100 transition-colors",
-                      selectedThreadId === conv.threadId && "bg-blue-50"
+                      selectedThreadId === conv.threadId && "bg-emerald-50"
                     )}
                   >
                     <div className="flex gap-3 items-start">
@@ -407,7 +407,7 @@ export const Messages: React.FC = () => {
                                 className={cn(
                                   "max-w-[70%] px-3 py-2 rounded-xl",
                                   isSent
-                                    ? "bg-blue-500 text-white"
+                                    ? "bg-emerald-500 text-white"
                                     : "bg-gray-100 text-gray-900"
                                 )}
                               >

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   RefreshCw, Plus, Trash2, Play, ArrowLeftRight, ArrowRight, ArrowLeft, FolderOpen,
-  Settings, AlertTriangle, Zap, Clock, FileText, Eraser, Info, CheckCircle, XCircle,
+  Settings, AlertTriangle, Zap, Clock, FileText, Eraser, Info, CheckCircle, XCircle, Scale,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { tauriInvoke, tauriListen } from '../utils/tauri';
@@ -246,6 +246,34 @@ export default function FolderSync() {
     } catch (err: any) {
       toast.error(t('folderSync.syncFailed', { error: err }));
       setSyncing((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+    }
+  };
+
+  const [comparing, setComparing] = useState<Set<string>>(new Set());
+  const [compareResult, setCompareResult] = useState<any>(null);
+
+  const handleCompare = async (id: string) => {
+    setComparing((prev) => new Set(prev).add(id));
+    try {
+      const result = await tauriInvoke<any>('compare_folder_sync', { pairId: id });
+      setCompareResult(result);
+      if (result.totalChanges === 0) {
+        toast.info(t('folderSync.compareNoChanges'));
+      } else {
+        toast.success(t('folderSync.compareResult', {
+          total: result.totalChanges,
+          push: result.pushCount,
+          pull: result.pullCount,
+        }));
+      }
+    } catch (err: any) {
+      toast.error(t('folderSync.syncFailed', { error: err }));
+    } finally {
+      setComparing((prev) => {
         const next = new Set(prev);
         next.delete(id);
         return next;
@@ -527,6 +555,14 @@ export default function FolderSync() {
                           </Tooltip>
                           <Tooltip>
                             <TooltipTrigger asChild>
+                              <Button variant="ghost" size="sm" loading={comparing.has(record.id)} onClick={() => handleCompare(record.id)}>
+                                <Scale size={16} />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>{t('folderSync.compareOnly')}</TooltipContent>
+                          </Tooltip>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
                               <Button variant="ghost" size="sm" onClick={() => openIgnoreEditor(record.localPath)}>
                                 <FileText size={16} />
                               </Button>
@@ -593,28 +629,6 @@ export default function FolderSync() {
           </tbody>
         </table>
 
-        <div className="rounded-[var(--border-radius)] border border-border bg-white p-[var(--card-padding)] mt-[var(--card-gap)]">
-          <details>
-            <summary className="cursor-pointer font-semibold text-[var(--font-size-base)] flex items-center gap-2">
-              <Info size={16} />
-              {t('folderSync.synthing.title')}
-            </summary>
-            <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 mt-3 text-[var(--font-size-sm)]">
-              <dt className="text-gray-600 font-medium">{t('folderSync.synthing.transport')}</dt>
-              <dd className="text-gray-800">{t('folderSync.synthing.transportDesc')}</dd>
-              <dt className="text-gray-600 font-medium">{t('folderSync.synthing.ignore')}</dt>
-              <dd className="text-gray-800">{t('folderSync.synthing.ignoreDesc')}</dd>
-              <dt className="text-gray-600 font-medium">{t('folderSync.synthing.versioning')}</dt>
-              <dd className="text-gray-800">{t('folderSync.synthing.versioningDesc')}</dd>
-              <dt className="text-gray-600 font-medium">{t('folderSync.synthing.conflict')}</dt>
-              <dd className="text-gray-800">{t('folderSync.synthing.conflictDesc')}</dd>
-              <dt className="text-gray-600 font-medium">{t('folderSync.synthing.incremental')}</dt>
-              <dd className="text-gray-800">{t('folderSync.synthing.incrementalDesc')}</dd>
-              <dt className="text-gray-600 font-medium">{t('folderSync.synthing.largeFile')}</dt>
-              <dd className="text-gray-800">{t('folderSync.synthing.largeFileDesc')}</dd>
-            </dl>
-          </details>
-        </div>
       </div>
 
       <Dialog open={addVisible} onOpenChange={setAddVisible}>
@@ -686,11 +700,11 @@ export default function FolderSync() {
               {t('folderSync.editIgnoreRules')}
             </DialogTitle>
           </DialogHeader>
-          <div className="flex gap-2 p-3 rounded-[var(--border-radius)] bg-blue-50 border border-blue-200 text-sm">
-            <Info size={16} className="text-blue-600 flex-shrink-0 mt-0.5" />
+          <div className="flex gap-2 p-3 rounded-[var(--border-radius)] bg-emerald-50 border border-emerald-200 text-sm">
+            <Info size={16} className="text-emerald-600 flex-shrink-0 mt-0.5" />
             <div>
-              <div className="font-semibold text-blue-700 mb-1">{t('folderSync.ignoreRuleSyntax')}</div>
-              <ul className="text-blue-600 pl-5 list-disc space-y-0.5 text-xs">
+              <div className="font-semibold text-emerald-700 mb-1">{t('folderSync.ignoreRuleSyntax')}</div>
+              <ul className="text-emerald-600 pl-5 list-disc space-y-0.5 text-xs">
                 <li>{t('folderSync.ignoreRule1')}</li>
                 <li>{t('folderSync.ignoreRule2')}</li>
                 <li>{t('folderSync.ignoreRule3')}</li>
@@ -723,9 +737,9 @@ export default function FolderSync() {
               {t('folderSync.cleanVersionsTitle')}
             </DialogTitle>
           </DialogHeader>
-          <div className="flex gap-2 p-3 rounded-[var(--border-radius)] bg-blue-50 border border-blue-200 text-sm mb-4">
-            <Info size={16} className="text-blue-600 flex-shrink-0 mt-0.5" />
-            <div className="text-blue-700">{t('folderSync.versionExplain')}</div>
+          <div className="flex gap-2 p-3 rounded-[var(--border-radius)] bg-emerald-50 border border-emerald-200 text-sm mb-4">
+            <Info size={16} className="text-emerald-600 flex-shrink-0 mt-0.5" />
+            <div className="text-emerald-700">{t('folderSync.versionExplain')}</div>
           </div>
           <div className="text-sm text-gray-500 mb-3">
             {t('folderSync.syncPairPath', { path: cleanupPath })}

@@ -320,6 +320,9 @@
     "errorsCount": "{{count}}개 오류",
     "addTitle": "폴더 동기화 쌍 추가",
     "deleted": "삭제됨",
+    "compareOnly": "비교만 (동기화 없음)",
+    "compareNoChanges": "차이점이 발견되지 않았습니다",
+    "compareResult": "{{total}}개 차이점 발견: {{push}}개 푸시, {{pull}}개 풀",
     "recovery": {
       "title": "전송 복구",
       "recovered": "{{count}}개 전송이 성공적으로 복구되었습니다",
@@ -546,7 +549,26 @@
     "densityCompact": "컴팩트",
     "densityComfortable": "여유",
     "densityCompactDesc": "더 좁은 간격, 키보드와 마우스에 적합",
-    "densityComfortableDesc": "더 넓은 간격, 터치스크린에 적합"
+    "densityComfortableDesc": "더 넓은 간격, 터치스크린에 적합",
+    "fontFamily": "글꼴",
+    "fontDefault": "시스템 기본값",
+    "fontSystemDefault": "시스템 기본 글꼴",
+    "fontPreview": "미리보기",
+    "fontPreviewText": "빠른 갈색 여우",
+    "syncSafety": "동기화 안전",
+    "blockPushToDevice": "기기로 푸시 차단",
+    "blockPushToDeviceDesc": "활성화하면 폴더 동기화는 PC에서 Android 기기로 파일을 푸시하지 않습니다(풀 전용 모드).",
+    "blockPushWarning": "기기로 푸시가 차단되었습니다. 폴더 동기화는 기기에서 PC로만 풀합니다.",
+    "dataStoragePath": "데이터 저장소",
+    "currentPath": "현재 경로",
+    "changePath": "저장 경로 변경",
+    "newPathPlaceholder": "새 데이터 저장 경로 입력...",
+    "migrateData": "데이터 마이그레이션",
+    "migrateConfirm": "모든 데이터 파일을 \"{{path}}\"로 이동하시겠습니까? 앱을 재시작해야 합니다.",
+    "migrateSuccess": "데이터가 성공적으로 마이그레이션되었습니다. 재시작하세요.",
+    "migratePartial": "{{errors}}개 오류와 함께 마이그레이션이 완료되었습니다.",
+    "migrateHint": "변경사항을 적용하려면 앱을 재시작하세요.",
+    "restartRequired": "새 데이터 경로를 적용하려면 재시작하세요."
   },
   "companion": {
     "title": "컴패니언 앱 설치",
@@ -589,6 +611,9 @@
     "updateSuccessDesc": "DroidLink 컴패니언이 업데이트되었습니다. 모든 기능이 최신 상태입니다.",
     "versionMismatch": "기기 버전: {{device}}, 사용 가능: {{bundled}}",
     "installedVersion": "컴패니언 앱 v{{version}}",
-    "reinstall": "재설치"
+    "reinstall": "재설치",
+    "serviceLabel": "백그라운드 서비스",
+    "startService": "서비스 시작",
+    "serviceRunningHint": "서비스가 정상적으로 실행 중입니다"
   }
 }

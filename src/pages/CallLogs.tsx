@@ -194,7 +194,7 @@ export const CallLogs: React.FC = () => {
       case 'success':
         return 'bg-green-50 text-green-700';
       case 'warning':
-        return 'bg-blue-50 text-blue-700';
+        return 'bg-emerald-50 text-emerald-700';
       case 'error':
         return 'bg-red-50 text-red-700';
       default:
@@ -207,7 +207,7 @@ export const CallLogs: React.FC = () => {
       case 'success':
         return 'bg-green-500';
       case 'warning':
-        return 'bg-blue-500';
+        return 'bg-emerald-500';
       case 'error':
         return 'bg-red-500';
       default:
@@ -230,7 +230,7 @@ export const CallLogs: React.FC = () => {
   const getCallTypeBadgeClass = (type: number) => {
     const color = callTypeColor(type);
     if (color === '#52c41a') return 'bg-green-50 text-green-700';
-    if (color === '#1677ff') return 'bg-blue-50 text-blue-700';
+    if (color === '#059669') return 'bg-emerald-50 text-emerald-700';
     if (color === '#ff4d4f') return 'bg-red-50 text-red-700';
     return 'bg-gray-50 text-gray-700';
   };
@@ -286,7 +286,7 @@ export const CallLogs: React.FC = () => {
                 className={cn(
                   "px-3 py-2 text-sm font-medium border rounded-l-md",
                   typeFilter === 'all'
-                    ? "bg-blue-500 text-white border-blue-500"
+                    ? "bg-emerald-500 text-white border-emerald-500"
                     : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
                 )}
               >
@@ -298,7 +298,7 @@ export const CallLogs: React.FC = () => {
                 className={cn(
                   "px-3 py-2 text-sm font-medium border-t border-b",
                   typeFilter === 'incoming'
-                    ? "bg-blue-500 text-white border-blue-500"
+                    ? "bg-emerald-500 text-white border-emerald-500"
                     : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
                 )}
               >
@@ -310,7 +310,7 @@ export const CallLogs: React.FC = () => {
                 className={cn(
                   "px-3 py-2 text-sm font-medium border-t border-b",
                   typeFilter === 'outgoing'
-                    ? "bg-blue-500 text-white border-blue-500"
+                    ? "bg-emerald-500 text-white border-emerald-500"
                     : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
                 )}
               >
@@ -322,7 +322,7 @@ export const CallLogs: React.FC = () => {
                 className={cn(
                   "px-3 py-2 text-sm font-medium border rounded-r-md",
                   typeFilter === 'missed'
-                    ? "bg-blue-500 text-white border-blue-500"
+                    ? "bg-emerald-500 text-white border-emerald-500"
                     : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
                 )}
               >

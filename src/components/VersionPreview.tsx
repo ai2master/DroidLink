@@ -63,7 +63,7 @@ const ContactPreview: React.FC<{ data: any; compact: boolean }> = ({ data, compa
         )}
         {emails.length > 0 && (
           <div className="flex items-center gap-2">
-            <Mail className="w-4 h-4 text-blue-600" />
+            <Mail className="w-4 h-4 text-emerald-600" />
             <span>{emails.join(', ')}</span>
           </div>
         )}
@@ -94,7 +94,7 @@ const ContactPreview: React.FC<{ data: any; compact: boolean }> = ({ data, compa
       </dt>
       <dd className="text-gray-900">
         {emails.length > 0 ? emails.map((e: string, i: number) => (
-          <span key={i} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-50 text-blue-700 mr-1">
+          <span key={i} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-emerald-50 text-emerald-700 mr-1">
             {e}
           </span>
         )) : '-'}
@@ -118,7 +118,7 @@ const MessagePreview: React.FC<{ data: any; compact: boolean }> = ({ data, compa
         <div className="flex items-center gap-2">
           <MessageSquare className="w-4 h-4" />
           <span className="font-semibold">{data.contactName || data.address || '-'}</span>
-          <span className={cn("inline-flex items-center px-2 py-0.5 rounded text-xs font-medium", isSent ? 'bg-blue-50 text-blue-700' : 'bg-green-50 text-green-700')}>
+          <span className={cn("inline-flex items-center px-2 py-0.5 rounded text-xs font-medium", isSent ? 'bg-emerald-50 text-emerald-700' : 'bg-green-50 text-green-700')}>
             {isSent ? t('messages.sent') : t('messages.received')}
           </span>
         </div>
@@ -138,7 +138,7 @@ const MessagePreview: React.FC<{ data: any; compact: boolean }> = ({ data, compa
 
         <dt className="font-medium text-gray-500">{t('messages.type')}</dt>
         <dd>
-          <span className={cn("inline-flex items-center px-2 py-0.5 rounded text-xs font-medium", isSent ? 'bg-blue-50 text-blue-700' : 'bg-green-50 text-green-700')}>
+          <span className={cn("inline-flex items-center px-2 py-0.5 rounded text-xs font-medium", isSent ? 'bg-emerald-50 text-emerald-700' : 'bg-green-50 text-green-700')}>
             {isSent ? t('messages.sent') : t('messages.received')}
           </span>
         </dd>
@@ -150,7 +150,7 @@ const MessagePreview: React.FC<{ data: any; compact: boolean }> = ({ data, compa
         className={cn(
           "px-3 py-2 rounded-xl max-w-[80%] mt-2",
           isSent
-            ? "bg-blue-500 text-white ml-auto"
+            ? "bg-emerald-500 text-white ml-auto"
             : "bg-gray-100 text-gray-900 mr-auto"
         )}
       >
@@ -171,7 +171,7 @@ const CallLogPreview: React.FC<{ data: any; compact: boolean }> = ({ data, compa
 
   const getBadgeClass = () => {
     if (color === '#52c41a') return 'bg-green-50 text-green-700';
-    if (color === '#1677ff') return 'bg-blue-50 text-blue-700';
+    if (color === '#059669') return 'bg-emerald-50 text-emerald-700';
     if (color === '#ff4d4f') return 'bg-red-50 text-red-700';
     return 'bg-gray-50 text-gray-700';
   };

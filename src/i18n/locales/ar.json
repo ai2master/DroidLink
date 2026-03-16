@@ -320,6 +320,9 @@
     "errorsCount": "{{count}} أخطاء",
     "addTitle": "إضافة زوج مزامنة مجلدات",
     "deleted": "تم الحذف",
+    "compareOnly": "المقارنة فقط (بدون مزامنة)",
+    "compareNoChanges": "لم يتم العثور على اختلافات",
+    "compareResult": "تم العثور على {{total}} اختلاف: {{push}} للدفع، {{pull}} للسحب",
     "recovery": {
       "title": "استعادة النقل",
       "recovered": "تم استعادة {{count}} عملية نقل بنجاح",
@@ -546,7 +549,26 @@
     "densityCompact": "مضغوط",
     "densityComfortable": "مريح",
     "densityCompactDesc": "مسافات أضيق، مثالي للوحة المفاتيح والفأرة",
-    "densityComfortableDesc": "مسافات أوسع، مثالي للشاشات اللمسية"
+    "densityComfortableDesc": "مسافات أوسع، مثالي للشاشات اللمسية",
+    "fontFamily": "الخط",
+    "fontDefault": "الافتراضي للنظام",
+    "fontSystemDefault": "خط النظام الافتراضي",
+    "fontPreview": "معاينة",
+    "fontPreviewText": "الثعلب البني السريع",
+    "syncSafety": "أمان المزامنة",
+    "blockPushToDevice": "حظر الدفع إلى الجهاز",
+    "blockPushToDeviceDesc": "عند التفعيل، لن تقوم مزامنة المجلدات أبداً بدفع الملفات من الكمبيوتر إلى جهاز Android (وضع السحب فقط).",
+    "blockPushWarning": "الدفع إلى الجهاز محظور. ستقوم مزامنة المجلدات بالسحب من الجهاز إلى الكمبيوتر فقط.",
+    "dataStoragePath": "تخزين البيانات",
+    "currentPath": "المسار الحالي",
+    "changePath": "تغيير مسار التخزين",
+    "newPathPlaceholder": "أدخل مسار تخزين البيانات الجديد...",
+    "migrateData": "ترحيل البيانات",
+    "migrateConfirm": "نقل جميع ملفات البيانات إلى \"{{path}}\"؟ سيحتاج التطبيق إلى إعادة التشغيل.",
+    "migrateSuccess": "تم ترحيل البيانات بنجاح. يرجى إعادة التشغيل.",
+    "migratePartial": "اكتمل الترحيل مع {{errors}} أخطاء.",
+    "migrateHint": "أعد تشغيل التطبيق لتطبيق التغييرات.",
+    "restartRequired": "يرجى إعادة التشغيل لمسار البيانات الجديد."
   },
   "companion": {
     "title": "تثبيت التطبيق المساعد",
@@ -589,6 +611,9 @@
     "updateSuccessDesc": "تم تحديث تطبيق DroidLink المساعد. جميع الميزات محدثة.",
     "versionMismatch": "إصدار الجهاز: {{device}}، المتاح: {{bundled}}",
     "installedVersion": "التطبيق المساعد v{{version}}",
-    "reinstall": "إعادة التثبيت"
+    "reinstall": "إعادة التثبيت",
+    "serviceLabel": "خدمة الخلفية",
+    "startService": "تشغيل الخدمة",
+    "serviceRunningHint": "الخدمة تعمل بشكل طبيعي"
   }
 }

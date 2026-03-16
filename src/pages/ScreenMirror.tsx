@@ -262,8 +262,8 @@ export default function ScreenMirror() {
           </div>
         )}
         {scrcpyAvailable && (
-          <div className="flex gap-2 p-3 rounded-[var(--border-radius)] bg-blue-50 border border-blue-200 text-[var(--font-size-sm)] mb-4">
-            <span className="text-blue-800">{t('screenMirror.scrcpyVersion', { version: scrcpyVersion })}</span>
+          <div className="flex gap-2 p-3 rounded-[var(--border-radius)] bg-emerald-50 border border-emerald-200 text-[var(--font-size-sm)] mb-4">
+            <span className="text-emerald-800">{t('screenMirror.scrcpyVersion', { version: scrcpyVersion })}</span>
           </div>
         )}
 
@@ -278,7 +278,7 @@ export default function ScreenMirror() {
               className={cn(
                 "px-4 py-2 rounded-[var(--border-radius)] border transition-colors",
                 inputMode === 'droidlink_ime'
-                  ? "bg-blue-500 text-white border-blue-500"
+                  ? "bg-emerald-500 text-white border-emerald-500"
                   : "bg-white text-gray-700 border-border hover:bg-gray-50"
               )}
             >
@@ -289,7 +289,7 @@ export default function ScreenMirror() {
               className={cn(
                 "px-4 py-2 rounded-[var(--border-radius)] border transition-colors",
                 inputMode === 'keyboard_passthrough'
-                  ? "bg-blue-500 text-white border-blue-500"
+                  ? "bg-emerald-500 text-white border-emerald-500"
                   : "bg-white text-gray-700 border-border hover:bg-gray-50"
               )}
             >
@@ -299,8 +299,8 @@ export default function ScreenMirror() {
 
           {inputMode === 'droidlink_ime' && (
             <div className="flex flex-col gap-4">
-              <div className="flex gap-2 p-3 rounded-[var(--border-radius)] bg-blue-50 border border-blue-200 text-[var(--font-size-sm)]">
-                <span className="text-blue-800">{t('screenMirror.inputModeDroidLinkDesc')}</span>
+              <div className="flex gap-2 p-3 rounded-[var(--border-radius)] bg-emerald-50 border border-emerald-200 text-[var(--font-size-sm)]">
+                <span className="text-emerald-800">{t('screenMirror.inputModeDroidLinkDesc')}</span>
               </div>
 
               <div>
@@ -358,8 +358,8 @@ export default function ScreenMirror() {
 
           {inputMode === 'keyboard_passthrough' && (
             <div className="flex flex-col gap-4">
-              <div className="flex gap-2 p-3 rounded-[var(--border-radius)] bg-blue-50 border border-blue-200 text-[var(--font-size-sm)]">
-                <span className="text-blue-800">{t('screenMirror.inputModePassthroughDesc')}</span>
+              <div className="flex gap-2 p-3 rounded-[var(--border-radius)] bg-emerald-50 border border-emerald-200 text-[var(--font-size-sm)]">
+                <span className="text-emerald-800">{t('screenMirror.inputModePassthroughDesc')}</span>
               </div>
 
               {deviceImes.length > 0 && (
@@ -484,8 +484,8 @@ export default function ScreenMirror() {
           <div className="rounded-[var(--border-radius)] border border-border bg-white p-[var(--card-padding)]">
             <div className="font-semibold text-[var(--font-size-base)] mb-3">{t('screenMirror.touchSettings')}</div>
             <div className="flex flex-col gap-4">
-              <div className="flex gap-2 p-2 rounded-[var(--border-radius)] bg-blue-50 border border-blue-200 text-xs">
-                <span className="text-blue-800">{t('screenMirror.touchInfoDesc')}</span>
+              <div className="flex gap-2 p-2 rounded-[var(--border-radius)] bg-emerald-50 border border-emerald-200 text-xs">
+                <span className="text-emerald-800">{t('screenMirror.touchInfoDesc')}</span>
               </div>
               <div className="flex justify-between items-start">
                 <div>

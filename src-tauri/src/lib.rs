@@ -409,10 +409,15 @@ pub fn run() {
             // Companion App 命令 / Companion App commands
             commands::check_companion_app,
             commands::install_companion_app,
+            commands::check_companion_service,
+            commands::start_companion_service,
             // 设置命令 / Settings commands
             commands::get_settings,
             commands::set_settings,
             commands::get_data_path,
+            commands::change_data_path,
+            commands::compare_folder_sync,
+            commands::list_system_fonts,
             commands::open_in_explorer,
             // 工具路径命令 / Tool path commands
             commands::get_tool_sources,

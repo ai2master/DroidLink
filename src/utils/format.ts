@@ -58,7 +58,7 @@ export function callTypeText(type: number): string {
 export function callTypeColor(type: number): string {
   switch (type) {
     case 1: return '#52c41a';
-    case 2: return '#1677ff';
+    case 2: return '#059669';
     case 3: return '#ff4d4f';
     case 5: return '#faad14';
     default: return '#8c8c8c';

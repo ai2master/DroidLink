@@ -12,6 +12,9 @@ import {
   XCircle,
   Clock,
   AlertCircle,
+  Play,
+  Loader2,
+  Download,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { tauriInvoke } from '../utils/tauri';
@@ -48,12 +51,48 @@ export const Dashboard: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [activities, setActivities] = useState<Activity[]>([]);
+  const [serviceRunning, setServiceRunning] = useState<boolean | null>(null);
+  const [startingService, setStartingService] = useState(false);
 
   useEffect(() => {
     if (connectedDevice && companionInstalled !== false) {
       loadStats();
     }
   }, [connectedDevice, companionInstalled]);
+
+  // Check companion service status
+  useEffect(() => {
+    if (connectedDevice && companionInstalled) {
+      checkServiceStatus();
+    } else {
+      setServiceRunning(null);
+    }
+  }, [connectedDevice, companionInstalled]);
+
+  const checkServiceStatus = async () => {
+    if (!connectedDevice) return;
+    try {
+      const result = await tauriInvoke<{ running: boolean }>('check_companion_service', { serial: connectedDevice.serial });
+      setServiceRunning(result.running);
+    } catch {
+      setServiceRunning(null);
+    }
+  };
+
+  const handleStartService = async () => {
+    if (!connectedDevice) return;
+    setStartingService(true);
+    try {
+      await tauriInvoke('start_companion_service', { serial: connectedDevice.serial });
+      // Re-check after a delay
+      setTimeout(async () => {
+        await checkServiceStatus();
+        setStartingService(false);
+      }, 2000);
+    } catch {
+      setStartingService(false);
+    }
+  };
 
   useEffect(() => {
     if (connectedDevice) {
@@ -190,48 +229,83 @@ export const Dashboard: React.FC = () => {
 
       <h2 className="text-[var(--font-size-title)] font-semibold mb-6">{t('dashboard.title')}</h2>
 
-      {/* Companion app not installed notice */}
-      {companionInstalled === false && (
-        <div className="rounded-[var(--border-radius)] border border-amber-200 bg-amber-50 p-[var(--card-padding)] mb-[var(--card-gap)] flex items-center justify-between gap-4">
-          <div>
-            <div className="font-semibold text-amber-900 text-[var(--font-size-base)]">{t('common.companionRequired')}</div>
-            <div className="text-amber-700 text-[var(--font-size-sm)] mt-1">{t('common.companionRequiredDesc')}</div>
+      {/* Companion app status card */}
+      <div className={cn(
+        "rounded-[var(--border-radius)] border p-[var(--card-padding)] mb-[var(--card-gap)]",
+        companionInstalled === false
+          ? "border-amber-200 bg-amber-50"
+          : companionNeedsUpdate
+            ? "border-emerald-200 bg-emerald-50"
+            : "border-border bg-white"
+      )}>
+        <div className="flex items-center justify-between gap-4 flex-wrap">
+          <div className="flex-1 min-w-0">
+            {companionInstalled === false ? (
+              <>
+                <div className="font-semibold text-amber-900 text-[var(--font-size-base)]">{t('common.companionRequired')}</div>
+                <div className="text-amber-700 text-[var(--font-size-sm)] mt-1">{t('common.companionRequiredDesc')}</div>
+              </>
+            ) : (
+              <>
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4 text-success flex-shrink-0" />
+                  <span className="font-semibold text-[var(--font-size-base)]">
+                    {t('companion.installedVersion', { version: companionDeviceVersion || '?' })}
+                  </span>
+                  {companionNeedsUpdate && (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-700">
+                      {t('companion.updateAvailable')}
+                    </span>
+                  )}
+                </div>
+                <div className="text-[var(--font-size-sm)] text-gray-500 mt-1">
+                  {t('companion.versionMismatch', { device: companionDeviceVersion || '-', bundled: companionBundledVersion || '-' })}
+                </div>
+              </>
+            )}
           </div>
           <Button variant="primary" size="sm" onClick={() => setShowCompanionPrompt(true)}>
-            {t('common.installCompanion')}
+            <Download className="h-4 w-4 mr-1" />
+            {t('companion.install')}
           </Button>
         </div>
-      )}
 
-      {/* Companion app version mismatch notice */}
-      {companionInstalled && companionNeedsUpdate && (
-        <div className="rounded-[var(--border-radius)] border border-blue-200 bg-blue-50 p-[var(--card-padding)] mb-[var(--card-gap)] flex items-center justify-between gap-4">
-          <div>
-            <div className="font-semibold text-blue-900 text-[var(--font-size-base)]">{t('companion.updateAvailable')}</div>
-            <div className="text-blue-700 text-[var(--font-size-sm)] mt-1">
-              {t('companion.versionMismatch', { device: companionDeviceVersion, bundled: companionBundledVersion })}
+        {/* Companion service status */}
+        {companionInstalled && (
+          <div className="mt-3 pt-3 border-t border-border/50 flex items-center justify-between gap-4">
+            <div className="flex items-center gap-2">
+              {serviceRunning === null ? (
+                <Clock className="h-4 w-4 text-gray-300" />
+              ) : serviceRunning ? (
+                <CheckCircle2 className="h-4 w-4 text-success" />
+              ) : (
+                <XCircle className="h-4 w-4 text-warning" />
+              )}
+              <span className="text-[var(--font-size-sm)]">
+                {t('companion.serviceLabel')}:&nbsp;
+                <span className={serviceRunning ? 'text-success' : 'text-gray-500'}>
+                  {serviceRunning === null
+                    ? t('common.unknown')
+                    : serviceRunning
+                      ? t('common.running')
+                      : t('common.stopped')}
+                </span>
+              </span>
             </div>
+            {serviceRunning === false && (
+              <Button variant="outline" size="sm" loading={startingService} onClick={handleStartService}>
+                {!startingService && <Play className="h-3 w-3 mr-1" />}
+                {t('companion.startService')}
+              </Button>
+            )}
+            {serviceRunning && (
+              <span className="text-[var(--font-size-xs)] text-gray-400">
+                {t('companion.serviceRunningHint')}
+              </span>
+            )}
           </div>
-          <Button variant="primary" size="sm" onClick={() => setShowCompanionPrompt(true)}>
-            {t('companion.update')}
-          </Button>
-        </div>
-      )}
-
-      {/* Always-available companion reinstall option */}
-      {companionInstalled && !companionNeedsUpdate && (
-        <div className="rounded-[var(--border-radius)] border border-border bg-white p-[var(--card-padding)] mb-[var(--card-gap)] flex items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <CheckCircle2 className="h-4 w-4 text-success" />
-            <span className="text-[var(--font-size-sm)] text-gray-700">
-              {t('companion.installedVersion', { version: companionDeviceVersion || '?' })}
-            </span>
-          </div>
-          <Button variant="outline" size="sm" onClick={() => setShowCompanionPrompt(true)}>
-            {t('companion.reinstall')}
-          </Button>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* 设备信息卡片 / Device Info Card */}
       <div className="rounded-[var(--border-radius)] border border-border bg-white p-[var(--card-padding)] mb-[var(--card-gap)]">

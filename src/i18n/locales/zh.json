@@ -320,6 +320,9 @@
     "errorsCount": "{{count}} 个错误",
     "addTitle": "添加文件夹同步对",
     "deleted": "已删除",
+    "compareOnly": "仅对比（不同步）",
+    "compareNoChanges": "未发现差异 - 两端数据一致",
+    "compareResult": "发现 {{total}} 个差异：{{push}} 个待推送，{{pull}} 个待拉取",
     "recovery": {
       "title": "传输恢复",
       "recovered": "{{count}} 个传输已成功恢复",
@@ -546,7 +549,26 @@
     "densityCompact": "紧凑",
     "densityComfortable": "舒适",
     "densityCompactDesc": "更紧凑的间距，适合键盘鼠标操作",
-    "densityComfortableDesc": "更宽松的间距，适合触屏操作"
+    "densityComfortableDesc": "更宽松的间距，适合触屏操作",
+    "fontFamily": "字体",
+    "fontDefault": "系统默认",
+    "fontSystemDefault": "使用系统默认字体",
+    "fontPreview": "预览",
+    "fontPreviewText": "你好世界 Hello",
+    "syncSafety": "同步安全",
+    "blockPushToDevice": "禁止推送到设备",
+    "blockPushToDeviceDesc": "启用后，文件夹同步将永远不会从电脑推送文件到 Android 设备（仅拉取模式）。这是一个安全锁，防止意外覆盖手机上的文件。",
+    "blockPushWarning": "推送到设备已被禁止。文件夹同步将仅从设备拉取文件到电脑，不会向 Android 设备写入任何文件。",
+    "dataStoragePath": "数据存储",
+    "currentPath": "当前路径",
+    "changePath": "更改存储路径",
+    "newPathPlaceholder": "输入新的数据存储路径...",
+    "migrateData": "迁移数据",
+    "migrateConfirm": "将所有数据文件移动到「{{path}}」？这可能需要一些时间，取决于数据大小。迁移后需要重启应用。",
+    "migrateSuccess": "数据迁移成功，请重启应用。",
+    "migratePartial": "迁移完成，但有 {{errors}} 个错误。请检查新路径。",
+    "migrateHint": "迁移后请重启应用以使新路径生效。",
+    "restartRequired": "请重启应用以使新的数据路径生效。"
   },
   "companion": {
     "title": "安装手机端应用",
@@ -589,6 +611,9 @@
     "updateSuccessDesc": "DroidLink 手机端应用已更新，所有功能已是最新版本。",
     "versionMismatch": "设备版本：{{device}}，可用版本：{{bundled}}",
     "installedVersion": "手机端应用 v{{version}}",
-    "reinstall": "重新安装"
+    "reinstall": "重新安装",
+    "serviceLabel": "后台服务",
+    "startService": "启动服务",
+    "serviceRunningHint": "服务正常运行中，用于数据同步和监控"
   }
 }

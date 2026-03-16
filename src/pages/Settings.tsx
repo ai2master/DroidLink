@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import {
   Settings as SettingIcon,
   CheckCircle2,
@@ -7,6 +7,12 @@ import {
   Globe,
   Wrench,
   FolderOpen,
+  Type,
+  Search,
+  Shield,
+  HardDrive,
+  Loader2,
+  AlertTriangle,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { supportedLanguages } from '../i18n';
@@ -87,12 +93,25 @@ export const Settings: React.FC = () => {
   const [adbCustomPath, setAdbCustomPath] = useState('');
   const [scrcpySource, setScrcpySource] = useState('bundled');
   const [scrcpyCustomPath, setScrcpyCustomPath] = useState('');
+  const [systemFonts, setSystemFonts] = useState<string[]>([]);
+  const [selectedFont, setSelectedFont] = useState('');
+  const [fontSearch, setFontSearch] = useState('');
+  const [fontDropdownOpen, setFontDropdownOpen] = useState(false);
+  const [blockPush, setBlockPush] = useState(false);
+  const [newDataPath, setNewDataPath] = useState('');
+  const [migrating, setMigrating] = useState(false);
+
+  const filteredFonts = useMemo(() => {
+    if (!fontSearch) return systemFonts;
+    const q = fontSearch.toLowerCase();
+    return systemFonts.filter((f) => f.toLowerCase().includes(q));
+  }, [systemFonts, fontSearch]);
 
   useEffect(() => {
     loadSettings();
     loadSystemInfo();
     loadToolSources();
-    // 从 Tauri 读取真实版本号 / Read real version from Tauri app config
+    loadFonts();
     getVersion().then((v) => {
       setSystemInfo((prev) => ({ ...prev, appVersion: v }));
     }).catch(() => {});
@@ -119,11 +138,41 @@ export const Settings: React.FC = () => {
       if (data.adb_custom_path) setAdbCustomPath(data.adb_custom_path);
       if (data.scrcpy_source) setScrcpySource(data.scrcpy_source);
       if (data.scrcpy_custom_path) setScrcpyCustomPath(data.scrcpy_custom_path);
+      // 同步安全控制 / Sync safety controls
+      setBlockPush(data.block_push_to_device === 'true');
     } catch (error) {
       console.error('Failed to load settings:', error);
       toast.error(t('common.error'));
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadFonts = async () => {
+    try {
+      const fonts = await tauriInvoke<string[]>('list_system_fonts');
+      setSystemFonts(fonts);
+    } catch (err) {
+      console.error('Failed to load system fonts:', err);
+    }
+    // Restore saved font from localStorage
+    const saved = localStorage.getItem('droidlink-font') || '';
+    if (saved) {
+      setSelectedFont(saved);
+      document.documentElement.style.setProperty('--font-family-custom', `"${saved}"`);
+    }
+  };
+
+  const applyFont = (fontName: string) => {
+    setSelectedFont(fontName);
+    setFontDropdownOpen(false);
+    setFontSearch('');
+    if (fontName) {
+      localStorage.setItem('droidlink-font', fontName);
+      document.documentElement.style.setProperty('--font-family-custom', `"${fontName}"`);
+    } else {
+      localStorage.removeItem('droidlink-font');
+      document.documentElement.style.removeProperty('--font-family-custom');
     }
   };
 
@@ -171,6 +220,7 @@ export const Settings: React.FC = () => {
           clipboard_sync: String(settings.clipboardSync),
           scrcpy_max_size: String(settings.scrcpyMaxSize),
           scrcpy_bit_rate: String(settings.scrcpyBitRate),
+          block_push_to_device: String(blockPush),
         },
       });
 
@@ -298,6 +348,83 @@ export const Settings: React.FC = () => {
             </RadioGroup>
           </div>
 
+          {/* 字体设置 / Font settings */}
+          <div className="rounded-[var(--border-radius)] border border-border bg-white p-[var(--card-padding)]">
+            <div className="font-semibold text-[var(--font-size-base)] mb-3 flex items-center gap-2">
+              <Type className="h-5 w-5" />
+              {t('settings.fontFamily')}
+            </div>
+            <div className="relative">
+              <div
+                className="flex items-center gap-2 border border-border rounded-[var(--border-radius)] px-3 py-2 cursor-pointer hover:border-primary transition-colors"
+                onClick={() => { setFontDropdownOpen(!fontDropdownOpen); if (!fontDropdownOpen) setFontSearch(''); }}
+              >
+                <span
+                  className="flex-1 text-[var(--font-size-sm)] truncate"
+                  style={selectedFont ? { fontFamily: `"${selectedFont}"` } : undefined}
+                >
+                  {selectedFont || t('settings.fontDefault')}
+                </span>
+                <span className="text-gray-400 text-xs">{selectedFont ? '' : t('settings.fontSystemDefault')}</span>
+              </div>
+              {fontDropdownOpen && (
+                <div className="absolute z-50 mt-1 w-full bg-white border border-border rounded-[var(--border-radius)] shadow-lg max-h-[320px] flex flex-col">
+                  <div className="p-2 border-b border-border flex items-center gap-2">
+                    <Search className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                    <input
+                      autoFocus
+                      type="text"
+                      className="flex-1 outline-none text-[var(--font-size-sm)] bg-transparent"
+                      placeholder={t('common.search') + '...'}
+                      value={fontSearch}
+                      onChange={(e) => setFontSearch(e.target.value)}
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                  </div>
+                  <div className="overflow-y-auto flex-1">
+                    <div
+                      className={cn(
+                        "px-3 py-2 cursor-pointer text-[var(--font-size-sm)] hover:bg-gray-50 flex items-center justify-between",
+                        !selectedFont && "bg-emerald-50 text-emerald-700"
+                      )}
+                      onClick={() => applyFont('')}
+                    >
+                      <span>{t('settings.fontDefault')}</span>
+                      {!selectedFont && <CheckCircle2 className="h-4 w-4 text-emerald-600" />}
+                    </div>
+                    {filteredFonts.map((font) => (
+                      <div
+                        key={font}
+                        className={cn(
+                          "px-3 py-1.5 cursor-pointer text-[var(--font-size-sm)] hover:bg-gray-50 flex items-center justify-between",
+                          selectedFont === font && "bg-emerald-50 text-emerald-700"
+                        )}
+                        style={{ fontFamily: `"${font}"` }}
+                        onClick={() => applyFont(font)}
+                      >
+                        <span className="truncate">{font}</span>
+                        {selectedFont === font && <CheckCircle2 className="h-4 w-4 text-emerald-600 flex-shrink-0" />}
+                      </div>
+                    ))}
+                    {filteredFonts.length === 0 && fontSearch && (
+                      <div className="px-3 py-4 text-center text-gray-400 text-[var(--font-size-sm)]">
+                        {t('fileManager.noSearchResults')}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+            {selectedFont && (
+              <div className="mt-2 p-3 rounded-[var(--border-radius)] bg-gray-50 border border-border">
+                <div className="text-[var(--font-size-xs)] text-gray-500 mb-1">{t('settings.fontPreview')}</div>
+                <div className="text-[var(--font-size-base)]" style={{ fontFamily: `"${selectedFont}"` }}>
+                  AaBbCcDd 1234 {t('settings.fontPreviewText')}
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* 同步设置 / Sync settings */}
           <div className="rounded-[var(--border-radius)] border border-border bg-white p-[var(--card-padding)]">
             <div className="font-semibold text-[var(--font-size-base)] mb-3">{t('settings.syncInterval')}</div>
@@ -341,6 +468,107 @@ export const Settings: React.FC = () => {
                     setChanged(true);
                   }}
                 />
+              </div>
+            </div>
+          </div>
+
+          {/* 同步安全控制 / Sync safety controls */}
+          <div className="rounded-[var(--border-radius)] border border-border bg-white p-[var(--card-padding)]">
+            <div className="font-semibold text-[var(--font-size-base)] mb-3 flex items-center gap-2">
+              <Shield className="h-5 w-5" />
+              {t('settings.syncSafety')}
+            </div>
+            <div className="flex flex-col gap-4">
+              <div className="flex items-center justify-between py-2">
+                <div className="flex-1 mr-4">
+                  <label className="text-[var(--font-size-sm)] font-medium">{t('settings.blockPushToDevice')}</label>
+                  <div className="text-[var(--font-size-xs)] text-gray-500 mt-1">
+                    {t('settings.blockPushToDeviceDesc')}
+                  </div>
+                </div>
+                <Switch
+                  checked={blockPush}
+                  onCheckedChange={(checked) => {
+                    setBlockPush(checked);
+                    setChanged(true);
+                  }}
+                />
+              </div>
+              {blockPush && (
+                <div className="flex gap-3 p-3 rounded-[var(--border-radius)] bg-amber-50 border border-amber-200">
+                  <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                  <div className="text-[var(--font-size-sm)] text-amber-700">
+                    {t('settings.blockPushWarning')}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* 数据存储路径 / Data storage path */}
+          <div className="rounded-[var(--border-radius)] border border-border bg-white p-[var(--card-padding)]">
+            <div className="font-semibold text-[var(--font-size-base)] mb-3 flex items-center gap-2">
+              <HardDrive className="h-5 w-5" />
+              {t('settings.dataStoragePath')}
+            </div>
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center justify-between py-2">
+                <span className="text-[var(--font-size-sm)] text-gray-600">{t('settings.currentPath')}</span>
+                <code className="bg-gray-100 px-1.5 py-0.5 rounded text-[var(--font-size-xs)]">
+                  {systemInfo.dataPath}
+                </code>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" onClick={async () => {
+                  try {
+                    await tauriInvoke('open_in_explorer', { path: systemInfo.dataPath });
+                  } catch {}
+                }}>
+                  <FolderOpen className="h-4 w-4 mr-1" />
+                  {t('settings.openDataPath')}
+                </Button>
+              </div>
+              <hr className="border-border my-1" />
+              <div className="text-[var(--font-size-sm)] text-gray-600 mb-1">{t('settings.changePath')}</div>
+              <div className="flex items-center gap-2">
+                <Input
+                  value={newDataPath}
+                  onChange={(e) => setNewDataPath(e.target.value)}
+                  placeholder={t('settings.newPathPlaceholder')}
+                  className="flex-1"
+                />
+                <Button
+                  variant="primary"
+                  size="sm"
+                  loading={migrating}
+                  disabled={!newDataPath || newDataPath === systemInfo.dataPath}
+                  onClick={async () => {
+                    if (!newDataPath || newDataPath === systemInfo.dataPath) return;
+                    if (!confirm(t('settings.migrateConfirm', { path: newDataPath }))) return;
+                    setMigrating(true);
+                    try {
+                      const result = await tauriInvoke<{ success: boolean; bytesCopied: number; errors: string[]; needsRestart: boolean }>('change_data_path', { newPath: newDataPath });
+                      if (result.success) {
+                        toast.success(t('settings.migrateSuccess'));
+                        if (result.needsRestart) {
+                          toast.info(t('settings.restartRequired'));
+                        }
+                      } else {
+                        toast.warning(t('settings.migratePartial', { errors: result.errors.length }));
+                      }
+                    } catch (error: any) {
+                      toast.error(typeof error === 'string' ? error : t('common.error'));
+                    } finally {
+                      setMigrating(false);
+                    }
+                  }}
+                >
+                  {!migrating && <FolderOpen className="h-4 w-4 mr-1" />}
+                  {t('settings.migrateData')}
+                </Button>
+              </div>
+              <div className="text-[var(--font-size-xs)] text-gray-400">
+                {t('settings.migrateHint')}
               </div>
             </div>
           </div>
@@ -593,7 +821,7 @@ export const Settings: React.FC = () => {
                     <dt className="text-[var(--font-size-sm)] text-gray-600">{t('settings.adbSource')}</dt>
                     <dd>
                       {systemInfo.adbInfo.source === 'bundled' && (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-50 text-blue-700">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-emerald-50 text-emerald-700">
                           {t('settings.bundled')}
                         </span>
                       )}
@@ -666,7 +894,7 @@ export const Settings: React.FC = () => {
               <div className="flex items-center justify-between py-2 border-b border-border last:border-b-0">
                 <dt className="text-[var(--font-size-sm)] text-gray-600">{t('settings.version')}</dt>
                 <dd>
-                  <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-50 text-blue-700">
+                  <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-emerald-50 text-emerald-700">
                     v{systemInfo.appVersion}
                   </span>
                 </dd>

@@ -320,6 +320,9 @@
     "errorsCount": "{{count}}個のエラー",
     "addTitle": "フォルダ同期ペアを追加",
     "deleted": "削除しました",
+    "compareOnly": "比較のみ（同期なし）",
+    "compareNoChanges": "差異が見つかりませんでした",
+    "compareResult": "{{total}}個の差異を検出：{{push}}個プッシュ、{{pull}}個プル",
     "recovery": {
       "title": "転送リカバリ",
       "recovered": "{{count}} 件の転送を正常に回復しました",
@@ -546,7 +549,26 @@
     "densityCompact": "コンパクト",
     "densityComfortable": "ゆったり",
     "densityCompactDesc": "間隔が狭く、キーボードとマウスに最適",
-    "densityComfortableDesc": "間隔が広く、タッチスクリーンに最適"
+    "densityComfortableDesc": "間隔が広く、タッチスクリーンに最適",
+    "fontFamily": "フォント",
+    "fontDefault": "システムデフォルト",
+    "fontSystemDefault": "システムデフォルトフォント",
+    "fontPreview": "プレビュー",
+    "fontPreviewText": "素早い茶色の狐",
+    "syncSafety": "同期の安全性",
+    "blockPushToDevice": "デバイスへのプッシュをブロック",
+    "blockPushToDeviceDesc": "有効にすると、フォルダ同期はPCからAndroidデバイスへのファイルのプッシュを行いません（プルのみモード）。",
+    "blockPushWarning": "デバイスへのプッシュがブロックされています。フォルダ同期はデバイスからPCへのプルのみを行います。",
+    "dataStoragePath": "データストレージ",
+    "currentPath": "現在のパス",
+    "changePath": "ストレージパスを変更",
+    "newPathPlaceholder": "新しいデータストレージパスを入力...",
+    "migrateData": "データを移行",
+    "migrateConfirm": "すべてのデータファイルを「{{path}}」に移動しますか？アプリの再起動が必要です。",
+    "migrateSuccess": "データの移行が成功しました。再起動してください。",
+    "migratePartial": "移行が完了しましたが、{{errors}}個のエラーがあります。",
+    "migrateHint": "変更を有効にするにはアプリを再起動してください。",
+    "restartRequired": "新しいデータパスを適用するには再起動してください。"
   },
   "companion": {
     "title": "コンパニオンアプリをインストール",
@@ -589,6 +611,9 @@
     "updateSuccessDesc": "DroidLink コンパニオンが更新されました。すべての機能が最新です。",
     "versionMismatch": "デバイスバージョン: {{device}}、利用可能: {{bundled}}",
     "installedVersion": "コンパニオンアプリ v{{version}}",
-    "reinstall": "再インストール"
+    "reinstall": "再インストール",
+    "serviceLabel": "バックグラウンドサービス",
+    "startService": "サービスを開始",
+    "serviceRunningHint": "サービスは正常に動作しています"
   }
 }

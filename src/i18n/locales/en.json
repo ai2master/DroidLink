@@ -320,6 +320,9 @@
     "errorsCount": "{{count}} errors",
     "addTitle": "Add Folder Sync Pair",
     "deleted": "Deleted",
+    "compareOnly": "Compare Only (no sync)",
+    "compareNoChanges": "No differences found - both sides are in sync",
+    "compareResult": "Found {{total}} difference(s): {{push}} to push, {{pull}} to pull",
     "recovery": {
       "title": "Transfer Recovery",
       "recovered": "{{count}} transfer(s) recovered successfully",
@@ -546,7 +549,26 @@
     "densityCompact": "Compact",
     "densityComfortable": "Comfortable",
     "densityCompactDesc": "Tighter spacing, ideal for keyboard and mouse",
-    "densityComfortableDesc": "More spacious, ideal for touch screens"
+    "densityComfortableDesc": "More spacious, ideal for touch screens",
+    "fontFamily": "Font",
+    "fontDefault": "System Default",
+    "fontSystemDefault": "System default font",
+    "fontPreview": "Preview",
+    "fontPreviewText": "The quick brown fox",
+    "syncSafety": "Sync Safety",
+    "blockPushToDevice": "Block Push to Device",
+    "blockPushToDeviceDesc": "When enabled, folder sync will NEVER push files from PC to Android device (pull-only mode). This is a safety lock to prevent accidental overwrites on the phone.",
+    "blockPushWarning": "Push to device is blocked. Folder sync will only pull files from device to PC. No files will be written to the Android device.",
+    "dataStoragePath": "Data Storage",
+    "currentPath": "Current path",
+    "changePath": "Change storage path",
+    "newPathPlaceholder": "Enter new data storage path...",
+    "migrateData": "Migrate Data",
+    "migrateConfirm": "Move all data files to \"{{path}}\"? This may take a while depending on data size. The app will need to restart after migration.",
+    "migrateSuccess": "Data migrated successfully. Please restart the app.",
+    "migratePartial": "Migration completed with {{errors}} errors. Check the new path.",
+    "migrateHint": "After migration, restart the app for changes to take effect.",
+    "restartRequired": "Please restart the app for the new data path to take effect."
   },
   "companion": {
     "title": "Install Companion App",
@@ -589,6 +611,9 @@
     "updateSuccessDesc": "DroidLink Companion has been updated. All features are up to date.",
     "versionMismatch": "Device version: {{device}}, available: {{bundled}}",
     "installedVersion": "Companion App v{{version}}",
-    "reinstall": "Reinstall"
+    "reinstall": "Reinstall",
+    "serviceLabel": "Background Service",
+    "startService": "Start Service",
+    "serviceRunningHint": "Service is running normally for data sync and monitoring"
   }
 }

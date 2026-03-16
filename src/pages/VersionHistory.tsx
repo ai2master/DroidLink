@@ -123,8 +123,8 @@ export const VersionHistory: React.FC = () => {
       content: (
         <div>
           <p>{t('versionHistory.restoreConfirm', { description })}</p>
-          <div className="flex gap-2 p-3 rounded-[var(--border-radius)] bg-blue-50 border border-blue-200 text-sm mt-2">
-            <span className="text-blue-800">{t('versionHistory.restoreNote')}</span>
+          <div className="flex gap-2 p-3 rounded-[var(--border-radius)] bg-emerald-50 border border-emerald-200 text-sm mt-2">
+            <span className="text-emerald-800">{t('versionHistory.restoreNote')}</span>
           </div>
         </div>
       ),
@@ -223,7 +223,7 @@ export const VersionHistory: React.FC = () => {
                 className={cn(
                   "absolute left-0 top-2 w-2 h-2 rounded-full -translate-x-[3.5px]",
                   getActionColor(version.action) === 'success' && "bg-green-500",
-                  getActionColor(version.action) === 'info' && "bg-blue-500",
+                  getActionColor(version.action) === 'info' && "bg-emerald-500",
                   getActionColor(version.action) === 'error' && "bg-red-500",
                   getActionColor(version.action) === 'warning' && "bg-yellow-500",
                   getActionColor(version.action) === 'default' && "bg-gray-400"
@@ -448,8 +448,8 @@ export const VersionHistory: React.FC = () => {
           </div>
 
           {compareMode && (
-            <div className="flex gap-2 p-3 rounded-[var(--border-radius)] bg-blue-50 border border-blue-200 text-sm">
-              <span className="text-blue-800">
+            <div className="flex gap-2 p-3 rounded-[var(--border-radius)] bg-emerald-50 border border-emerald-200 text-sm">
+              <span className="text-emerald-800">
                 {t('versionHistory.selectTwoVersions')}
                 {selectedForCompare.length > 0 && ` - ${selectedForCompare.length}/2 ${t('versionHistory.selected')}`}
               </span>

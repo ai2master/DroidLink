@@ -27,7 +27,7 @@ const icons = {
   success: <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />,
   error: <AlertCircle className="h-4 w-4 text-red-500 shrink-0" />,
   warning: <AlertTriangle className="h-4 w-4 text-yellow-500 shrink-0" />,
-  info: <Info className="h-4 w-4 text-blue-500 shrink-0" />,
+  info: <Info className="h-4 w-4 text-emerald-500 shrink-0" />,
 };
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
@@ -68,7 +68,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
                 'border-green-200': toast.type === 'success',
                 'border-red-200': toast.type === 'error',
                 'border-yellow-200': toast.type === 'warning',
-                'border-blue-200': toast.type === 'info',
+                'border-emerald-200': toast.type === 'info',
               },
             )}
           >

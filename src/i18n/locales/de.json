@@ -320,6 +320,9 @@
     "errorsCount": "{{count}} Fehler",
     "addTitle": "Ordnersynchronisationspaar hinzufügen",
     "deleted": "Gelöscht",
+    "compareOnly": "Nur vergleichen (keine Synchronisation)",
+    "compareNoChanges": "Keine Unterschiede gefunden",
+    "compareResult": "{{total}} Unterschied(e) gefunden: {{push}} zu senden, {{pull}} abzurufen",
     "recovery": {
       "title": "Ubertragungswiederherstellung",
       "recovered": "{{count}} Ubertragung(en) erfolgreich wiederhergestellt",
@@ -546,7 +549,26 @@
     "densityCompact": "Kompakt",
     "densityComfortable": "Komfortabel",
     "densityCompactDesc": "Engere Abstände, ideal für Tastatur und Maus",
-    "densityComfortableDesc": "Größere Abstände, ideal für Touchscreens"
+    "densityComfortableDesc": "Größere Abstände, ideal für Touchscreens",
+    "fontFamily": "Schriftart",
+    "fontDefault": "Systemstandard",
+    "fontSystemDefault": "System-Standardschriftart",
+    "fontPreview": "Vorschau",
+    "fontPreviewText": "Der schnelle braune Fuchs",
+    "syncSafety": "Synchronisationssicherheit",
+    "blockPushToDevice": "Push an Gerät blockieren",
+    "blockPushToDeviceDesc": "Wenn aktiviert, wird die Ordnersynchronisation NIEMALS Dateien vom PC auf das Android-Gerät übertragen (Nur-Abruf-Modus).",
+    "blockPushWarning": "Push an Gerät ist blockiert. Ordnersynchronisation wird nur vom Gerät zum PC abrufen.",
+    "dataStoragePath": "Datenspeicher",
+    "currentPath": "Aktueller Pfad",
+    "changePath": "Speicherpfad ändern",
+    "newPathPlaceholder": "Neuen Datenspeicherpfad eingeben...",
+    "migrateData": "Daten migrieren",
+    "migrateConfirm": "Alle Datendateien nach \"{{path}}\" verschieben? App muss neu gestartet werden.",
+    "migrateSuccess": "Daten erfolgreich migriert. Bitte neu starten.",
+    "migratePartial": "Migration mit {{errors}} Fehlern abgeschlossen.",
+    "migrateHint": "App neu starten, damit Änderungen wirksam werden.",
+    "restartRequired": "Bitte neu starten für neuen Datenpfad."
   },
   "companion": {
     "title": "Companion-App installieren",
@@ -589,6 +611,9 @@
     "updateSuccessDesc": "DroidLink Companion wurde aktualisiert. Alle Funktionen sind auf dem neuesten Stand.",
     "versionMismatch": "Geräteversion: {{device}}, verfügbar: {{bundled}}",
     "installedVersion": "Companion-App v{{version}}",
-    "reinstall": "Neu installieren"
+    "reinstall": "Neu installieren",
+    "serviceLabel": "Hintergrunddienst",
+    "startService": "Dienst starten",
+    "serviceRunningHint": "Dienst läuft normal"
   }
 }

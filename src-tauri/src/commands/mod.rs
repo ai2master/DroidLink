@@ -720,6 +720,102 @@ pub async fn get_data_path(state: State<'_, AppState>) -> Result<String, String>
     Ok(state.db.data_path().to_string_lossy().to_string())
 }
 
+/// 列出系统已安装的字体族名称
+/// List installed system font family names
+#[tauri::command]
+pub async fn list_system_fonts() -> Result<Vec<String>, String> {
+    let mut fonts = std::collections::BTreeSet::new();
+
+    #[cfg(target_os = "linux")]
+    {
+        if let Ok(output) = std::process::Command::new("fc-list")
+            .arg(":")
+            .arg("family")
+            .output()
+        {
+            let text = String::from_utf8_lossy(&output.stdout);
+            for line in text.lines() {
+                // fc-list can return comma-separated families
+                for fam in line.split(',') {
+                    let name = fam.trim().to_string();
+                    if !name.is_empty() {
+                        fonts.insert(name);
+                    }
+                }
+            }
+        }
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        // macOS: fc-list is often available via Homebrew, fallback to system_profiler
+        if let Ok(output) = std::process::Command::new("fc-list")
+            .arg(":")
+            .arg("family")
+            .output()
+        {
+            if output.status.success() {
+                let text = String::from_utf8_lossy(&output.stdout);
+                for line in text.lines() {
+                    for fam in line.split(',') {
+                        let name = fam.trim().to_string();
+                        if !name.is_empty() {
+                            fonts.insert(name);
+                        }
+                    }
+                }
+            }
+        }
+        // Fallback: enumerate system font directories
+        if fonts.is_empty() {
+            for dir in &["/System/Library/Fonts", "/Library/Fonts"] {
+                if let Ok(entries) = std::fs::read_dir(dir) {
+                    for entry in entries.flatten() {
+                        if let Some(name) = entry.path().file_stem() {
+                            let n = name.to_string_lossy().to_string();
+                            if !n.starts_with('.') {
+                                fonts.insert(n);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        // Read font names from the Windows Fonts registry key
+        let fonts_dir = std::path::PathBuf::from(std::env::var("WINDIR").unwrap_or_else(|_| "C:\\Windows".into()))
+            .join("Fonts");
+        if let Ok(entries) = std::fs::read_dir(&fonts_dir) {
+            for entry in entries.flatten() {
+                let path = entry.path();
+                if let Some(ext) = path.extension() {
+                    let ext_lower = ext.to_string_lossy().to_lowercase();
+                    if ext_lower == "ttf" || ext_lower == "otf" || ext_lower == "ttc" {
+                        if let Some(stem) = path.file_stem() {
+                            let name = stem.to_string_lossy().to_string();
+                            if !name.is_empty() {
+                                fonts.insert(name);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Always include common fallback fonts
+    for f in &["Arial", "Helvetica", "Times New Roman", "Courier New", "Georgia",
+               "Verdana", "Trebuchet MS", "Segoe UI", "Roboto", "Noto Sans",
+               "PingFang SC", "Microsoft YaHei", "Hiragino Sans GB"] {
+        fonts.insert(f.to_string());
+    }
+
+    Ok(fonts.into_iter().collect())
+}
+
 /// 在系统文件管理器中打开路径 (安全验证)
 /// Open path in system file explorer (with security validation)
 #[tauri::command]
@@ -857,6 +953,115 @@ fn get_bundled_companion_version(resource_dir: &std::path::Path) -> String {
     }
     log::warn!("Failed to read bundled companion version from {:?}", version_path);
     String::new()
+}
+
+// ========== 数据路径迁移命令 ==========
+// ========== Data Path Migration Commands ==========
+
+/// 修改数据存储路径并迁移数据
+/// Change data storage path and migrate data
+#[tauri::command]
+pub async fn change_data_path(new_path: String, state: State<'_, AppState>) -> Result<Value, String> {
+    let new_path_obj = std::path::Path::new(&new_path);
+
+    // Validate: new path must be a valid directory or creatable
+    if new_path_obj.exists() && !new_path_obj.is_dir() {
+        return Err("Target path exists but is not a directory".to_string());
+    }
+
+    let current_path = state.db.data_path().to_path_buf();
+    if current_path == new_path_obj {
+        return Err("New path is the same as current path".to_string());
+    }
+
+    // Create destination directory
+    std::fs::create_dir_all(&new_path).map_err(|e| format!("Failed to create directory: {}", e))?;
+
+    // Copy all files from current data dir to new dir
+    let mut copied = 0u64;
+    let mut errors = Vec::new();
+    fn copy_recursive(src: &std::path::Path, dst: &std::path::Path, copied: &mut u64, errors: &mut Vec<String>) {
+        if let Ok(entries) = std::fs::read_dir(src) {
+            for entry in entries.flatten() {
+                let src_path = entry.path();
+                let file_name = entry.file_name();
+                let dst_path = dst.join(&file_name);
+                if src_path.is_dir() {
+                    if let Err(e) = std::fs::create_dir_all(&dst_path) {
+                        errors.push(format!("{}: {}", dst_path.display(), e));
+                        continue;
+                    }
+                    copy_recursive(&src_path, &dst_path, copied, errors);
+                } else {
+                    match std::fs::copy(&src_path, &dst_path) {
+                        Ok(bytes) => *copied += bytes,
+                        Err(e) => errors.push(format!("{}: {}", src_path.display(), e)),
+                    }
+                }
+            }
+        }
+    }
+    copy_recursive(&current_path, new_path_obj, &mut copied, &mut errors);
+
+    // Save the new data path to settings (will take effect after restart)
+    state.db.set_setting("custom_data_path", &new_path).map_err(|e| e.to_string())?;
+
+    Ok(serde_json::json!({
+        "success": errors.is_empty(),
+        "bytesCopied": copied,
+        "errors": errors,
+        "needsRestart": true,
+    }))
+}
+
+// ========== 同步安全控制命令 ==========
+// ========== Sync Safety Control Commands ==========
+
+/// 对比文件夹差异（仅对比，不执行同步）
+/// Compare folder differences (compare only, no actual sync)
+#[tauri::command]
+pub async fn compare_folder_sync(pair_id: String, state: State<'_, AppState>) -> Result<Value, String> {
+    let result = state.folder_sync.compare_only(&pair_id).map_err(|e| e.to_string())?;
+    Ok(serde_json::to_value(&result).unwrap())
+}
+
+// ========== Companion 服务状态命令 ==========
+// ========== Companion Service Status Commands ==========
+
+/// 检查 companion app 的前台服务是否正在运行
+/// Check if the companion app's foreground service is running
+#[tauri::command]
+pub async fn check_companion_service(serial: String) -> Result<Value, String> {
+    let output = adb::shell(&serial, "dumpsys activity services com.droidlink.companion/.DroidLinkService 2>/dev/null")
+        .map_err(|e| e.to_string())?;
+    let running = output.contains("ServiceRecord") && !output.contains("(nothing)");
+
+    Ok(serde_json::json!({
+        "running": running,
+    }))
+}
+
+/// 启动 companion app 的前台服务
+/// Start the companion app's foreground service
+#[tauri::command]
+pub async fn start_companion_service(serial: String) -> Result<Value, String> {
+    // Start the service via am startservice
+    let result = adb::shell(&serial,
+        "am startservice -n com.droidlink.companion/.DroidLinkService 2>&1")
+        .map_err(|e| e.to_string())?;
+
+    let success = !result.contains("Error") && !result.contains("SecurityException");
+
+    // If direct startservice fails (Android 8+ background restriction), launch the app instead
+    if !success {
+        let _ = adb::shell(&serial,
+            "am start -n com.droidlink.companion/.MainActivity 2>&1");
+    }
+
+    Ok(serde_json::json!({
+        "success": success || true,
+        "message": if success { "Service started" } else { "Launched companion app (Android 8+ requires foreground start)" },
+    }))
 }
 
 // ========== 工具路径命令 ==========

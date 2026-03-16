@@ -348,9 +348,9 @@ export default function Transfer() {
               </div>
 
               <div className="col-span-2">
-                <div className="flex gap-2 p-3 rounded-[var(--border-radius)] bg-blue-50 border border-blue-200 text-[var(--font-size-sm)]">
-                  <Info size={16} className="text-blue-600 flex-shrink-0 mt-0.5" />
-                  <div className="text-blue-800">
+                <div className="flex gap-2 p-3 rounded-[var(--border-radius)] bg-emerald-50 border border-emerald-200 text-[var(--font-size-sm)]">
+                  <Info size={16} className="text-emerald-600 flex-shrink-0 mt-0.5" />
+                  <div className="text-emerald-800">
                     <div className="font-semibold mb-1">{t('transfer.clipboardInfoTitle')}</div>
                     <ul className="list-disc pl-5 space-y-0.5">
                       <li>{t('transfer.clipboardInfo1')}</li>

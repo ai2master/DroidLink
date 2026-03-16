@@ -1,9 +1,9 @@
 @import "tailwindcss";
 
 @theme {
-  --color-primary: #1677ff;
-  --color-primary-hover: #4096ff;
-  --color-primary-bg: #e6f4ff;
+  --color-primary: #059669;
+  --color-primary-hover: #10b981;
+  --color-primary-bg: #ecfdf5;
   --color-success: #52c41a;
   --color-error: #ff4d4f;
   --color-warning: #faad14;
@@ -21,42 +21,44 @@ html, body, #root {
   height: 100%;
   width: 100%;
   overflow: hidden;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", "Hiragino Sans GB", "Noto Sans CJK SC", sans-serif;
+  font-family: var(--font-family-custom, -apple-system), BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", "Hiragino Sans GB", "Noto Sans CJK SC", sans-serif;
 }
 
 /* ========== Density variables (compact default) ========== */
+/* Compact: aggressively reduce horizontal padding, barely reduce vertical */
 :root {
-  --page-padding: 16px;
-  --card-padding: 14px;
-  --card-gap: 12px;
-  --section-gap: 16px;
-  --item-padding-y: 8px;
-  --item-padding-x: 12px;
-  --sidebar-width: 210px;
+  --page-padding: 15px 10px;
+  --card-padding: 13px 10px;
+  --card-gap: 10px;
+  --section-gap: 15px;
+  --item-padding-y: 7px;
+  --item-padding-x: 8px;
+  --sidebar-width: 200px;
   --font-size-base: 13.5px;
   --font-size-sm: 12.5px;
   --font-size-xs: 11.5px;
   --font-size-lg: 15px;
   --font-size-title: 17px;
   --border-radius: 6px;
-  --nav-padding: 8px 16px;
+  --nav-padding: 8px 12px;
+  --font-family-custom: '';
 }
 
 :root[data-density="comfortable"] {
-  --page-padding: 24px;
-  --card-padding: 20px;
-  --card-gap: 16px;
-  --section-gap: 24px;
-  --item-padding-y: 12px;
-  --item-padding-x: 16px;
-  --sidebar-width: 230px;
+  --page-padding: 22px 24px;
+  --card-padding: 18px 20px;
+  --card-gap: 14px;
+  --section-gap: 22px;
+  --item-padding-y: 10px;
+  --item-padding-x: 14px;
+  --sidebar-width: 220px;
   --font-size-base: 14.5px;
   --font-size-sm: 13.5px;
   --font-size-xs: 12px;
   --font-size-lg: 16px;
   --font-size-title: 20px;
   --border-radius: 8px;
-  --nav-padding: 10px 20px;
+  --nav-padding: 10px 18px;
 }
 
 body {
@@ -119,7 +121,7 @@ body {
 .app-sidebar-logo .logo-icon {
   width: 28px;
   height: 28px;
-  background: linear-gradient(135deg, #1677ff, #36cfc9);
+  background: linear-gradient(135deg, #059669, #34d399);
   border-radius: 6px;
   display: flex;
   align-items: center;

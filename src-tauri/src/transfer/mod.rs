@@ -5,6 +5,7 @@ use log::{info, warn};
 use notify::{Config, Event, RecommendedWatcher, RecursiveMode, Watcher};
 use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -805,6 +806,13 @@ impl FolderSync {
         let conflict_str = self.db.get_setting("conflict_policy").unwrap_or(None).unwrap_or_else(|| "keep_both".to_string());
         let conflict_policy = ConflictPolicy::from_str(&conflict_str);
 
+        // 安全控制：检查是否禁止推送到设备
+        // Safety control: check if push to device is blocked
+        let block_push = self.db.get_setting("block_push_to_device")
+            .unwrap_or(None)
+            .map(|v| v == "true")
+            .unwrap_or(false);
+
         for change in changes {
             current += 1;
             self.emit_event(FolderSyncEvent::Progress {
@@ -815,6 +823,10 @@ impl FolderSync {
 
             match change.action {
                 ChangeAction::PushNew | ChangeAction::PushModified => {
+                    if block_push {
+                        result.errors.push(format!("Blocked: {} (push to device disabled)", change.relative_path));
+                        continue;
+                    }
                     if let (Some(local), Some(remote)) = (&change.local_path, &change.remote_path) {
                         if let Some(p) = PathBuf::from(remote).parent() {
                             let _ = adb::create_dir(serial, p.to_str().unwrap_or(""));
@@ -905,6 +917,56 @@ impl FolderSync {
 
         self.emit_event(FolderSyncEvent::Completed { pair_id: pair_id.to_string(), result: result.clone() });
         Ok(result)
+    }
+
+    /// 仅对比两端差异，不执行实际同步
+    /// Compare only: detect changes without syncing
+    pub fn compare_only(&self, pair_id: &str) -> Result<Value> {
+        let pairs = self.db.get_folder_sync_pairs(None)
+            .map_err(|e| FolderSyncError::DatabaseError(e.to_string()))?;
+        let pair = pairs.iter().find(|p| p.id == pair_id)
+            .ok_or_else(|| FolderSyncError::PairNotFound(pair_id.to_string()))?.clone();
+
+        let local_path = Path::new(&pair.local_path);
+        let remote_path = &pair.remote_path;
+        let serial = &pair.serial;
+
+        if !local_path.exists() {
+            return Err(FolderSyncError::InvalidPath(format!("Local path not found: {}", pair.local_path)));
+        }
+
+        let ignore = IgnorePatterns::load_from_file(local_path);
+        let local_files = Self::scan_local_directory(local_path, &ignore)?;
+        let remote_files = Self::scan_remote_directory(serial, remote_path, &ignore)?;
+
+        let index_entries = self.db.get_folder_sync_index(pair_id)
+            .map_err(|e| FolderSyncError::DatabaseError(e.to_string()))?;
+        let index: HashMap<String, FolderSyncEntry> = index_entries.into_iter()
+            .filter(|e| e.status != "deleted")
+            .map(|e| (e.relative_path.clone(), e)).collect();
+
+        let changes = Self::detect_changes(&local_files, &remote_files, &index, &pair.direction, remote_path, local_path);
+
+        let summary = serde_json::json!({
+            "pairId": pair_id,
+            "localPath": pair.local_path,
+            "remotePath": remote_path,
+            "localFileCount": local_files.len(),
+            "remoteFileCount": remote_files.len(),
+            "changes": changes.iter().map(|c| serde_json::json!({
+                "path": c.relative_path,
+                "action": format!("{:?}", c.action),
+                "localSize": c.local_size,
+                "remoteSize": c.remote_size,
+            })).collect::<Vec<_>>(),
+            "totalChanges": changes.len(),
+            "pushCount": changes.iter().filter(|c| matches!(c.action, ChangeAction::PushNew | ChangeAction::PushModified)).count(),
+            "pullCount": changes.iter().filter(|c| matches!(c.action, ChangeAction::PullNew | ChangeAction::PullModified)).count(),
+            "deleteCount": changes.iter().filter(|c| matches!(c.action, ChangeAction::DeleteLocal | ChangeAction::DeleteRemote)).count(),
+            "conflictCount": changes.iter().filter(|c| matches!(c.action, ChangeAction::Conflict)).count(),
+        });
+
+        Ok(summary)
     }
 
     fn update_index_entry(&self, pair: &FolderSyncPair, rel: &str, local: &Path, remote: Option<&str>, serial: &str) -> Result<()> {
