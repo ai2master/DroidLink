@@ -566,7 +566,7 @@ pub fn list_files(serial: &str, path: &str) -> Result<Vec<FileEntry>> {
     // Trailing slash ensures we list directory contents, not the directory entry itself
     let trailing = if safe_path.ends_with('/') { "" } else { "/" };
     let output = shell(serial, &format!("ls -la '{}{}'", safe_path, trailing))?;
-    parse_file_list(&output, path)
+    parse_file_list(serial, &output, path)
 }
 
 /// 删除设备上的文件或目录 (路径已消毒)
@@ -823,7 +823,7 @@ fn parse_storage_info(output: &str) -> Result<(u64, u64)> {
     Ok((total_kb * 1024, used_kb * 1024))
 }
 
-fn parse_file_list(output: &str, base_path: &str) -> Result<Vec<FileEntry>> {
+fn parse_file_list(serial: &str, output: &str, base_path: &str) -> Result<Vec<FileEntry>> {
     let mut entries = Vec::new();
     // Android ls -la format varies across versions. Common formats:
     //   drwxrwx--x  5 root sdcard_rw      4096 2024-01-15 10:30 Download
