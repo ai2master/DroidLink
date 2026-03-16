@@ -237,7 +237,12 @@
     "searchPlaceholder": "输入文件名搜索...",
     "searchIn": "搜索范围",
     "searchFailed": "搜索失败: {{error}}",
-    "noSearchResults": "未找到结果"
+    "noSearchResults": "未找到结果",
+    "tabDevice": "Android 设备",
+    "tabLocalPC": "本地电脑",
+    "localPCDesc": "选择本地电脑上的文件夹来复制/移动文件。",
+    "localPCHint": "文件将通过 USB ADB 从 Android 设备拉取到本地电脑。",
+    "selectLocalFolder": "选择本地文件夹..."
   },
   "folderSync": {
     "title": "文件夹同步",
@@ -394,7 +399,35 @@
     "passthroughDesc4": "适合习惯使用手机原生输入法的用户",
     "passthroughPlaceholder": "输入文本后按发送（仅英文/数字/符号）...",
     "switchIME": "切换手机输入法",
-    "deviceIMEs": "手机输入法列表"
+    "deviceIMEs": "手机输入法列表",
+    "advancedSettings": "高级设置",
+    "advancedSettingsDesc": "以下是内置修改版 scrcpy 的所有可用参数。原始参数名称以代码标签形式显示。",
+    "advRecord": "录制屏幕",
+    "advRecordPlaceholder": "例如 /home/user/recording.mp4",
+    "advRecordDesc": "将投射画面录制为视频文件 (MP4/MKV)。文件保存在本地电脑上。",
+    "advWindowTitle": "窗口标题",
+    "advWindowTitlePlaceholder": "例如 我的设备",
+    "advWindowTitleDesc": "为 scrcpy 窗口设置自定义标题。默认显示设备型号。",
+    "advCrop": "裁剪区域",
+    "advCropDesc": "在编码前裁剪设备屏幕。格式: 宽:高:x:y (例如 1080:1920:0:0)。适用于聚焦特定区域。",
+    "advDisplayId": "显示器 ID",
+    "advDisplayIdDesc": "选择多屏设备上要投射的显示器 (如折叠屏手机)。0 = 主屏幕。",
+    "advRotation": "初始旋转",
+    "advRotationNone": "自动 (不覆盖)",
+    "advRotationNatural": "自然方向",
+    "advRotationCCW": "逆时针",
+    "advRotationCW": "顺时针",
+    "advRotationDesc": "设置初始显示旋转方向。当投射画面方向不正确时可使用。",
+    "advPreferText": "文本注入优先",
+    "advPreferTextDesc": "使用按键事件注入文本而非原始字符。可能提高某些应用的兼容性，但速度可能较慢。",
+    "advMouseBind": "鼠标按键映射",
+    "advMouseBindDesc": "所有鼠标按键 (左、中、右、后退、前进) 均映射为触摸事件 (--mouse-bind=++++)。这是 DroidLink 修改版的行为。",
+    "advStayAwake": "保持唤醒",
+    "advStayAwakeDesc": "投射期间防止设备休眠。由上方复选框控制。",
+    "advNoAudio": "禁用音频",
+    "advNoAudioDesc": "禁止从设备转发音频。由上方复选框控制。",
+    "advOtg": "OTG 模式",
+    "advOtgDesc": "使用 USB HID 直通进行输入 (延迟最低)。无需 ADB 调试授权，但只有 HID 设备可用。"
   },
   "transfer": {
     "title": "传输",
@@ -568,7 +601,11 @@
     "migrateSuccess": "数据迁移成功，请重启应用。",
     "migratePartial": "迁移完成，但有 {{errors}} 个错误。请检查新路径。",
     "migrateHint": "迁移后请重启应用以使新路径生效。",
-    "restartRequired": "请重启应用以使新的数据路径生效。"
+    "restartRequired": "请重启应用以使新的数据路径生效。",
+    "logging": "日志系统",
+    "logFilePath": "日志文件路径",
+    "openLogFile": "打开日志文件",
+    "loggingDesc": "应用日志记录到上述文件。日志文件超过 10MB 时自动轮转。"
   },
   "companion": {
     "title": "安装手机端应用",

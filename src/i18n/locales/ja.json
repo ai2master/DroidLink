@@ -237,7 +237,12 @@
     "searchPlaceholder": "ファイル名を入力して検索...",
     "searchIn": "検索対象",
     "searchFailed": "検索に失敗しました: {{error}}",
-    "noSearchResults": "結果が見つかりません"
+    "noSearchResults": "結果が見つかりません",
+    "tabDevice": "Androidデバイス",
+    "tabLocalPC": "ローカルPC",
+    "localPCDesc": "ローカルPCのフォルダを選択してファイルをコピー/移動します。",
+    "localPCHint": "ファイルはUSB ADB経由でAndroidデバイスからローカルPCにプルされます。",
+    "selectLocalFolder": "ローカルフォルダを選択..."
   },
   "folderSync": {
     "title": "フォルダ同期",
@@ -394,7 +399,35 @@
     "passthroughDesc4": "スマホのネイティブ入力方法を好むユーザーに最適",
     "passthroughPlaceholder": "テキストを入力して送信を押してください (英語/数字/記号のみ)...",
     "switchIME": "スマホIMEを切り替え",
-    "deviceIMEs": "スマホIMEリスト"
+    "deviceIMEs": "スマホIMEリスト",
+    "advancedSettings": "詳細設定",
+    "advancedSettingsDesc": "以下は内蔵の改変版scrcpyで使用可能なすべてのパラメーターです。元のパラメーター名はコードタグで表示されます。",
+    "advRecord": "画面録画",
+    "advRecordPlaceholder": "例: /home/user/recording.mp4",
+    "advRecordDesc": "ミラーリング画面を動画ファイル (MP4/MKV) に録画します。ファイルはローカルPCに保存されます。",
+    "advWindowTitle": "ウィンドウタイトル",
+    "advWindowTitlePlaceholder": "例: マイデバイス",
+    "advWindowTitleDesc": "scrcpyウィンドウのカスタムタイトルを設定します。デフォルトはデバイスモデル名です。",
+    "advCrop": "トリミング領域",
+    "advCropDesc": "エンコード前にデバイス画面をトリミングします。形式: 幅:高さ:x:y (例: 1080:1920:0:0)。特定の領域に焦点を当てるのに便利です。",
+    "advDisplayId": "ディスプレイID",
+    "advDisplayIdDesc": "マルチディスプレイデバイス (折りたたみスマホなど) でミラーリングするディスプレイを選択します。0 = メインディスプレイ。",
+    "advRotation": "初期回転",
+    "advRotationNone": "自動 (上書きなし)",
+    "advRotationNatural": "自然",
+    "advRotationCCW": "反時計回り",
+    "advRotationCW": "時計回り",
+    "advRotationDesc": "初期表示の回転を設定します。ミラーリング画面の向きが正しくない場合に使用します。",
+    "advPreferText": "テキスト注入優先",
+    "advPreferTextDesc": "生の文字ではなくキーイベントを使用してテキストを注入します。一部のアプリとの互換性が向上する場合がありますが、速度が低下する可能性があります。",
+    "advMouseBind": "マウスボタンマッピング",
+    "advMouseBindDesc": "すべてのマウスボタン (左、中、右、戻る、進む) がタッチイベントとしてマッピングされます (--mouse-bind=++++)。これはDroidLink改変版の動作です。",
+    "advStayAwake": "スリープさせない",
+    "advStayAwakeDesc": "ミラーリング中にデバイスがスリープするのを防ぎます。上のチェックボックスで制御されます。",
+    "advNoAudio": "音声を無効化",
+    "advNoAudioDesc": "デバイスからの音声転送を無効にします。上のチェックボックスで制御されます。",
+    "advOtg": "OTGモード",
+    "advOtgDesc": "USB HIDパススルーを入力に使用します (最低遅延)。ADBデバッグ認証不要ですが、HIDデバイスのみ動作します。"
   },
   "transfer": {
     "title": "転送",
@@ -568,7 +601,11 @@
     "migrateSuccess": "データの移行が成功しました。再起動してください。",
     "migratePartial": "移行が完了しましたが、{{errors}}個のエラーがあります。",
     "migrateHint": "変更を有効にするにはアプリを再起動してください。",
-    "restartRequired": "新しいデータパスを適用するには再起動してください。"
+    "restartRequired": "新しいデータパスを適用するには再起動してください。",
+    "logging": "ログシステム",
+    "logFilePath": "ログファイルパス",
+    "openLogFile": "ログファイルを開く",
+    "loggingDesc": "アプリケーションログは上記のファイルに記録されます。ログファイルが10MBを超えると自動でローテーションされます。"
   },
   "companion": {
     "title": "コンパニオンアプリをインストール",

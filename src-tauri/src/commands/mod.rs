@@ -720,6 +720,12 @@ pub async fn get_data_path(state: State<'_, AppState>) -> Result<String, String>
     Ok(state.db.data_path().to_string_lossy().to_string())
 }
 
+/// 获取日志文件路径 / Get log file path
+#[tauri::command]
+pub async fn get_log_path() -> Result<String, String> {
+    Ok(crate::get_log_file_path())
+}
+
 /// 列出系统已安装的字体族名称
 /// List installed system font family names
 #[tauri::command]

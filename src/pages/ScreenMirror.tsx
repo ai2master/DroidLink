@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import {
   Play, Pause, Send, Trash2, CornerDownLeft, Eraser, Pen,
+  ChevronDown, ChevronRight, Settings,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { tauriInvoke } from '../utils/tauri';
@@ -40,6 +41,16 @@ export default function ScreenMirror() {
     noMouseHover: false,
     otgMode: false,
   });
+  // 高级选项 / Advanced options
+  const [advancedOptions, setAdvancedOptions] = useState({
+    recordFile: '',
+    windowTitle: '',
+    crop: '',
+    displayId: '',
+    rotation: '',
+    preferText: false,
+  });
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   const [inputMode, setInputMode] = useState<InputMode>('droidlink_ime');
   const [textInput, setTextInput] = useState('');
@@ -56,6 +67,23 @@ export default function ScreenMirror() {
       loadDeviceImes();
     }
   }, [device]);
+
+  // 轮询检测 scrcpy 进程是否退出 (用户手动关闭窗口时自动更新按钮状态)
+  // Poll to detect scrcpy process exit (auto-update button when user closes the window)
+  useEffect(() => {
+    if (!running || !device) return;
+    const interval = setInterval(async () => {
+      try {
+        const stillRunning = await tauriInvoke<boolean>('is_scrcpy_running', { serial: device.serial });
+        if (!stillRunning) {
+          setRunning(false);
+        }
+      } catch {
+        setRunning(false);
+      }
+    }, 2000);
+    return () => clearInterval(interval);
+  }, [running, device]);
 
   const checkScrcpy = async () => {
     try {
@@ -108,7 +136,12 @@ export default function ScreenMirror() {
           forwardAllClicks: options.forwardAllClicks,
           noMouseHover: options.noMouseHover,
           otgMode: options.otgMode,
-          preferText: false,
+          preferText: advancedOptions.preferText,
+          recordFile: advancedOptions.recordFile || null,
+          windowTitle: advancedOptions.windowTitle || null,
+          crop: advancedOptions.crop || null,
+          displayId: advancedOptions.displayId ? Number(advancedOptions.displayId) : null,
+          rotation: advancedOptions.rotation ? Number(advancedOptions.rotation) : null,
         },
       });
       setRunning(true);
@@ -548,6 +581,180 @@ export default function ScreenMirror() {
               <dd>{device.batteryLevel}%</dd>
             </dl>
           </div>
+        </div>
+
+        {/* 高级设置面板 / Advanced settings panel */}
+        <div className="rounded-[var(--border-radius)] border border-border bg-white mt-[var(--card-gap)]">
+          <button
+            className="w-full flex items-center justify-between p-[var(--card-padding)] hover:bg-gray-50 transition-colors"
+            onClick={() => setShowAdvanced(!showAdvanced)}
+          >
+            <div className="flex items-center gap-2 font-semibold text-[var(--font-size-base)]">
+              <Settings size={16} />
+              {t('screenMirror.advancedSettings')}
+            </div>
+            {showAdvanced ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+          </button>
+          {showAdvanced && (
+            <div className="border-t border-border p-[var(--card-padding)]">
+              <div className="flex gap-2 p-3 rounded-[var(--border-radius)] bg-emerald-50 border border-emerald-200 text-[var(--font-size-sm)] mb-4">
+                <span className="text-emerald-800">{t('screenMirror.advancedSettingsDesc')}</span>
+              </div>
+              <div className="flex flex-col gap-5">
+                {/* --record / 录制 */}
+                <div className="flex flex-col gap-1">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <span className="font-medium">{t('screenMirror.advRecord')}</span>
+                      <code className="ml-2 text-xs bg-gray-100 px-1.5 py-0.5 rounded">--record</code>
+                    </div>
+                    <Input
+                      value={advancedOptions.recordFile}
+                      onChange={(e) => setAdvancedOptions((o) => ({ ...o, recordFile: e.target.value }))}
+                      placeholder={t('screenMirror.advRecordPlaceholder')}
+                      disabled={running}
+                      className="w-64"
+                    />
+                  </div>
+                  <span className="text-xs text-gray-500">{t('screenMirror.advRecordDesc')}</span>
+                </div>
+
+                {/* --window-title / 窗口标题 */}
+                <div className="flex flex-col gap-1">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <span className="font-medium">{t('screenMirror.advWindowTitle')}</span>
+                      <code className="ml-2 text-xs bg-gray-100 px-1.5 py-0.5 rounded">--window-title</code>
+                    </div>
+                    <Input
+                      value={advancedOptions.windowTitle}
+                      onChange={(e) => setAdvancedOptions((o) => ({ ...o, windowTitle: e.target.value }))}
+                      placeholder={t('screenMirror.advWindowTitlePlaceholder')}
+                      disabled={running}
+                      className="w-64"
+                    />
+                  </div>
+                  <span className="text-xs text-gray-500">{t('screenMirror.advWindowTitleDesc')}</span>
+                </div>
+
+                {/* --crop / 裁剪 */}
+                <div className="flex flex-col gap-1">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <span className="font-medium">{t('screenMirror.advCrop')}</span>
+                      <code className="ml-2 text-xs bg-gray-100 px-1.5 py-0.5 rounded">--crop</code>
+                    </div>
+                    <Input
+                      value={advancedOptions.crop}
+                      onChange={(e) => setAdvancedOptions((o) => ({ ...o, crop: e.target.value }))}
+                      placeholder="1080:1920:0:0"
+                      disabled={running}
+                      className="w-64"
+                    />
+                  </div>
+                  <span className="text-xs text-gray-500">{t('screenMirror.advCropDesc')}</span>
+                </div>
+
+                {/* --display-id / 显示器ID */}
+                <div className="flex flex-col gap-1">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <span className="font-medium">{t('screenMirror.advDisplayId')}</span>
+                      <code className="ml-2 text-xs bg-gray-100 px-1.5 py-0.5 rounded">--display-id</code>
+                    </div>
+                    <Input
+                      type="number"
+                      value={advancedOptions.displayId}
+                      onChange={(e) => setAdvancedOptions((o) => ({ ...o, displayId: e.target.value }))}
+                      placeholder="0"
+                      disabled={running}
+                      className="w-32"
+                      min={0}
+                    />
+                  </div>
+                  <span className="text-xs text-gray-500">{t('screenMirror.advDisplayIdDesc')}</span>
+                </div>
+
+                {/* --rotation / 旋转 */}
+                <div className="flex flex-col gap-1">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <span className="font-medium">{t('screenMirror.advRotation')}</span>
+                      <code className="ml-2 text-xs bg-gray-100 px-1.5 py-0.5 rounded">--rotation</code>
+                    </div>
+                    <Select
+                      value={advancedOptions.rotation || 'none'}
+                      onValueChange={(v) => setAdvancedOptions((o) => ({ ...o, rotation: v === 'none' ? '' : v }))}
+                    >
+                      <SelectTrigger className="w-48" disabled={running}>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">{t('screenMirror.advRotationNone')}</SelectItem>
+                        <SelectItem value="0">0° ({t('screenMirror.advRotationNatural')})</SelectItem>
+                        <SelectItem value="1">90° ({t('screenMirror.advRotationCCW')})</SelectItem>
+                        <SelectItem value="2">180°</SelectItem>
+                        <SelectItem value="3">270° ({t('screenMirror.advRotationCW')})</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <span className="text-xs text-gray-500">{t('screenMirror.advRotationDesc')}</span>
+                </div>
+
+                {/* --prefer-text / 文本优先 */}
+                <div className="flex flex-col gap-1">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <span className="font-medium">{t('screenMirror.advPreferText')}</span>
+                      <code className="ml-2 text-xs bg-gray-100 px-1.5 py-0.5 rounded">--prefer-text</code>
+                    </div>
+                    <Switch
+                      checked={advancedOptions.preferText}
+                      onCheckedChange={(v) => setAdvancedOptions((o) => ({ ...o, preferText: v }))}
+                      disabled={running}
+                    />
+                  </div>
+                  <span className="text-xs text-gray-500">{t('screenMirror.advPreferTextDesc')}</span>
+                </div>
+
+                {/* --mouse-bind / 鼠标绑定说明 */}
+                <div className="flex flex-col gap-1">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium">{t('screenMirror.advMouseBind')}</span>
+                    <code className="text-xs bg-gray-100 px-1.5 py-0.5 rounded">--mouse-bind=++++</code>
+                  </div>
+                  <span className="text-xs text-gray-500">{t('screenMirror.advMouseBindDesc')}</span>
+                </div>
+
+                {/* --stay-awake 说明 */}
+                <div className="flex flex-col gap-1">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium">{t('screenMirror.advStayAwake')}</span>
+                    <code className="text-xs bg-gray-100 px-1.5 py-0.5 rounded">--stay-awake</code>
+                  </div>
+                  <span className="text-xs text-gray-500">{t('screenMirror.advStayAwakeDesc')}</span>
+                </div>
+
+                {/* --no-audio 说明 */}
+                <div className="flex flex-col gap-1">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium">{t('screenMirror.advNoAudio')}</span>
+                    <code className="text-xs bg-gray-100 px-1.5 py-0.5 rounded">--no-audio</code>
+                  </div>
+                  <span className="text-xs text-gray-500">{t('screenMirror.advNoAudioDesc')}</span>
+                </div>
+
+                {/* --otg 说明 */}
+                <div className="flex flex-col gap-1">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium">{t('screenMirror.advOtg')}</span>
+                    <code className="text-xs bg-gray-100 px-1.5 py-0.5 rounded">--otg</code>
+                  </div>
+                  <span className="text-xs text-gray-500">{t('screenMirror.advOtgDesc')}</span>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </>

@@ -237,7 +237,12 @@
     "searchPlaceholder": "Dateiname eingeben zum Suchen...",
     "searchIn": "Suche in",
     "searchFailed": "Suche fehlgeschlagen: {{error}}",
-    "noSearchResults": "Keine Ergebnisse gefunden"
+    "noSearchResults": "Keine Ergebnisse gefunden",
+    "tabDevice": "Android-Geraet",
+    "tabLocalPC": "Lokaler PC",
+    "localPCDesc": "Waehlen Sie einen Ordner auf Ihrem lokalen PC zum Kopieren/Verschieben von Dateien.",
+    "localPCHint": "Dateien werden ueber USB ADB vom Android-Geraet auf Ihren lokalen PC uebertragen.",
+    "selectLocalFolder": "Lokalen Ordner auswaehlen..."
   },
   "folderSync": {
     "title": "Ordnersynchronisation",
@@ -394,7 +399,35 @@
     "passthroughDesc4": "Am besten für Benutzer, die die native Eingabemethode des Telefons bevorzugen",
     "passthroughPlaceholder": "Geben Sie Text ein und drücken Sie dann Senden (nur Englisch/Ziffern/Symbole)...",
     "switchIME": "Telefon-IME wechseln",
-    "deviceIMEs": "Telefon-IME-Liste"
+    "deviceIMEs": "Telefon-IME-Liste",
+    "advancedSettings": "Erweiterte Einstellungen",
+    "advancedSettingsDesc": "Hier sind alle verfuegbaren Parameter des integrierten modifizierten scrcpy. Originale Parameternamen werden in Code-Tags angezeigt.",
+    "advRecord": "Bildschirmaufnahme",
+    "advRecordPlaceholder": "z.B. /home/user/recording.mp4",
+    "advRecordDesc": "Den gespiegelten Bildschirm als Videodatei (MP4/MKV) aufnehmen. Die Datei wird auf dem lokalen PC gespeichert.",
+    "advWindowTitle": "Fenstertitel",
+    "advWindowTitlePlaceholder": "z.B. Mein Geraet",
+    "advWindowTitleDesc": "Einen benutzerdefinierten Titel fuer das scrcpy-Fenster festlegen. Standard ist das Geraetemodell.",
+    "advCrop": "Zuschneidebereich",
+    "advCropDesc": "Den Geraetebildschirm vor der Codierung zuschneiden. Format: Breite:Hoehe:x:y (z.B. 1080:1920:0:0). Nuetzlich fuer die Fokussierung auf einen bestimmten Bereich.",
+    "advDisplayId": "Display-ID",
+    "advDisplayIdDesc": "Waehlen Sie aus, welches Display auf Multi-Display-Geraeten (z.B. Falttelefone) gespiegelt werden soll. 0 = Hauptdisplay.",
+    "advRotation": "Anfangsrotation",
+    "advRotationNone": "Auto (keine Ueberschreibung)",
+    "advRotationNatural": "Natuerlich",
+    "advRotationCCW": "Gegen den Uhrzeigersinn",
+    "advRotationCW": "Im Uhrzeigersinn",
+    "advRotationDesc": "Die anfaengliche Displayrotation festlegen. Nuetzlich, wenn die Ausrichtung des gespiegelten Bildschirms falsch ist.",
+    "advPreferText": "Textinjektion bevorzugen",
+    "advPreferTextDesc": "Text ueber Tastenereignisse statt Rohzeichen injizieren. Kann die Kompatibilitaet mit einigen Apps verbessern, kann aber langsamer sein.",
+    "advMouseBind": "Maustasten-Zuordnung",
+    "advMouseBindDesc": "Alle Maustasten (Links, Mitte, Rechts, Zurueck, Vorwaerts) werden als Touch-Ereignisse zugeordnet (--mouse-bind=++++). Dies ist ein DroidLink-modifiziertes Verhalten.",
+    "advStayAwake": "Wach bleiben",
+    "advStayAwakeDesc": "Verhindert, dass das Geraet waehrend der Spiegelung in den Ruhezustand geht. Wird ueber das Kontrollkaestchen oben gesteuert.",
+    "advNoAudio": "Audio deaktivieren",
+    "advNoAudioDesc": "Audioweiterleitung vom Geraet deaktivieren. Wird ueber das Kontrollkaestchen oben gesteuert.",
+    "advOtg": "OTG-Modus",
+    "advOtgDesc": "USB HID-Durchleitung fuer die Eingabe verwenden (niedrigste Latenz). Keine ADB-Debug-Autorisierung erforderlich, aber nur HID-Geraete funktionieren."
   },
   "transfer": {
     "title": "Übertragung",
@@ -568,7 +601,11 @@
     "migrateSuccess": "Daten erfolgreich migriert. Bitte neu starten.",
     "migratePartial": "Migration mit {{errors}} Fehlern abgeschlossen.",
     "migrateHint": "App neu starten, damit Änderungen wirksam werden.",
-    "restartRequired": "Bitte neu starten für neuen Datenpfad."
+    "restartRequired": "Bitte neu starten für neuen Datenpfad.",
+    "logging": "Protokollierung",
+    "logFilePath": "Protokolldateipfad",
+    "openLogFile": "Protokolldatei oeffnen",
+    "loggingDesc": "Anwendungsprotokolle werden in der oben genannten Datei aufgezeichnet. Die Protokolldatei wird bei Ueberschreitung von 10 MB automatisch rotiert."
   },
   "companion": {
     "title": "Companion-App installieren",

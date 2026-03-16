@@ -13,6 +13,7 @@ import {
   HardDrive,
   Loader2,
   AlertTriangle,
+  FileText,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { supportedLanguages } from '../i18n';
@@ -100,6 +101,7 @@ export const Settings: React.FC = () => {
   const [blockPush, setBlockPush] = useState(false);
   const [newDataPath, setNewDataPath] = useState('');
   const [migrating, setMigrating] = useState(false);
+  const [logPath, setLogPath] = useState('');
 
   const filteredFonts = useMemo(() => {
     if (!fontSearch) return systemFonts;
@@ -115,6 +117,7 @@ export const Settings: React.FC = () => {
     getVersion().then((v) => {
       setSystemInfo((prev) => ({ ...prev, appVersion: v }));
     }).catch(() => {});
+    tauriInvoke<string>('get_log_path').then(setLogPath).catch(() => {});
   }, []);
 
   const loadSettings = async () => {
@@ -569,6 +572,36 @@ export const Settings: React.FC = () => {
               </div>
               <div className="text-[var(--font-size-xs)] text-gray-400">
                 {t('settings.migrateHint')}
+              </div>
+            </div>
+          </div>
+
+          {/* 日志系统 / Logging */}
+          <div className="rounded-[var(--border-radius)] border border-border bg-white p-[var(--card-padding)]">
+            <div className="font-semibold text-[var(--font-size-base)] mb-3 flex items-center gap-2">
+              <FileText className="h-5 w-5" />
+              {t('settings.logging')}
+            </div>
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center justify-between py-2">
+                <span className="text-[var(--font-size-sm)] text-gray-600">{t('settings.logFilePath')}</span>
+                <code className="bg-gray-100 px-1.5 py-0.5 rounded text-[var(--font-size-xs)] max-w-[400px] truncate">
+                  {logPath || '-'}
+                </code>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" onClick={async () => {
+                  if (!logPath) return;
+                  try {
+                    await tauriInvoke('open_in_explorer', { path: logPath });
+                  } catch {}
+                }}>
+                  <FolderOpen className="h-4 w-4 mr-1" />
+                  {t('settings.openLogFile')}
+                </Button>
+              </div>
+              <div className="text-[var(--font-size-xs)] text-gray-400">
+                {t('settings.loggingDesc')}
               </div>
             </div>
           </div>

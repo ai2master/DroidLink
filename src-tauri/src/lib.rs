@@ -18,6 +18,7 @@ pub mod transfer;
 pub mod version;
 
 use std::sync::Arc;
+use std::io::Write;
 use tauri::{Manager, Emitter};
 
 use adb::DeviceMonitor;
@@ -27,6 +28,49 @@ use scrcpy::ScrcpyManager;
 use sync::SyncEngine;
 use transfer::FolderSync;
 use version::VersionManager;
+
+/// 全局日志文件路径 / Global log file path
+static LOG_FILE_PATH: std::sync::Mutex<String> = std::sync::Mutex::new(String::new());
+
+/// 获取日志文件路径 / Get log file path
+pub fn get_log_file_path() -> String {
+    LOG_FILE_PATH.lock().ok()
+        .map(|p| p.clone())
+        .unwrap_or_default()
+}
+
+/// 双写器: 同时写入 stdout 和日志文件
+/// Tee writer: writes to both stdout and a log file
+struct TeeWriter {
+    file: std::sync::Mutex<std::fs::File>,
+}
+
+impl TeeWriter {
+    fn new(file: std::fs::File) -> Self {
+        Self { file: std::sync::Mutex::new(file) }
+    }
+}
+
+impl Write for TeeWriter {
+    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+        // 写入 stdout / Write to stdout
+        let _ = std::io::stderr().write_all(buf);
+        // 写入文件 / Write to file
+        if let Ok(mut f) = self.file.lock() {
+            let _ = f.write_all(buf);
+            let _ = f.flush();
+        }
+        Ok(buf.len())
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        let _ = std::io::stderr().flush();
+        if let Ok(mut f) = self.file.lock() {
+            let _ = f.flush();
+        }
+        Ok(())
+    }
+}
 
 pub mod app_state {
     use super::*;
@@ -57,8 +101,49 @@ pub fn run() {
         // WEBKIT_DISABLE_DMABUF_RENDERER=1
     }
 
-    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info"))
-        .init();
+    // 初始化日志系统: 写入文件 + stderr
+    // Initialize logging: write to file + stderr
+    {
+        let log_dir = dirs::data_local_dir()
+            .unwrap_or_else(|| std::path::PathBuf::from("."))
+            .join("com.droidlink.app")
+            .join("logs");
+        let _ = std::fs::create_dir_all(&log_dir);
+        let log_file_path = log_dir.join("droidlink.log");
+
+        // 存储日志文件路径 / Store log file path
+        if let Ok(mut path) = LOG_FILE_PATH.lock() {
+            *path = log_file_path.to_string_lossy().to_string();
+        }
+
+        // 打开日志文件 (追加模式, 每次启动轮转)
+        // Open log file (append mode, rotate on each start)
+        // 如果文件大于 10MB 则截断 / Truncate if larger than 10MB
+        let should_truncate = log_file_path.metadata()
+            .map(|m| m.len() > 10 * 1024 * 1024)
+            .unwrap_or(false);
+
+        let file = std::fs::OpenOptions::new()
+            .create(true)
+            .write(true)
+            .truncate(should_truncate)
+            .append(!should_truncate)
+            .open(&log_file_path);
+
+        match file {
+            Ok(f) => {
+                let tee = TeeWriter::new(f);
+                env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info"))
+                    .target(env_logger::Target::Pipe(Box::new(tee)))
+                    .init();
+            }
+            Err(_) => {
+                // 回退到仅 stderr / Fallback to stderr only
+                env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info"))
+                    .init();
+            }
+        }
+    }
 
     // 纯 ADB USB 模式，不使用任何 TCP/网络连接
     // Pure ADB USB mode, no TCP/network connections
@@ -419,6 +504,7 @@ pub fn run() {
             commands::compare_folder_sync,
             commands::list_system_fonts,
             commands::open_in_explorer,
+            commands::get_log_path,
             // 工具路径命令 / Tool path commands
             commands::get_tool_sources,
             commands::update_tool_paths,

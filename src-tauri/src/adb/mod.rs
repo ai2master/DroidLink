@@ -884,7 +884,7 @@ fn parse_file_list(output: &str, base_path: &str) -> Result<Vec<FileEntry>> {
 
         let file_type = match permissions.chars().next() {
             Some('d') => "directory",
-            Some('l') => "link",
+            Some('l') => "link",  // 符号链接稍后解析 / symlinks resolved below
             _ => "file",
         };
 
@@ -902,6 +902,36 @@ fn parse_file_list(output: &str, base_path: &str) -> Result<Vec<FileEntry>> {
             modified,
             permissions: permissions.to_string(),
         });
+    }
+
+    // 解析符号链接: 检查链接目标是否为目录
+    // Resolve symlinks: check if link target is a directory
+    // 对于 /sdcard 等常见目录符号链接，将 file_type 改为 "directory"
+    // For common directory symlinks like /sdcard, change file_type to "directory"
+    let link_entries: Vec<(usize, String)> = entries.iter().enumerate()
+        .filter(|(_, e)| e.file_type == "link")
+        .map(|(i, e)| (i, e.path.clone()))
+        .collect();
+
+    if !link_entries.is_empty() {
+        // 批量检查所有链接 / Batch check all symlinks
+        let test_cmds: Vec<String> = link_entries.iter()
+            .map(|(_, p)| {
+                let safe = p.replace('\'', "'\\''");
+                format!("[ -d '{}' ] && echo 'D:{}' || echo 'F:{}'", safe, safe, safe)
+            })
+            .collect();
+        let batch_cmd = test_cmds.join("; ");
+        if let Ok(output) = shell(serial, &batch_cmd) {
+            for line in output.lines() {
+                let line = line.trim();
+                if let Some(dir_path) = line.strip_prefix("D:") {
+                    if let Some((idx, _)) = link_entries.iter().find(|(_, p)| p == dir_path) {
+                        entries[*idx].file_type = "directory".to_string();
+                    }
+                }
+            }
+        }
     }
 
     Ok(entries)

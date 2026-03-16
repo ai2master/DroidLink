@@ -237,7 +237,12 @@
     "searchPlaceholder": "Enter file name to search...",
     "searchIn": "Searching in",
     "searchFailed": "Search failed: {{error}}",
-    "noSearchResults": "No results found"
+    "noSearchResults": "No results found",
+    "tabDevice": "Android Device",
+    "tabLocalPC": "Local PC",
+    "localPCDesc": "Select a folder on your local PC to copy/move files to.",
+    "localPCHint": "Files will be pulled from the Android device to your local PC via USB ADB.",
+    "selectLocalFolder": "Select a local folder..."
   },
   "folderSync": {
     "title": "Folder Sync",
@@ -394,7 +399,35 @@
     "passthroughDesc4": "Best for users who prefer the phone's native input method",
     "passthroughPlaceholder": "Type text then press send (English/digits/symbols only)...",
     "switchIME": "Switch Phone IME",
-    "deviceIMEs": "Phone IME List"
+    "deviceIMEs": "Phone IME List",
+    "advancedSettings": "Advanced Settings",
+    "advancedSettingsDesc": "These are all available parameters for the built-in modified scrcpy. Original parameter names are shown in code tags.",
+    "advRecord": "Record Screen",
+    "advRecordPlaceholder": "e.g. /home/user/recording.mp4",
+    "advRecordDesc": "Record the mirrored screen to a video file (MP4/MKV). The file is saved on the local PC.",
+    "advWindowTitle": "Window Title",
+    "advWindowTitlePlaceholder": "e.g. My Device",
+    "advWindowTitleDesc": "Set a custom title for the scrcpy window. Defaults to the device model.",
+    "advCrop": "Crop Region",
+    "advCropDesc": "Crop the device screen before encoding. Format: width:height:x:y (e.g. 1080:1920:0:0). Useful for focusing on a specific area.",
+    "advDisplayId": "Display ID",
+    "advDisplayIdDesc": "Select which display to mirror on multi-display devices (e.g. foldable phones). 0 = main display.",
+    "advRotation": "Initial Rotation",
+    "advRotationNone": "Auto (no override)",
+    "advRotationNatural": "Natural",
+    "advRotationCCW": "Counter-clockwise",
+    "advRotationCW": "Clockwise",
+    "advRotationDesc": "Set the initial display rotation. Useful if the mirrored screen orientation is incorrect.",
+    "advPreferText": "Prefer Text Injection",
+    "advPreferTextDesc": "Inject text using key events instead of raw characters. May improve compatibility with some apps but can be slower.",
+    "advMouseBind": "Mouse Button Mapping",
+    "advMouseBindDesc": "All mouse buttons (left, middle, right, back, forward) are mapped as touch events (--mouse-bind=++++). This is a DroidLink-modified behavior.",
+    "advStayAwake": "Stay Awake",
+    "advStayAwakeDesc": "Prevent the device from sleeping while mirroring is active. Controlled via the checkbox above.",
+    "advNoAudio": "Disable Audio",
+    "advNoAudioDesc": "Disable audio forwarding from the device. Controlled via the checkbox above.",
+    "advOtg": "OTG Mode",
+    "advOtgDesc": "Use USB HID passthrough for input (lowest latency). No ADB debug authorization needed, but only HID devices work."
   },
   "transfer": {
     "title": "Transfer",
@@ -568,7 +601,11 @@
     "migrateSuccess": "Data migrated successfully. Please restart the app.",
     "migratePartial": "Migration completed with {{errors}} errors. Check the new path.",
     "migrateHint": "After migration, restart the app for changes to take effect.",
-    "restartRequired": "Please restart the app for the new data path to take effect."
+    "restartRequired": "Please restart the app for the new data path to take effect.",
+    "logging": "Logging",
+    "logFilePath": "Log File Path",
+    "openLogFile": "Open Log File",
+    "loggingDesc": "Application logs are recorded to the file above. The log file auto-rotates when it exceeds 10MB."
   },
   "companion": {
     "title": "Install Companion App",

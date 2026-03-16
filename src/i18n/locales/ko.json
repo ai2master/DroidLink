@@ -237,7 +237,12 @@
     "searchPlaceholder": "파일 이름을 입력하여 검색...",
     "searchIn": "검색 범위",
     "searchFailed": "검색 실패: {{error}}",
-    "noSearchResults": "검색 결과가 없습니다"
+    "noSearchResults": "검색 결과가 없습니다",
+    "tabDevice": "Android 기기",
+    "tabLocalPC": "로컬 PC",
+    "localPCDesc": "로컬 PC의 폴더를 선택하여 파일을 복사/이동합니다.",
+    "localPCHint": "파일은 USB ADB를 통해 Android 기기에서 로컬 PC로 가져옵니다.",
+    "selectLocalFolder": "로컬 폴더 선택..."
   },
   "folderSync": {
     "title": "폴더 동기화",
@@ -394,7 +399,35 @@
     "passthroughDesc4": "네이티브 IME를 선호하는 사용자에게 가장 적합합니다",
     "passthroughPlaceholder": "텍스트를 입력한 후 전송을 누르세요 (영어/숫자/기호만)...",
     "switchIME": "휴대폰 IME 전환",
-    "deviceIMEs": "휴대폰 IME 목록"
+    "deviceIMEs": "휴대폰 IME 목록",
+    "advancedSettings": "고급 설정",
+    "advancedSettingsDesc": "아래는 내장 수정 scrcpy의 모든 사용 가능한 매개변수입니다. 원래 매개변수 이름은 코드 태그로 표시됩니다.",
+    "advRecord": "화면 녹화",
+    "advRecordPlaceholder": "예: /home/user/recording.mp4",
+    "advRecordDesc": "미러링 화면을 동영상 파일 (MP4/MKV)로 녹화합니다. 파일은 로컬 PC에 저장됩니다.",
+    "advWindowTitle": "창 제목",
+    "advWindowTitlePlaceholder": "예: 내 기기",
+    "advWindowTitleDesc": "scrcpy 창의 사용자 정의 제목을 설정합니다. 기본값은 기기 모델명입니다.",
+    "advCrop": "자르기 영역",
+    "advCropDesc": "인코딩 전에 기기 화면을 자릅니다. 형식: 너비:높이:x:y (예: 1080:1920:0:0). 특정 영역에 집중하는 데 유용합니다.",
+    "advDisplayId": "디스플레이 ID",
+    "advDisplayIdDesc": "멀티 디스플레이 기기 (예: 폴더블 폰)에서 미러링할 디스플레이를 선택합니다. 0 = 기본 디스플레이.",
+    "advRotation": "초기 회전",
+    "advRotationNone": "자동 (재정의 없음)",
+    "advRotationNatural": "자연",
+    "advRotationCCW": "반시계 방향",
+    "advRotationCW": "시계 방향",
+    "advRotationDesc": "초기 디스플레이 회전을 설정합니다. 미러링 화면 방향이 올바르지 않을 때 유용합니다.",
+    "advPreferText": "텍스트 주입 우선",
+    "advPreferTextDesc": "원시 문자 대신 키 이벤트를 사용하여 텍스트를 주입합니다. 일부 앱과의 호환성이 향상될 수 있지만 속도가 느려질 수 있습니다.",
+    "advMouseBind": "마우스 버튼 매핑",
+    "advMouseBindDesc": "모든 마우스 버튼 (왼쪽, 가운데, 오른쪽, 뒤로, 앞으로)이 터치 이벤트로 매핑됩니다 (--mouse-bind=++++). 이것은 DroidLink 수정 버전의 동작입니다.",
+    "advStayAwake": "화면 켜짐 유지",
+    "advStayAwakeDesc": "미러링 중 기기가 절전 모드에 들어가는 것을 방지합니다. 위의 체크박스로 제어됩니다.",
+    "advNoAudio": "오디오 비활성화",
+    "advNoAudioDesc": "기기에서 오디오 전달을 비활성화합니다. 위의 체크박스로 제어됩니다.",
+    "advOtg": "OTG 모드",
+    "advOtgDesc": "입력에 USB HID 패스스루를 사용합니다 (최저 지연). ADB 디버그 인증이 필요 없지만 HID 기기만 작동합니다."
   },
   "transfer": {
     "title": "전송",
@@ -568,7 +601,11 @@
     "migrateSuccess": "데이터가 성공적으로 마이그레이션되었습니다. 재시작하세요.",
     "migratePartial": "{{errors}}개 오류와 함께 마이그레이션이 완료되었습니다.",
     "migrateHint": "변경사항을 적용하려면 앱을 재시작하세요.",
-    "restartRequired": "새 데이터 경로를 적용하려면 재시작하세요."
+    "restartRequired": "새 데이터 경로를 적용하려면 재시작하세요.",
+    "logging": "로그 시스템",
+    "logFilePath": "로그 파일 경로",
+    "openLogFile": "로그 파일 열기",
+    "loggingDesc": "애플리케이션 로그는 위 파일에 기록됩니다. 로그 파일이 10MB를 초과하면 자동으로 순환됩니다."
   },
   "companion": {
     "title": "컴패니언 앱 설치",

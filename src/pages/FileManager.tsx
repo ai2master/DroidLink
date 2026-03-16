@@ -3,13 +3,13 @@ import {
   Folder, File, ArrowUp, RotateCw, Trash2, FolderPlus, Download, Upload,
   Home, FileArchive, FileImage, FileText, Video, Music,
   Search, Pencil, Copy, Scissors, ClipboardPaste, CheckSquare, Square,
-  FolderInput, X, ChevronRight,
+  FolderInput, X, ChevronRight, HardDrive, Smartphone, FolderOpen,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { tauriInvoke, tauriListen } from '../utils/tauri';
 import { useStore } from '../stores/useStore';
 import { formatFileSize, formatDate } from '../utils/format';
-import { open } from '@tauri-apps/plugin-dialog';
+import { open as openDialog } from '@tauri-apps/plugin-dialog';
 import { Button } from '../components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../components/ui/dialog';
 import { Input } from '../components/ui/input';
@@ -79,6 +79,8 @@ export default function FileManager() {
   const [copyMoveOp, setCopyMoveOp] = useState<'copy' | 'move'>('copy');
   const [copyMoveTargetPath, setCopyMoveTargetPath] = useState('/sdcard');
   const [copyMoveBrowseFiles, setCopyMoveBrowseFiles] = useState<FileEntry[]>([]);
+  const [copyMoveTab, setCopyMoveTab] = useState<'device' | 'local'>('device');
+  const [copyMoveLocalPath, setCopyMoveLocalPath] = useState('');
   const [searchVisible, setSearchVisible] = useState(false);
   const [searchPattern, setSearchPattern] = useState('');
   const [searchResults, setSearchResults] = useState<FileEntry[]>([]);
@@ -91,6 +93,10 @@ export default function FileManager() {
   const [dragOver, setDragOver] = useState(false);
 
   const tableRef = useRef<HTMLDivElement>(null);
+  // 使用 ref 跟踪最新的 currentPath 避免异步回调中的闭包陈旧问题
+  // Track latest currentPath via ref to avoid stale closures in async callbacks
+  const currentPathRef = useRef(currentPath);
+  currentPathRef.current = currentPath;
 
   // ============ 加载文件列表 / Load file list ============
   const loadFiles = useCallback(async (path: string) => {
@@ -122,11 +128,13 @@ export default function FileManager() {
       if (!device) return;
       const paths: string[] = event?.paths || event?.payload?.paths || [];
       if (paths.length === 0) return;
+      // 使用 ref 获取最新路径，避免闭包陈旧 / Use ref for latest path to avoid stale closure
+      const targetPath = currentPathRef.current;
       let uploaded = 0;
       for (const localPath of paths) {
         try {
           const fileName = localPath.split(/[/\\]/).pop() || 'file';
-          const remotePath = `${currentPath}/${fileName}`;
+          const remotePath = `${targetPath}/${fileName}`;
           await tauriInvoke('push_file', { serial: device.serial, localPath, remotePath });
           uploaded++;
         } catch (err: any) {
@@ -135,7 +143,7 @@ export default function FileManager() {
       }
       if (uploaded > 0) {
         toast.success(t('fileManager.uploaded', { name: `${uploaded} ${t('common.items')}` }));
-        loadFiles(currentPath);
+        loadFiles(targetPath);
       }
     });
     return () => {
@@ -143,7 +151,7 @@ export default function FileManager() {
       unlistenLeave.then((fn) => fn());
       unlistenDrop.then((fn) => fn());
     };
-  }, [device, currentPath, loadFiles, t, toast]);
+  }, [device, loadFiles, t, toast]);
 
   // ============ 键盘快捷键 / Keyboard shortcuts ============
   useEffect(() => {
@@ -272,7 +280,7 @@ export default function FileManager() {
   // ============ 单项操作 / Single item operations ============
   const handleDownload = async (record: FileEntry) => {
     try {
-      const savePath = await open({ directory: true, title: t('fileManager.selectSaveLocation') });
+      const savePath = await openDialog({ directory: true, title: t('fileManager.selectSaveLocation') });
       if (!savePath) return;
       const localPath = `${savePath}/${record.name}`;
       if (record.fileType === 'directory') {
@@ -288,7 +296,7 @@ export default function FileManager() {
 
   const handleUpload = async () => {
     try {
-      const filePath = await open({ multiple: false, title: t('fileManager.selectUploadFile') });
+      const filePath = await openDialog({ multiple: false, title: t('fileManager.selectUploadFile') });
       if (!filePath) return;
       const fileName = (filePath as string).split(/[/\\]/).pop();
       const remotePath = `${currentPath}/${fileName}`;
@@ -358,7 +366,7 @@ export default function FileManager() {
     const selected = getSelectedFiles();
     if (selected.length === 0) return;
     try {
-      const savePath = await open({ directory: true, title: t('fileManager.selectSaveLocation') });
+      const savePath = await openDialog({ directory: true, title: t('fileManager.selectSaveLocation') });
       if (!savePath) return;
       let downloaded = 0;
       for (const file of selected) {
@@ -418,6 +426,8 @@ export default function FileManager() {
     if (selectedPaths.size === 0) return;
     setCopyMoveOp(op);
     setCopyMoveTargetPath('/sdcard');
+    setCopyMoveTab('device');
+    setCopyMoveLocalPath('');
     setCopyMoveVisible(true);
     loadCopyMoveBrowse('/sdcard');
   };
@@ -450,6 +460,43 @@ export default function FileManager() {
     } catch (err: any) {
       toast.error(t('fileManager.operationFailed', { error: err }));
     }
+  };
+
+  // ============ 复制/移动到本地PC / Copy/Move to local PC ============
+  const handleCopyMoveToLocal = async () => {
+    const selected = getSelectedFiles();
+    if (selected.length === 0 || !copyMoveLocalPath) return;
+    try {
+      let succeeded = 0;
+      for (const file of selected) {
+        const localPath = `${copyMoveLocalPath}/${file.name}`;
+        if (file.fileType === 'directory') {
+          await tauriInvoke('pull_directory', { serial: device!.serial, remotePath: file.path, localPath });
+        } else {
+          await tauriInvoke('pull_file', { serial: device!.serial, remotePath: file.path, localPath });
+        }
+        succeeded++;
+      }
+      // 如果是移动操作，删除源文件 / If move, delete source files
+      if (copyMoveOp === 'move') {
+        for (const file of selected) {
+          try {
+            await tauriInvoke('delete_file', { serial: device!.serial, remotePath: file.path });
+          } catch {}
+        }
+      }
+      const msgKey = copyMoveOp === 'copy' ? 'fileManager.batchCopied' : 'fileManager.batchMoved';
+      toast.success(t(msgKey, { count: succeeded }));
+      setCopyMoveVisible(false);
+      if (copyMoveOp === 'move') loadFiles(currentPath);
+    } catch (err: any) {
+      toast.error(t('fileManager.operationFailed', { error: err }));
+    }
+  };
+
+  const selectLocalPath = async () => {
+    const selected = await openDialog({ directory: true, title: t('fileManager.selectSaveLocation') });
+    if (selected) setCopyMoveLocalPath(selected as string);
   };
 
   // ============ 内部剪贴板操作 / Internal clipboard ============
@@ -523,6 +570,33 @@ export default function FileManager() {
       loadFiles(currentPath);
     } catch (err: any) {
       toast.error(t('fileManager.createFailed', { error: err }));
+    }
+  };
+
+  // ============ 拖出文件 (App -> 系统) / Drag out files (App -> System) ============
+  const handleDragStart = async (e: React.DragEvent, record: FileEntry) => {
+    // 设置拖拽数据用于视觉反馈 / Set drag data for visual feedback
+    e.dataTransfer.effectAllowed = 'copy';
+    e.dataTransfer.setData('text/plain', record.name);
+    // 通过 Tauri 拉取文件到临时目录，然后使用 startDrag API
+    // Pull file to temp dir via Tauri, then use startDrag API
+    // 注意: 目前 Web 拖放无法直接创建系统文件，需要 Tauri startDrag 插件
+    // 此处使用下载方式替代: 用户拖出时提示下载
+    // Note: Web drag-drop can't directly create system files. Tauri startDrag plugin needed.
+    // For now, we use the download fallback: prompt to download when dragging out.
+    try {
+      const tmpDir = `/tmp/droidlink-drag`;
+      const localPath = `${tmpDir}/${record.name}`;
+      // 预拉取到临时目录 / Pre-pull to temp directory
+      if (record.fileType === 'directory') {
+        await tauriInvoke('pull_directory', { serial: device!.serial, remotePath: record.path, localPath });
+      } else {
+        await tauriInvoke('pull_file', { serial: device!.serial, remotePath: record.path, localPath });
+      }
+      // 设置文件 URI 用于系统拖放 / Set file URI for system drag-drop
+      e.dataTransfer.setData('text/uri-list', `file://${localPath}`);
+    } catch {
+      // 拖拽失败时静默处理 / Silently handle drag failures
     }
   };
 
@@ -680,6 +754,8 @@ export default function FileManager() {
                         "border-b border-border transition-colors cursor-default",
                         isSelected ? "bg-emerald-50" : "hover:bg-gray-50"
                       )}
+                      draggable
+                      onDragStart={(e) => handleDragStart(e, record)}
                       onClick={(e) => handleRowClick(e, record, idx)}
                       onDoubleClick={() => { if (record.fileType === 'directory') navigateTo(record.path); }}
                       onContextMenu={(e) => handleContextMenu(e, record)}
@@ -840,7 +916,7 @@ export default function FileManager() {
         </DialogContent>
       </Dialog>
 
-      {/* 复制/移动至对话框 / Copy/Move to dialog */}
+      {/* 复制/移动至对话框 (带选项卡) / Copy/Move to dialog (with tabs) */}
       <Dialog open={copyMoveVisible} onOpenChange={setCopyMoveVisible}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
@@ -848,50 +924,105 @@ export default function FileManager() {
               {copyMoveOp === 'copy' ? t('fileManager.copyTo') : t('fileManager.moveTo')}
             </DialogTitle>
           </DialogHeader>
-          <div className="space-y-2">
-            <div className="flex items-center gap-2 text-[var(--font-size-sm)] text-gray-500">
-              <span>{t('fileManager.destination')}:</span>
-              <span className="font-mono">{copyMoveTargetPath}</span>
-            </div>
-            {copyMoveTargetPath !== '/' && (
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => {
-                  const parent = copyMoveTargetPath.split('/').slice(0, -1).join('/') || '/';
-                  loadCopyMoveBrowse(parent);
-                }}
-              >
-                <ArrowUp size={14} /> {t('common.goUp')}
-              </Button>
-            )}
-            <div className="max-h-[300px] overflow-y-auto border border-border rounded-md">
-              {copyMoveBrowseFiles.length === 0 ? (
-                <div className="p-4 text-center text-gray-400 text-[var(--font-size-sm)]">
-                  {t('fileManager.noSubfolders')}
-                </div>
-              ) : (
-                copyMoveBrowseFiles.map((dir) => (
-                  <button
-                    key={dir.path}
-                    className="w-full flex items-center gap-2 px-3 py-2 hover:bg-gray-50 text-left border-b border-border last:border-0"
-                    onClick={() => loadCopyMoveBrowse(dir.path)}
-                  >
-                    <Folder size={16} className="text-[#faad14]" />
-                    <span className="flex-1">{dir.name}</span>
-                    <ChevronRight size={14} className="text-gray-400" />
-                  </button>
-                ))
+          {/* 选项卡 / Tabs */}
+          <div className="flex border-b border-border">
+            <button
+              className={cn(
+                "flex items-center gap-2 px-4 py-2 text-[var(--font-size-sm)] font-medium border-b-2 transition-colors",
+                copyMoveTab === 'device'
+                  ? "border-emerald-500 text-emerald-700"
+                  : "border-transparent text-gray-500 hover:text-gray-700"
               )}
-            </div>
+              onClick={() => setCopyMoveTab('device')}
+            >
+              <Smartphone size={14} />
+              {t('fileManager.tabDevice')}
+            </button>
+            <button
+              className={cn(
+                "flex items-center gap-2 px-4 py-2 text-[var(--font-size-sm)] font-medium border-b-2 transition-colors",
+                copyMoveTab === 'local'
+                  ? "border-emerald-500 text-emerald-700"
+                  : "border-transparent text-gray-500 hover:text-gray-700"
+              )}
+              onClick={() => setCopyMoveTab('local')}
+            >
+              <HardDrive size={14} />
+              {t('fileManager.tabLocalPC')}
+            </button>
           </div>
+
+          {copyMoveTab === 'device' ? (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-[var(--font-size-sm)] text-gray-500">
+                <span>{t('fileManager.destination')}:</span>
+                <span className="font-mono">{copyMoveTargetPath}</span>
+              </div>
+              {copyMoveTargetPath !== '/' && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    const parent = copyMoveTargetPath.split('/').slice(0, -1).join('/') || '/';
+                    loadCopyMoveBrowse(parent);
+                  }}
+                >
+                  <ArrowUp size={14} /> {t('common.goUp')}
+                </Button>
+              )}
+              <div className="max-h-[300px] overflow-y-auto border border-border rounded-md">
+                {copyMoveBrowseFiles.length === 0 ? (
+                  <div className="p-4 text-center text-gray-400 text-[var(--font-size-sm)]">
+                    {t('fileManager.noSubfolders')}
+                  </div>
+                ) : (
+                  copyMoveBrowseFiles.map((dir) => (
+                    <button
+                      key={dir.path}
+                      className="w-full flex items-center gap-2 px-3 py-2 hover:bg-gray-50 text-left border-b border-border last:border-0"
+                      onClick={() => loadCopyMoveBrowse(dir.path)}
+                    >
+                      <Folder size={16} className="text-[#faad14]" />
+                      <span className="flex-1">{dir.name}</span>
+                      <ChevronRight size={14} className="text-gray-400" />
+                    </button>
+                  ))
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <div className="text-[var(--font-size-sm)] text-gray-500">
+                {t('fileManager.localPCDesc')}
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="flex-1 font-mono text-[var(--font-size-sm)] bg-gray-50 border border-border rounded-[var(--border-radius)] px-3 py-2 truncate">
+                  {copyMoveLocalPath || t('fileManager.selectLocalFolder')}
+                </div>
+                <Button variant="outline" size="sm" onClick={selectLocalPath}>
+                  <FolderOpen size={14} />
+                  {t('common.browse')}
+                </Button>
+              </div>
+              <div className="text-[var(--font-size-xs)] text-gray-400">
+                {t('fileManager.localPCHint')}
+              </div>
+            </div>
+          )}
+
           <DialogFooter>
             <Button variant="outline" onClick={() => setCopyMoveVisible(false)}>
               {t('common.cancel')}
             </Button>
-            <Button variant="primary" onClick={handleCopyMove}>
-              {copyMoveOp === 'copy' ? t('fileManager.copyHere') : t('fileManager.moveHere')}
-            </Button>
+            {copyMoveTab === 'device' ? (
+              <Button variant="primary" onClick={handleCopyMove}>
+                {copyMoveOp === 'copy' ? t('fileManager.copyHere') : t('fileManager.moveHere')}
+              </Button>
+            ) : (
+              <Button variant="primary" onClick={handleCopyMoveToLocal} disabled={!copyMoveLocalPath}>
+                {copyMoveOp === 'copy' ? t('fileManager.copyHere') : t('fileManager.moveHere')}
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
