@@ -10,6 +10,7 @@ import { tauriInvoke, tauriListen } from '../utils/tauri';
 import { useStore } from '../stores/useStore';
 import { formatFileSize, formatDate } from '../utils/format';
 import { open as openDialog } from '@tauri-apps/plugin-dialog';
+import { startDrag } from '@crabnebula/tauri-plugin-drag';
 import { Button } from '../components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../components/ui/dialog';
 import { Input } from '../components/ui/input';
@@ -574,29 +575,27 @@ export default function FileManager() {
   };
 
   // ============ 拖出文件 (App -> 系统) / Drag out files (App -> System) ============
+  // 使用 Tauri 原生拖放插件，先拉取到临时目录再启动系统级拖放
+  // Uses Tauri native drag plugin: pull to temp dir first, then start OS-level drag
   const handleDragStart = async (e: React.DragEvent, record: FileEntry) => {
-    // 设置拖拽数据用于视觉反馈 / Set drag data for visual feedback
-    e.dataTransfer.effectAllowed = 'copy';
-    e.dataTransfer.setData('text/plain', record.name);
-    // 通过 Tauri 拉取文件到临时目录，然后使用 startDrag API
-    // Pull file to temp dir via Tauri, then use startDrag API
-    // 注意: 目前 Web 拖放无法直接创建系统文件，需要 Tauri startDrag 插件
-    // 此处使用下载方式替代: 用户拖出时提示下载
-    // Note: Web drag-drop can't directly create system files. Tauri startDrag plugin needed.
-    // For now, we use the download fallback: prompt to download when dragging out.
+    // 阻止浏览器默认拖拽（会创建文本文件）/ Prevent browser default (creates text file)
+    e.preventDefault();
+    if (!device) return;
     try {
       const tmpDir = `/tmp/droidlink-drag`;
       const localPath = `${tmpDir}/${record.name}`;
-      // 预拉取到临时目录 / Pre-pull to temp directory
+      // 先拉取到本地临时目录 / Pull to local temp directory first
       if (record.fileType === 'directory') {
-        await tauriInvoke('pull_directory', { serial: device!.serial, remotePath: record.path, localPath });
+        await tauriInvoke('pull_directory', { serial: device.serial, remotePath: record.path, localPath });
       } else {
-        await tauriInvoke('pull_file', { serial: device!.serial, remotePath: record.path, localPath });
+        await tauriInvoke('pull_file', { serial: device.serial, remotePath: record.path, localPath });
       }
-      // 设置文件 URI 用于系统拖放 / Set file URI for system drag-drop
-      e.dataTransfer.setData('text/uri-list', `file://${localPath}`);
-    } catch {
-      // 拖拽失败时静默处理 / Silently handle drag failures
+      // 启动原生 OS 拖放 / Start native OS drag operation
+      // icon 用拖拽的文件自身路径，系统会显示文件图标预览
+      // Use dragged file path as icon - OS will show file icon preview
+      await startDrag({ item: [localPath], icon: localPath });
+    } catch (err) {
+      console.error('Drag-out failed:', err);
     }
   };
 

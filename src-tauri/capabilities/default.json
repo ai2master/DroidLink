@@ -17,6 +17,7 @@
     "fs:scope-temp-recursive",
     "fs:scope-home-recursive",
     "fs:deny-webview-data-linux",
-    "fs:deny-webview-data-windows"
+    "fs:deny-webview-data-windows",
+    "drag:default"
   ]
 }

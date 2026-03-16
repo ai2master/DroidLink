@@ -156,6 +156,7 @@ pub fn run() {
         .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_notification::init())
+        .plugin(tauri_plugin_drag::init())
         .setup(|app| {
             let data_dir = app.path().app_data_dir().expect("Failed to get app data dir");
             let data_path = data_dir.join("droidlink-data");
