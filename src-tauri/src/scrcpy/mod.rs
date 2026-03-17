@@ -685,7 +685,9 @@ impl ScrcpyManager {
         if !is_valid_ime_id(ime_id) {
             return Err(ScrcpyError::StartFailed(format!("Invalid IME ID: {}", ime_id)));
         }
-        crate::adb::shell(serial, &format!("ime set {}", ime_id))
+        // Shell-quote the IME ID for defense in depth
+        let escaped_ime = ime_id.replace('\'', "'\\''");
+        crate::adb::shell(serial, &format!("ime set '{}'", escaped_ime))
             .map_err(|e| ScrcpyError::StartFailed(e.to_string()))?;
         Ok(())
     }
@@ -924,16 +926,20 @@ pub fn validate_scrcpy_path(path: &str) -> bool {
 /// Validate Android IME ID format to prevent shell injection
 /// Valid: com.package.name/.ClassName or com.package.name/com.package.name.ClassName
 fn is_valid_ime_id(ime_id: &str) -> bool {
-    // IME ID 只能包含字母、数字、点、斜杠、下划线、美元符号（内部类）
-    // IME ID can only contain alphanumeric, dots, slashes, underscores, dollar signs (inner classes)
+    // IME ID 只能包含 ASCII 字母、数字、点、斜杠、下划线、美元符号（内部类）
+    // IME ID can only contain ASCII alphanumeric, dots, slashes, underscores, dollar signs (inner classes)
     if ime_id.is_empty() || ime_id.len() > 256 {
+        return false;
+    }
+    // Must be pure ASCII (Android package names are always ASCII)
+    if !ime_id.is_ascii() {
         return false;
     }
     // Must contain exactly one slash separating package and class
     if ime_id.matches('/').count() != 1 {
         return false;
     }
-    ime_id.chars().all(|c| c.is_alphanumeric() || c == '.' || c == '/' || c == '_' || c == '$')
+    ime_id.chars().all(|c| c.is_ascii_alphanumeric() || c == '.' || c == '/' || c == '_' || c == '$')
 }
 
 /// Base64 编码 (用于 shell 安全传输文本)

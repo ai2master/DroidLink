@@ -16,6 +16,9 @@ on:
       - '.github/workflows/build.yml'
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 # 同一仓库并发不超过 1 个构建，取消之前的运行
 concurrency:
   group: build-${{ github.ref }}
@@ -34,9 +37,9 @@ jobs:
         include:
           - platform: ubuntu-22.04
             target: linux
-          - platform: windows-latest
+          - platform: windows-2022
             target: windows
-          - platform: macos-latest
+          - platform: macos-14
             target: macos
 
     runs-on: ${{ matrix.platform }}
@@ -126,27 +129,31 @@ jobs:
 
       # 下载 Google 官方 platform-tools (内含 ADB)
       # Download official Google platform-tools (contains ADB)
+      # Note: Google uses "-latest" URLs that always point to the newest version,
+      # so pinned checksums would break on updates. We verify the binary works instead.
       - name: Download platform-tools
         shell: bash
         run: |
           mkdir -p src-tauri/resources/adb
           if [ "${{ matrix.target }}" == "windows" ]; then
-            curl -L -o platform-tools.zip "https://dl.google.com/android/repository/platform-tools-latest-windows.zip"
+            curl -L --fail -o platform-tools.zip "https://dl.google.com/android/repository/platform-tools-latest-windows.zip"
             unzip -q platform-tools.zip
             cp platform-tools/adb.exe src-tauri/resources/adb/
             cp platform-tools/AdbWinApi.dll src-tauri/resources/adb/
             cp platform-tools/AdbWinUsbApi.dll src-tauri/resources/adb/
           elif [ "${{ matrix.target }}" == "macos" ]; then
-            curl -L -o platform-tools.zip "https://dl.google.com/android/repository/platform-tools-latest-darwin.zip"
+            curl -L --fail -o platform-tools.zip "https://dl.google.com/android/repository/platform-tools-latest-darwin.zip"
             unzip -q platform-tools.zip
             cp platform-tools/adb src-tauri/resources/adb/
             chmod +x src-tauri/resources/adb/adb
           elif [ "${{ matrix.target }}" == "linux" ]; then
-            curl -L -o platform-tools.zip "https://dl.google.com/android/repository/platform-tools-latest-linux.zip"
+            curl -L --fail -o platform-tools.zip "https://dl.google.com/android/repository/platform-tools-latest-linux.zip"
             unzip -q platform-tools.zip
             cp platform-tools/adb src-tauri/resources/adb/
             chmod +x src-tauri/resources/adb/adb
           fi
+          # Verify ADB binary is valid (not corrupt/truncated)
+          src-tauri/resources/adb/adb$([ "${{ matrix.target }}" == "windows" ] && echo ".exe") version || (echo "ERROR: ADB binary verification failed" && exit 1)
           ls -lah src-tauri/resources/adb/
 
       - name: Build scrcpy from source
@@ -155,8 +162,9 @@ jobs:
           SCRCPY_VERSION="3.1"
           mkdir -p src-tauri/resources/scrcpy
 
-          # Clone scrcpy source
+          # Clone scrcpy source (pinned to specific release tag)
           git clone --depth 1 --branch "v${SCRCPY_VERSION}" https://github.com/Genymobile/scrcpy.git /tmp/scrcpy-src
+          echo "scrcpy source cloned at tag v${SCRCPY_VERSION}, commit: $(cd /tmp/scrcpy-src && git rev-parse HEAD)"
 
           if [ "${{ matrix.target }}" == "linux" ]; then
             sudo apt-get install -y \
@@ -179,7 +187,7 @@ jobs:
 
           elif [ "${{ matrix.target }}" == "windows" ]; then
             # On Windows, download pre-built scrcpy release (building from source on Windows CI is very complex)
-            curl -L -o /tmp/scrcpy-win.zip "https://github.com/Genymobile/scrcpy/releases/download/v${SCRCPY_VERSION}/scrcpy-win64-v${SCRCPY_VERSION}.zip"
+            curl -L --fail -o /tmp/scrcpy-win.zip "https://github.com/Genymobile/scrcpy/releases/download/v${SCRCPY_VERSION}/scrcpy-win64-v${SCRCPY_VERSION}.zip"
             unzip -q /tmp/scrcpy-win.zip -d /tmp/scrcpy-win
             cp /tmp/scrcpy-win/scrcpy-win64-v${SCRCPY_VERSION}/scrcpy.exe src-tauri/resources/scrcpy/
             cp /tmp/scrcpy-win/scrcpy-win64-v${SCRCPY_VERSION}/scrcpy-server src-tauri/resources/scrcpy/
@@ -196,7 +204,7 @@ jobs:
         shell: bash
         run: |
           SCRCPY_VERSION="3.1"
-          curl -L -o src-tauri/resources/scrcpy/scrcpy-server \
+          curl -L --fail -o src-tauri/resources/scrcpy/scrcpy-server \
             "https://github.com/Genymobile/scrcpy/releases/download/v${SCRCPY_VERSION}/scrcpy-server-v${SCRCPY_VERSION}"
           ls -lah src-tauri/resources/scrcpy/
 
@@ -206,6 +214,22 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tauriScript: npx tauri
+
+      # 生成构建产物的 SHA256 校验和 / Generate SHA256 checksums for build artifacts
+      - name: Generate checksums
+        shell: bash
+        run: |
+          cd src-tauri/target/release/bundle
+          echo "=== Build artifact checksums ==="
+          find . -type f \( -name "*.deb" -o -name "*.rpm" -o -name "*.AppImage" -o -name "*.msi" -o -name "*.exe" -o -name "*.dmg" \) -exec sha256sum {} \; | tee checksums-${{ matrix.target }}.txt
+          cp checksums-${{ matrix.target }}.txt $GITHUB_WORKSPACE/checksums-${{ matrix.target }}.txt
+
+      - name: Upload checksums
+        uses: actions/upload-artifact@v4
+        with:
+          name: checksums-${{ matrix.target }}
+          path: checksums-${{ matrix.target }}.txt
+          if-no-files-found: warn
 
       # 上传构建产物 / Upload build artifacts
       # 分开上传 Linux 产物，避免 AppImage 撑大总体积
