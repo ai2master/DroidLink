@@ -99,6 +99,14 @@ export default function FileManager() {
   const currentPathRef = useRef(currentPath);
   currentPathRef.current = currentPath;
 
+  // 拖出文件到外部: 鼠标拖拽状态 / Drag-out to external: mouse drag state
+  const dragStateRef = useRef<{ startX: number; startY: number; record: FileEntry; active: boolean } | null>(null);
+  const isDraggingRef = useRef(false);
+
+  // 跟踪已加载的设备序列号，防止 loadFiles 重建时重复加载 /sdcard
+  // Track loaded device serial to prevent reloading /sdcard when loadFiles is recreated
+  const loadedDeviceRef = useRef<string | null>(null);
+
   // ============ 加载文件列表 / Load file list ============
   const loadFiles = useCallback(async (path: string) => {
     if (!device) return;
@@ -117,7 +125,13 @@ export default function FileManager() {
   }, [device, t, toast]);
 
   useEffect(() => {
-    if (device) loadFiles('/sdcard');
+    if (device && device.serial !== loadedDeviceRef.current) {
+      loadedDeviceRef.current = device.serial;
+      loadFiles('/sdcard');
+    }
+    if (!device) {
+      loadedDeviceRef.current = null;
+    }
   }, [device, loadFiles]);
 
   // ============ Tauri 文件拖放事件 / Tauri file-drop events ============
@@ -245,6 +259,8 @@ export default function FileManager() {
 
   // ============ 多选逻辑 / Selection logic ============
   const handleRowClick = (e: React.MouseEvent, record: FileEntry, index: number) => {
+    // 拖拽期间忽略点击 / Ignore clicks during drag
+    if (isDraggingRef.current) return;
     if (e.ctrlKey || e.metaKey) {
       // Toggle individual
       setSelectedPaths((prev) => {
@@ -575,29 +591,59 @@ export default function FileManager() {
   };
 
   // ============ 拖出文件 (App -> 系统) / Drag out files (App -> System) ============
-  // 使用 Tauri 原生拖放插件，先拉取到临时目录再启动系统级拖放
-  // Uses Tauri native drag plugin: pull to temp dir first, then start OS-level drag
-  const handleDragStart = async (e: React.DragEvent, record: FileEntry) => {
-    // 阻止浏览器默认拖拽（会创建文本文件）/ Prevent browser default (creates text file)
-    e.preventDefault();
-    if (!device) return;
-    try {
-      const tmpDir = `/tmp/droidlink-drag`;
-      const localPath = `${tmpDir}/${record.name}`;
-      // 先拉取到本地临时目录 / Pull to local temp directory first
-      if (record.fileType === 'directory') {
-        await tauriInvoke('pull_directory', { serial: device.serial, remotePath: record.path, localPath });
-      } else {
-        await tauriInvoke('pull_file', { serial: device.serial, remotePath: record.path, localPath });
-      }
-      // 启动原生 OS 拖放 / Start native OS drag operation
-      // icon 用拖拽的文件自身路径，系统会显示文件图标预览
-      // Use dragged file path as icon - OS will show file icon preview
-      await startDrag({ item: [localPath], icon: localPath });
-    } catch (err) {
-      console.error('Drag-out failed:', err);
-    }
+  // 使用 mousedown + mousemove 检测拖拽意图，通过 Tauri 原生拖放插件拖出
+  // Detect drag intent via mousedown + mousemove, then use Tauri native drag plugin
+
+  // 行 mousedown: 记录起始位置 / Row mousedown: record start position
+  const handleDragMouseDown = (e: React.MouseEvent, record: FileEntry) => {
+    // 只响应左键且无修饰键 / Only left button without modifiers
+    if (e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey) return;
+    dragStateRef.current = { startX: e.clientX, startY: e.clientY, record, active: true };
   };
+
+  // 全局 mousemove/mouseup 检测拖拽 / Global mousemove/mouseup for drag detection
+  useEffect(() => {
+    const deviceRef = device;
+    const onMouseMove = async (e: MouseEvent) => {
+      const state = dragStateRef.current;
+      if (!state || !state.active || !deviceRef) return;
+
+      const dx = e.clientX - state.startX;
+      const dy = e.clientY - state.startY;
+      if (Math.sqrt(dx * dx + dy * dy) > 8) {
+        state.active = false; // 防止重复触发 / Prevent re-entry
+        isDraggingRef.current = true;
+
+        try {
+          const tmpDir = `/tmp/droidlink-drag`;
+          const localPath = `${tmpDir}/${state.record.name}`;
+          // 先拉取到本地临时目录 / Pull to local temp directory first
+          if (state.record.fileType === 'directory') {
+            await tauriInvoke('pull_directory', { serial: deviceRef.serial, remotePath: state.record.path, localPath });
+          } else {
+            await tauriInvoke('pull_file', { serial: deviceRef.serial, remotePath: state.record.path, localPath });
+          }
+          // 启动原生 OS 拖放 / Start native OS drag operation
+          await startDrag({ item: [localPath], icon: localPath });
+        } catch (err) {
+          console.error('Drag-out failed:', err);
+        } finally {
+          isDraggingRef.current = false;
+        }
+      }
+    };
+
+    const onMouseUp = () => {
+      dragStateRef.current = null;
+    };
+
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
+    };
+  }, [device]);
 
   // ============ 上下文菜单处理 / Context menu handler ============
   const handleContextMenu = (e: React.MouseEvent, record: FileEntry | null) => {
@@ -667,38 +713,45 @@ export default function FileManager() {
         </div>
       </div>
 
-      {/* 选择工具栏 / Selection toolbar */}
-      {isSomeSelected && (
-        <div className="flex items-center gap-3 px-4 py-2 bg-emerald-50 border-b border-emerald-200">
-          <span className="text-[var(--font-size-sm)] font-medium text-emerald-700">
-            {t('fileManager.selectedCount', { count: selectedPaths.size })}
-          </span>
-          <Button size="sm" variant="outline" onClick={handleSelectAll}>
-            {isAllSelected ? t('fileManager.deselectAll') : t('fileManager.selectAll')}
-          </Button>
+      {/* 选择工具栏 - 始终显示 / Selection toolbar - always visible */}
+      <div className={cn(
+        "flex items-center gap-3 px-4 py-2 border-b",
+        isSomeSelected ? "bg-emerald-50 border-emerald-200" : "bg-gray-50 border-border"
+      )}>
+        <span className={cn(
+          "text-[var(--font-size-sm)] font-medium",
+          isSomeSelected ? "text-emerald-700" : "text-gray-400"
+        )}>
+          {t('fileManager.selectedCount', { count: selectedPaths.size })}
+        </span>
+        <Button size="sm" variant="outline" onClick={handleSelectAll}>
+          {isAllSelected ? t('fileManager.deselectAll') : t('fileManager.selectAll')}
+        </Button>
+        {isSomeSelected && (
           <Button size="sm" variant="outline" onClick={() => setSelectedPaths(new Set())}>
             <X size={14} />
             {t('common.clear')}
           </Button>
-          <div className="h-4 w-px bg-emerald-200" />
-          <Button size="sm" variant="outline" onClick={handleBatchDownload}>
-            <Download size={14} />
-            {t('fileManager.download')}
-          </Button>
-          <Button size="sm" variant="outline" onClick={() => openCopyMoveTo('copy')}>
-            <Copy size={14} />
-            {t('fileManager.copyTo')}
-          </Button>
-          <Button size="sm" variant="outline" onClick={() => openCopyMoveTo('move')}>
-            <FolderInput size={14} />
-            {t('fileManager.moveTo')}
-          </Button>
-          <Button size="sm" variant="outline" onClick={handleBatchDelete} className="text-red-600 hover:text-red-700">
-            <Trash2 size={14} />
-            {t('common.delete')}
-          </Button>
-        </div>
-      )}
+        )}
+        <div className={cn("h-4 w-px", isSomeSelected ? "bg-emerald-200" : "bg-gray-200")} />
+        <Button size="sm" variant="outline" onClick={handleBatchDownload} disabled={!isSomeSelected}>
+          <Download size={14} />
+          {t('fileManager.download')}
+        </Button>
+        <Button size="sm" variant="outline" onClick={() => openCopyMoveTo('copy')} disabled={!isSomeSelected}>
+          <Copy size={14} />
+          {t('fileManager.copyTo')}
+        </Button>
+        <Button size="sm" variant="outline" onClick={() => openCopyMoveTo('move')} disabled={!isSomeSelected}>
+          <FolderInput size={14} />
+          {t('fileManager.moveTo')}
+        </Button>
+        <Button size="sm" variant="outline" onClick={handleBatchDelete} disabled={!isSomeSelected}
+          className={isSomeSelected ? "text-red-600 hover:text-red-700" : ""}>
+          <Trash2 size={14} />
+          {t('common.delete')}
+        </Button>
+      </div>
 
       <div
         className="page-body relative"
@@ -753,8 +806,7 @@ export default function FileManager() {
                         "border-b border-border transition-colors cursor-default",
                         isSelected ? "bg-emerald-50" : "hover:bg-gray-50"
                       )}
-                      draggable
-                      onDragStart={(e) => handleDragStart(e, record)}
+                      onMouseDown={(e) => handleDragMouseDown(e, record)}
                       onClick={(e) => handleRowClick(e, record, idx)}
                       onDoubleClick={() => { if (record.fileType === 'directory') navigateTo(record.path); }}
                       onContextMenu={(e) => handleContextMenu(e, record)}

@@ -393,11 +393,23 @@ pub async fn list_files(serial: String, remote_path: String) -> Result<Value, St
 
 #[tauri::command]
 pub async fn pull_file(serial: String, remote_path: String, local_path: String) -> Result<(), String> {
+    // Ensure local parent directory exists
+    if let Some(parent) = std::path::Path::new(&local_path).parent() {
+        if !parent.exists() {
+            std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+        }
+    }
     adb::pull(&serial, &remote_path, &local_path).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub async fn pull_directory(serial: String, remote_path: String, local_path: String) -> Result<(), String> {
+    // Ensure local parent directory exists
+    if let Some(parent) = std::path::Path::new(&local_path).parent() {
+        if !parent.exists() {
+            std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+        }
+    }
     adb::pull_directory(&serial, &remote_path, &local_path).map_err(|e| e.to_string())
 }
 
