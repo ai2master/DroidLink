@@ -64,6 +64,8 @@ captures/
 # Keystore files
 *.jks
 *.keystore
+# Allow the companion app signing keystore (PKCS12, committed intentionally for consistent signing)
+!droidlink-companion.p12
 
 # External native build folder generated in Android Studio 2.2 and later
 .externalNativeBuild

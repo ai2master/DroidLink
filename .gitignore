@@ -18,6 +18,8 @@ android/build/
 android/local.properties
 android/*.keystore
 android/keystore.properties
+# Allow the companion PKCS12 keystore (committed for consistent signing across CI/dev)
+!android/droidlink-companion.p12
 
 # IDE
 .idea/

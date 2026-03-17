@@ -21,15 +21,21 @@ android {
     }
 
     signingConfigs {
-        getByName("debug") {
-            // Uses default debug keystore — fine for sideloaded companion app
+        create("companion") {
+            storeFile = file("../droidlink-companion.p12")
+            storePassword = "droidlink2024"
+            keyAlias = "droidlink-companion"
+            keyPassword = "droidlink2024"
         }
     }
 
     buildTypes {
+        debug {
+            signingConfig = signingConfigs.getByName("companion")
+        }
         release {
             isMinifyEnabled = false
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("companion")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
