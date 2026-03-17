@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   RefreshCw, Plus, Trash2, Play, ArrowLeftRight, ArrowRight, ArrowLeft, FolderOpen,
   Settings, AlertTriangle, Zap, Clock, FileText, Eraser, Info, CheckCircle, XCircle, Scale,
@@ -120,19 +120,25 @@ export default function FolderSync() {
     { value: 'newest_wins', label: t('folderSync.newestWins') },
   ];
 
-  const loadPairs = async () => {
+  // Refs for event listener callbacks to avoid stale closures
+  const toastRef = useRef(toast);
+  toastRef.current = toast;
+  const tRef = useRef(t);
+  tRef.current = t;
+
+  const loadPairs = useCallback(async () => {
     setLoading(true);
     try {
       const result = await tauriInvoke<SyncPair[]>('get_folder_sync_pairs');
       setPairs(result);
     } catch (err: any) {
-      toast.error(t('folderSync.loadFailed', { error: err }));
+      toastRef.current.error(tRef.current('folderSync.loadFailed', { error: err }));
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const loadTransferInfo = async () => {
+  const loadTransferInfo = useCallback(async () => {
     if (!device) return;
     setLoadingInfo(true);
     try {
@@ -143,7 +149,7 @@ export default function FolderSync() {
     } finally {
       setLoadingInfo(false);
     }
-  };
+  }, [device]);
 
   useEffect(() => {
     loadPairs();
@@ -159,8 +165,8 @@ export default function FolderSync() {
         if (data.type === 'completed' && data.result) {
           const r = data.result;
           setLastResults((prev) => ({ ...prev, [data.pairId]: r }));
-          toast.success(
-            t('folderSync.syncComplete', {
+          toastRef.current.success(
+            tRef.current('folderSync.syncComplete', {
               pushed: r.pushed,
               pulled: r.pulled,
               deleted: r.deletedLocal + r.deletedRemote,
@@ -168,7 +174,7 @@ export default function FolderSync() {
           );
         }
         if (data.type === 'error') {
-          toast.error(t('folderSync.syncFailed', { error: data.message }));
+          toastRef.current.error(tRef.current('folderSync.syncFailed', { error: data.message }));
         }
         loadPairs();
       }
@@ -178,12 +184,11 @@ export default function FolderSync() {
       (data) => {
         setRecovery({ recovered: data.recovered, failed: data.failed, errors: data.errors });
         if (data.recovered > 0) {
-          toast.success(t('folderSync.recovery.recovered', { count: data.recovered }));
+          toastRef.current.success(tRef.current('folderSync.recovery.recovered', { count: data.recovered }));
         }
         if (data.failed > 0) {
-          toast.warning(t('folderSync.recovery.failedRetry', { count: data.failed }));
+          toastRef.current.warning(tRef.current('folderSync.recovery.failedRetry', { count: data.failed }));
         }
-        // Auto-dismiss after 30 seconds
         setTimeout(() => setRecovery(null), 30000);
       },
     );
@@ -191,11 +196,11 @@ export default function FolderSync() {
       unlisten.then((fn) => fn());
       unlistenRecovery.then((fn) => fn());
     };
-  }, []);
+  }, [loadPairs, loadTransferInfo]);
 
   useEffect(() => {
     if (device) loadTransferInfo();
-  }, [device?.serial]);
+  }, [device, loadTransferInfo]);
 
   const handleAdd = async () => {
     if (!newPair.localPath || !newPair.remotePath || !device) {

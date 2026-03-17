@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   RefreshCw,
   Monitor,
@@ -54,22 +54,7 @@ export const Dashboard: React.FC = () => {
   const [serviceRunning, setServiceRunning] = useState<boolean | null>(null);
   const [startingService, setStartingService] = useState(false);
 
-  useEffect(() => {
-    if (connectedDevice && companionInstalled !== false) {
-      loadStats();
-    }
-  }, [connectedDevice, companionInstalled]);
-
-  // Check companion service status
-  useEffect(() => {
-    if (connectedDevice && companionInstalled) {
-      checkServiceStatus();
-    } else {
-      setServiceRunning(null);
-    }
-  }, [connectedDevice, companionInstalled]);
-
-  const checkServiceStatus = async () => {
+  const checkServiceStatus = useCallback(async () => {
     if (!connectedDevice) return;
     try {
       const result = await tauriInvoke<{ running: boolean }>('check_companion_service', { serial: connectedDevice.serial });
@@ -77,30 +62,9 @@ export const Dashboard: React.FC = () => {
     } catch {
       setServiceRunning(null);
     }
-  };
+  }, [connectedDevice]);
 
-  const handleStartService = async () => {
-    if (!connectedDevice) return;
-    setStartingService(true);
-    try {
-      await tauriInvoke('start_companion_service', { serial: connectedDevice.serial });
-      // Re-check after a delay
-      setTimeout(async () => {
-        await checkServiceStatus();
-        setStartingService(false);
-      }, 2000);
-    } catch {
-      setStartingService(false);
-    }
-  };
-
-  useEffect(() => {
-    if (connectedDevice) {
-      loadActivities();
-    }
-  }, [connectedDevice, syncStatuses]);
-
-  const loadStats = async () => {
+  const loadStats = useCallback(async () => {
     if (!connectedDevice) return;
     setLoading(true);
     try {
@@ -120,9 +84,9 @@ export const Dashboard: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [connectedDevice, toast, t]);
 
-  const loadActivities = async () => {
+  const loadActivities = useCallback(async () => {
     // 从 syncStatuses 中提取真实的同步记录
     // Build activity list from actual sync statuses
     const realActivities: Activity[] = [];
@@ -147,6 +111,40 @@ export const Dashboard: React.FC = () => {
     // 按时间倒序排列 / Sort by time descending
     realActivities.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
     setActivities(realActivities);
+  }, [connectedDevice, syncStatuses, t]);
+
+  useEffect(() => {
+    if (connectedDevice && companionInstalled !== false) {
+      loadStats();
+    }
+  }, [connectedDevice, companionInstalled, loadStats]);
+
+  useEffect(() => {
+    if (connectedDevice && companionInstalled) {
+      checkServiceStatus();
+    } else {
+      setServiceRunning(null);
+    }
+  }, [connectedDevice, companionInstalled, checkServiceStatus]);
+
+  useEffect(() => {
+    if (connectedDevice) {
+      loadActivities();
+    }
+  }, [connectedDevice, syncStatuses, loadActivities]);
+
+  const handleStartService = async () => {
+    if (!connectedDevice) return;
+    setStartingService(true);
+    try {
+      await tauriInvoke('start_companion_service', { serial: connectedDevice.serial });
+      setTimeout(async () => {
+        await checkServiceStatus();
+        setStartingService(false);
+      }, 2000);
+    } catch {
+      setStartingService(false);
+    }
   };
 
   const handleSyncAll = async () => {

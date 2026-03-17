@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   Download,
   RefreshCw,
@@ -62,17 +62,7 @@ export const CallLogs: React.FC = () => {
   const [detailModalVisible, setDetailModalVisible] = useState(false);
   const [selectedVersionDetail, setSelectedVersionDetail] = useState<any>(null);
 
-  useEffect(() => {
-    if (connectedDevice) {
-      loadCallLogs();
-    }
-  }, [connectedDevice]);
-
-  useEffect(() => {
-    filterByType();
-  }, [typeFilter, callLogs]);
-
-  const loadCallLogs = async () => {
+  const loadCallLogs = useCallback(async () => {
     if (!connectedDevice) return;
     setLoading(true);
     try {
@@ -86,9 +76,15 @@ export const CallLogs: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [connectedDevice, toast, t]);
 
-  const filterByType = () => {
+  useEffect(() => {
+    if (connectedDevice) {
+      loadCallLogs();
+    }
+  }, [connectedDevice, loadCallLogs]);
+
+  useEffect(() => {
     if (typeFilter === 'all') {
       setFilteredLogs(callLogs);
       return;
@@ -101,7 +97,7 @@ export const CallLogs: React.FC = () => {
     };
     const filtered = callLogs.filter((log) => log.callType === typeMap[typeFilter]);
     setFilteredLogs(filtered);
-  };
+  }, [typeFilter, callLogs]);
 
   const handleSync = async () => {
     if (!connectedDevice) return;

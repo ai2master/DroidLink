@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Play, Pause, Send, Trash2, CornerDownLeft, Eraser, Pen,
   ChevronDown, ChevronRight, Settings, Camera,
@@ -69,13 +69,44 @@ export default function ScreenMirror() {
   const [deviceImes, setDeviceImes] = useState<string[]>([]);
   const [currentIme, setCurrentIme] = useState('');
 
+  const checkScrcpy = useCallback(async () => {
+    try {
+      const version = await tauriInvoke<string>('check_scrcpy');
+      setScrcpyVersion(version);
+      setScrcpyAvailable(true);
+      setScrcpyError('');
+    } catch (err: any) {
+      setScrcpyAvailable(false);
+      setScrcpyError(String(err));
+    }
+  }, []);
+
+  const checkRunning = useCallback(async () => {
+    if (!device) return;
+    try {
+      const result = await tauriInvoke<boolean>('is_scrcpy_running', { serial: device.serial });
+      setRunning(result);
+    } catch {}
+  }, [device]);
+
+  const loadDeviceImes = useCallback(async () => {
+    if (!device) return;
+    try {
+      const imes = await tauriInvoke<string[]>('list_device_imes', { serial: device.serial });
+      setDeviceImes(imes);
+      const current = await tauriInvoke<string>('get_current_ime', { serial: device.serial });
+      setCurrentIme(current);
+      setImeEnabled(current.includes('com.droidlink'));
+    } catch {}
+  }, [device]);
+
   useEffect(() => {
     checkScrcpy();
     if (device) {
       checkRunning();
       loadDeviceImes();
     }
-  }, [device]);
+  }, [device, checkScrcpy, checkRunning, loadDeviceImes]);
 
   // 轮询检测 scrcpy 进程是否退出 (用户手动关闭窗口时自动更新按钮状态)
   // Poll to detect scrcpy process exit (auto-update button when user closes the window)
@@ -93,37 +124,6 @@ export default function ScreenMirror() {
     }, 2000);
     return () => clearInterval(interval);
   }, [running, device]);
-
-  const checkScrcpy = async () => {
-    try {
-      const version = await tauriInvoke<string>('check_scrcpy');
-      setScrcpyVersion(version);
-      setScrcpyAvailable(true);
-      setScrcpyError('');
-    } catch (err: any) {
-      setScrcpyAvailable(false);
-      setScrcpyError(String(err));
-    }
-  };
-
-  const checkRunning = async () => {
-    if (!device) return;
-    try {
-      const result = await tauriInvoke<boolean>('is_scrcpy_running', { serial: device.serial });
-      setRunning(result);
-    } catch {}
-  };
-
-  const loadDeviceImes = async () => {
-    if (!device) return;
-    try {
-      const imes = await tauriInvoke<string[]>('list_device_imes', { serial: device.serial });
-      setDeviceImes(imes);
-      const current = await tauriInvoke<string>('get_current_ime', { serial: device.serial });
-      setCurrentIme(current);
-      setImeEnabled(current.includes('com.droidlink'));
-    } catch {}
-  };
 
   const startMirror = async () => {
     if (!device) return;

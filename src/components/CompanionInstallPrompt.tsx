@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Smartphone,
   CheckCircle2,
@@ -50,6 +50,14 @@ export const CompanionInstallPrompt: React.FC<CompanionInstallPromptProps> = ({
   const [errorMessage, setErrorMessage] = useState('');
 
   const isUpdate = mode === 'update';
+  const installTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Clean up timer on unmount to prevent calling onInstalled after close
+  useEffect(() => {
+    return () => {
+      if (installTimerRef.current) clearTimeout(installTimerRef.current);
+    };
+  }, []);
 
   const handleInstall = async () => {
     setInstalling(true);
@@ -58,7 +66,7 @@ export const CompanionInstallPrompt: React.FC<CompanionInstallPromptProps> = ({
     try {
       await tauriInvoke('install_companion_app', { serial });
       setInstallResult('success');
-      setTimeout(() => {
+      installTimerRef.current = setTimeout(() => {
         onInstalled();
       }, 1500);
     } catch (error: any) {
@@ -70,6 +78,10 @@ export const CompanionInstallPrompt: React.FC<CompanionInstallPromptProps> = ({
   };
 
   const handleClose = () => {
+    if (installTimerRef.current) {
+      clearTimeout(installTimerRef.current);
+      installTimerRef.current = null;
+    }
     setInstallResult(null);
     setErrorMessage('');
     setInstalling(false);

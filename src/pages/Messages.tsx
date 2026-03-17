@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   Search,
   Download,
@@ -74,17 +74,7 @@ export const Messages: React.FC = () => {
   const [detailModalVisible, setDetailModalVisible] = useState(false);
   const [selectedVersionDetail, setSelectedVersionDetail] = useState<any>(null);
 
-  useEffect(() => {
-    if (connectedDevice) {
-      loadConversations();
-    }
-  }, [connectedDevice]);
-
-  useEffect(() => {
-    filterConversations();
-  }, [searchText, conversations]);
-
-  const loadConversations = async () => {
+  const loadConversations = useCallback(async () => {
     if (!connectedDevice) return;
     setLoading(true);
     try {
@@ -98,9 +88,15 @@ export const Messages: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [connectedDevice, toast, t]);
 
-  const filterConversations = () => {
+  useEffect(() => {
+    if (connectedDevice) {
+      loadConversations();
+    }
+  }, [connectedDevice, loadConversations]);
+
+  useEffect(() => {
     if (!searchText.trim()) {
       setFilteredConversations(conversations);
       return;
@@ -113,7 +109,7 @@ export const Messages: React.FC = () => {
         conv.lastMessage?.toLowerCase().includes(text)
     );
     setFilteredConversations(filtered);
-  };
+  }, [searchText, conversations]);
 
   const loadMessages = async (threadId: string) => {
     if (!connectedDevice) return;

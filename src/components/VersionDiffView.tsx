@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { formatDate } from '../utils/format';
 import { cn } from '../utils/cn';
@@ -27,7 +27,21 @@ export const VersionDiffView: React.FC<VersionDiffViewProps> = ({
 }) => {
   const { t } = useTranslation();
 
-  const fields = getFieldDefs(dataType, t);
+  const fields = useMemo(() => getFieldDefs(dataType, t), [dataType, t]);
+
+  const diffs = useMemo(() => {
+    if (!versionA && !versionB) return [];
+    return fields.map((field) => {
+      const valA = getNestedValue(versionA, field.key);
+      const valB = getNestedValue(versionB, field.key);
+      const strA = normalizeValue(valA);
+      const strB = normalizeValue(valB);
+      const changed = strA !== strB;
+      const added = !strA && strB;
+      const removed = strA && !strB;
+      return { ...field, valA, valB, strA, strB, changed, added, removed };
+    });
+  }, [fields, versionA, versionB]);
 
   if (!versionA && !versionB) {
     return (
@@ -36,17 +50,6 @@ export const VersionDiffView: React.FC<VersionDiffViewProps> = ({
       </div>
     );
   }
-
-  const diffs = fields.map((field) => {
-    const valA = getNestedValue(versionA, field.key);
-    const valB = getNestedValue(versionB, field.key);
-    const strA = normalizeValue(valA);
-    const strB = normalizeValue(valB);
-    const changed = strA !== strB;
-    const added = !strA && strB;
-    const removed = strA && !strB;
-    return { ...field, valA, valB, strA, strB, changed, added, removed };
-  });
 
   const hasChanges = diffs.some(d => d.changed);
 

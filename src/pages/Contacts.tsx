@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   Search,
   Download,
@@ -68,17 +68,7 @@ export const Contacts: React.FC = () => {
   const [compareModalVisible, setCompareModalVisible] = useState(false);
   const [compareResult, setCompareResult] = useState<any>(null);
 
-  useEffect(() => {
-    if (connectedDevice) {
-      loadContacts();
-    }
-  }, [connectedDevice]);
-
-  useEffect(() => {
-    filterContacts();
-  }, [searchText, contacts]);
-
-  const loadContacts = async () => {
+  const loadContacts = useCallback(async () => {
     if (!connectedDevice) return;
     setLoading(true);
     try {
@@ -92,9 +82,15 @@ export const Contacts: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [connectedDevice, toast, t]);
 
-  const filterContacts = () => {
+  useEffect(() => {
+    if (connectedDevice) {
+      loadContacts();
+    }
+  }, [connectedDevice, loadContacts]);
+
+  useEffect(() => {
     if (!searchText.trim()) {
       setFilteredContacts(contacts);
       return;
@@ -108,7 +104,7 @@ export const Contacts: React.FC = () => {
         contact.company?.toLowerCase().includes(text)
     );
     setFilteredContacts(filtered);
-  };
+  }, [searchText, contacts]);
 
   const handleSync = async () => {
     if (!connectedDevice) return;

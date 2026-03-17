@@ -1,29 +1,37 @@
+import { useMemo } from 'react';
 import { RefreshCw, CheckCircle2, XCircle } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useStore } from '../stores/useStore';
+
+const syncingStyle = { color: '#059669' };
+const connectedStyle = { color: '#52c41a' };
+const disconnectedStyle = { color: '#d9d9d9' };
 
 export default function StatusBar() {
   const { t } = useTranslation();
   const device = useStore((s) => s.connectedDevice);
   const syncStatuses = useStore((s) => s.syncStatuses);
 
-  const activeSyncs = Object.values(syncStatuses).filter(
-    (s) => s.type === 'started' || s.type === 'progress'
+  const activeSyncs = useMemo(
+    () => Object.values(syncStatuses).filter((s) => s.type === 'started' || s.type === 'progress'),
+    [syncStatuses],
   );
 
-  // 数据类型标签映射 / Data type label mapping
-  const dataTypeLabels: Record<string, string> = {
-    contacts: t('statusBar.contacts'),
-    messages: t('statusBar.messages'),
-    call_logs: t('statusBar.callLogs'),
-  };
+  const dataTypeLabels = useMemo<Record<string, string>>(
+    () => ({
+      contacts: t('statusBar.contacts'),
+      messages: t('statusBar.messages'),
+      call_logs: t('statusBar.callLogs'),
+    }),
+    [t],
+  );
 
   return (
     <div className="status-bar">
       <div className="sync-indicator">
         {activeSyncs.length > 0 ? (
           <>
-            <RefreshCw className="animate-spin" style={{ color: '#059669' }} />
+            <RefreshCw className="animate-spin" style={syncingStyle} />
             <span>
               {t('statusBar.syncing', { types: activeSyncs.map((s) => dataTypeLabels[s.dataType] || s.dataType).join(', ') })}
               {activeSyncs[0]?.current != null && activeSyncs[0]?.total != null && (
@@ -33,12 +41,12 @@ export default function StatusBar() {
           </>
         ) : device ? (
           <>
-            <CheckCircle2 style={{ color: '#52c41a' }} />
+            <CheckCircle2 style={connectedStyle} />
             <span>{t('statusBar.connected')}</span>
           </>
         ) : (
           <>
-            <XCircle style={{ color: '#d9d9d9' }} />
+            <XCircle style={disconnectedStyle} />
             <span>{t('statusBar.disconnected')}</span>
           </>
         )}

@@ -107,6 +107,9 @@ export default function FileManager() {
   // Track loaded device serial to prevent reloading /sdcard when loadFiles is recreated
   const loadedDeviceRef = useRef<string | null>(null);
 
+  // 键盘处理器 ref，避免每次渲染重新注册 / Keyboard handler ref to avoid re-registering on every render
+  const keyboardHandlerRef = useRef<(e: KeyboardEvent) => void>(() => {});
+
   // ============ 加载文件列表 / Load file list ============
   const loadFiles = useCallback(async (path: string) => {
     if (!device) return;
@@ -169,48 +172,49 @@ export default function FileManager() {
   }, [device, loadFiles, t, toast]);
 
   // ============ 键盘快捷键 / Keyboard shortcuts ============
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (!device) return;
-      // 如果焦点在 input/textarea 中，忽略 / Ignore if focused in input/textarea
-      const tag = (e.target as HTMLElement)?.tagName;
-      if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+  // 每次渲染更新 ref 中的处理器，保持闭包新鲜 / Update ref handler each render for fresh closures
+  keyboardHandlerRef.current = (e: KeyboardEvent) => {
+    if (!device) return;
+    const tag = (e.target as HTMLElement)?.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA') return;
 
-      const ctrlOrMeta = e.ctrlKey || e.metaKey;
+    const ctrlOrMeta = e.ctrlKey || e.metaKey;
 
-      if (e.key === 'Delete') {
-        e.preventDefault();
-        handleBatchDelete();
-      } else if (e.key === 'F2') {
-        e.preventDefault();
-        if (selectedPaths.size === 1) {
-          const path = [...selectedPaths][0];
-          const file = files.find((f) => f.path === path);
-          if (file) openRename(file);
-        }
-      } else if (ctrlOrMeta && e.key === 'a') {
-        e.preventDefault();
-        setSelectedPaths(new Set(sortedFiles.map((f) => f.path)));
-      } else if (ctrlOrMeta && e.key === 'c') {
-        e.preventDefault();
-        handleCopyToClipboard();
-      } else if (ctrlOrMeta && e.key === 'x') {
-        e.preventDefault();
-        handleCutToClipboard();
-      } else if (ctrlOrMeta && e.key === 'v') {
-        e.preventDefault();
-        handlePasteFromClipboard();
-      } else if (e.key === 'Backspace') {
-        e.preventDefault();
-        if (currentPath !== '/') goUp();
-      } else if (ctrlOrMeta && e.key === 'f') {
-        e.preventDefault();
-        setSearchVisible(true);
+    if (e.key === 'Delete') {
+      e.preventDefault();
+      handleBatchDelete();
+    } else if (e.key === 'F2') {
+      e.preventDefault();
+      if (selectedPaths.size === 1) {
+        const path = [...selectedPaths][0];
+        const file = files.find((f) => f.path === path);
+        if (file) openRename(file);
       }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  });
+    } else if (ctrlOrMeta && e.key === 'a') {
+      e.preventDefault();
+      setSelectedPaths(new Set(sortedFiles.map((f) => f.path)));
+    } else if (ctrlOrMeta && e.key === 'c') {
+      e.preventDefault();
+      handleCopyToClipboard();
+    } else if (ctrlOrMeta && e.key === 'x') {
+      e.preventDefault();
+      handleCutToClipboard();
+    } else if (ctrlOrMeta && e.key === 'v') {
+      e.preventDefault();
+      handlePasteFromClipboard();
+    } else if (e.key === 'Backspace') {
+      e.preventDefault();
+      if (currentPath !== '/') goUp();
+    } else if (ctrlOrMeta && e.key === 'f') {
+      e.preventDefault();
+      setSearchVisible(true);
+    }
+  };
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => keyboardHandlerRef.current(e);
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
 
   // ============ 关闭上下文菜单 / Close context menu on click ============
   useEffect(() => {
