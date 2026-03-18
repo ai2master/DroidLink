@@ -279,6 +279,8 @@ struct AutoSyncHandle {
 }
 
 const FOLDER_SYNC_POLL_INTERVAL_SECS: u64 = 5;
+const MARKER_DIR: &str = "/data/local/tmp";
+const MARKER_PREFIX: &str = ".droidlink_fsmarker";
 
 // ========== Recovery Result ==========
 
@@ -1009,8 +1011,45 @@ impl FolderSync {
         Ok(())
     }
 
+    /// Touch a marker file on Android after successful sync.
+    /// Used by auto-sync to quickly detect remote changes via `find -newer`.
+    fn touch_remote_marker(serial: &str, pair_id: &str) {
+        let marker = format!("{}/{}_{}", MARKER_DIR, MARKER_PREFIX, pair_id);
+        let _ = adb::shell(serial, &format!("mkdir -p '{}' && touch '{}'", MARKER_DIR, marker));
+    }
+
+    /// Quick check: has anything changed on Android since last sync?
+    /// Uses `find -newer <marker>` — single lightweight ADB command.
+    /// Returns true if changes detected or marker doesn't exist (first run).
+    fn has_remote_changes(serial: &str, pair_id: &str, remote_path: &str) -> bool {
+        let marker = format!("{}/{}_{}", MARKER_DIR, MARKER_PREFIX, pair_id);
+        // Check if marker exists first
+        let marker_exists = adb::shell(serial, &format!("test -f '{}' && echo y", marker))
+            .map(|o| o.trim() == "y")
+            .unwrap_or(false);
+        if !marker_exists {
+            return true; // First run, always sync
+        }
+        // Quick check: any files newer than marker?
+        let safe_path = match adb::sanitize_device_path(remote_path) {
+            Ok(p) => p,
+            Err(_) => return true,
+        };
+        let cmd = format!(
+            "find '{}' -newer '{}' -type f 2>/dev/null | head -1",
+            safe_path, marker
+        );
+        match adb::shell(serial, &cmd) {
+            Ok(output) => !output.trim().is_empty(),
+            Err(_) => true, // On error, assume changes
+        }
+    }
+
     /// Start auto-sync polling for all enabled folder sync pairs of a device.
-    /// Polls every 5 seconds, detects changes, and syncs automatically.
+    /// Uses lightweight change detection:
+    /// - PC side: `notify` watcher (inotify/FSEvents) sets dirty flag per pair
+    /// - Android side: `find -newer <marker>` quick check (1 ADB command)
+    /// Only does full scan + sync when changes are detected.
     pub fn start_auto_sync(&self, serial: &str) {
         use std::sync::atomic::{AtomicBool, Ordering};
 
@@ -1030,13 +1069,17 @@ impl FolderSync {
         std::thread::spawn(move || {
             info!("Starting folder auto-sync for device: {}", serial_owned);
 
+            // Per-pair state: dirty flag (set by PC-side notify watcher) + watcher handle
+            let local_dirty: Arc<Mutex<HashMap<String, Arc<AtomicBool>>>> =
+                Arc::new(Mutex::new(HashMap::new()));
+            let mut watchers: HashMap<String, RecommendedWatcher> = HashMap::new();
+
             while running_clone.load(Ordering::Relaxed) {
                 // Get all enabled pairs for this device
                 let pairs = match db.get_folder_sync_pairs(Some(&serial_owned)) {
                     Ok(p) => p,
                     Err(e) => {
                         warn!("Failed to load folder sync pairs: {}", e);
-                        // Wait before retry
                         for _ in 0..(FOLDER_SYNC_POLL_INTERVAL_SECS * 10) {
                             if !running_clone.load(Ordering::Relaxed) { return; }
                             std::thread::sleep(Duration::from_millis(100));
@@ -1045,59 +1088,94 @@ impl FolderSync {
                     }
                 };
 
+                // Remove watchers for pairs that no longer exist or are disabled
+                let active_pair_ids: std::collections::HashSet<String> = pairs.iter()
+                    .filter(|p| p.enabled)
+                    .map(|p| p.id.clone())
+                    .collect();
+                watchers.retain(|id, _| active_pair_ids.contains(id));
+                local_dirty.lock().retain(|id, _| active_pair_ids.contains(id));
+
                 for pair in pairs.iter().filter(|p| p.enabled) {
                     if !running_clone.load(Ordering::Relaxed) { break; }
 
-                    let local_path = Path::new(&pair.local_path);
+                    let local_path = PathBuf::from(&pair.local_path);
                     if !local_path.exists() { continue; }
 
-                    // Quick change detection: scan + compare without syncing
-                    let ignore = IgnorePatterns::load_from_file(local_path);
-                    let local_files = match FolderSync::scan_local_directory(local_path, &ignore) {
-                        Ok(f) => f,
-                        Err(_) => continue,
-                    };
-                    let remote_files = match FolderSync::scan_remote_directory(&serial_owned, &pair.remote_path, &ignore) {
-                        Ok(f) => f,
-                        Err(_) => continue,
+                    // Set up PC-side notify watcher if not already watching this pair
+                    let dirty_flag = {
+                        let mut dirty_map = local_dirty.lock();
+                        dirty_map.entry(pair.id.clone())
+                            .or_insert_with(|| Arc::new(AtomicBool::new(true))) // dirty on first run
+                            .clone()
                     };
 
-                    let index_entries = db.get_folder_sync_index(&pair.id)
-                        .unwrap_or_default();
-                    let index: HashMap<String, FolderSyncEntry> = index_entries.into_iter()
-                        .filter(|e| e.status != "deleted")
-                        .map(|e| (e.relative_path.clone(), e)).collect();
-
-                    let changes = FolderSync::detect_changes(
-                        &local_files, &remote_files, &index,
-                        &pair.direction, &pair.remote_path, local_path,
-                    );
-
-                    if !changes.is_empty() {
-                        info!("Folder auto-sync: {} changes detected for pair {}, syncing...", changes.len(), pair.id);
-                        // Create a temporary FolderSync instance for syncing
-                        let fs = FolderSync {
-                            db: db.clone(),
-                            active_watches: Arc::new(Mutex::new(HashMap::new())),
-                            active_auto_syncs: Arc::new(Mutex::new(HashMap::new())),
-                            event_tx: event_tx.clone(),
-                        };
-                        match fs.sync_pair(&serial_owned, &pair.id) {
-                            Ok(result) => {
-                                info!(
-                                    "Folder auto-sync completed for pair {}: pushed={}, pulled={}, deleted={}",
-                                    pair.id, result.pushed, result.pulled,
-                                    result.deleted_local + result.deleted_remote
-                                );
+                    if !watchers.contains_key(&pair.id) {
+                        let flag_for_watcher = dirty_flag.clone();
+                        let watch_path = local_path.clone();
+                        match RecommendedWatcher::new(
+                            move |res: notify::Result<Event>| {
+                                if let Ok(e) = res {
+                                    // Only mark dirty for actual file changes
+                                    if e.paths.iter().any(|p| p.is_file()) {
+                                        flag_for_watcher.store(true, Ordering::Relaxed);
+                                    }
+                                }
+                            },
+                            Config::default(),
+                        ) {
+                            Ok(mut w) => {
+                                if w.watch(&watch_path, RecursiveMode::Recursive).is_ok() {
+                                    info!("Folder auto-sync: watching local path for pair {}", pair.id);
+                                    watchers.insert(pair.id.clone(), w);
+                                }
                             }
                             Err(e) => {
-                                warn!("Folder auto-sync failed for pair {}: {}", pair.id, e);
-                                if let Some(tx) = &event_tx {
-                                    let _ = tx.send(FolderSyncEvent::Error {
-                                        pair_id: pair.id.clone(),
-                                        message: e.to_string(),
-                                    });
-                                }
+                                warn!("Failed to start watcher for pair {}: {}", pair.id, e);
+                            }
+                        }
+                    }
+
+                    // === Lightweight change detection ===
+                    let pc_dirty = dirty_flag.load(Ordering::Relaxed);
+                    let android_dirty = FolderSync::has_remote_changes(
+                        &serial_owned, &pair.id, &pair.remote_path,
+                    );
+
+                    if !pc_dirty && !android_dirty {
+                        continue; // Nothing changed, skip this pair
+                    }
+
+                    info!(
+                        "Folder auto-sync: changes detected for pair {} (pc={}, android={}), syncing...",
+                        pair.id, pc_dirty, android_dirty
+                    );
+
+                    // Full sync
+                    let fs = FolderSync {
+                        db: db.clone(),
+                        active_watches: Arc::new(Mutex::new(HashMap::new())),
+                        active_auto_syncs: Arc::new(Mutex::new(HashMap::new())),
+                        event_tx: event_tx.clone(),
+                    };
+                    match fs.sync_pair(&serial_owned, &pair.id) {
+                        Ok(result) => {
+                            info!(
+                                "Folder auto-sync completed for pair {}: pushed={}, pulled={}, deleted={}",
+                                pair.id, result.pushed, result.pulled,
+                                result.deleted_local + result.deleted_remote
+                            );
+                            // Reset dirty flag and touch Android marker
+                            dirty_flag.store(false, Ordering::Relaxed);
+                            FolderSync::touch_remote_marker(&serial_owned, &pair.id);
+                        }
+                        Err(e) => {
+                            warn!("Folder auto-sync failed for pair {}: {}", pair.id, e);
+                            if let Some(tx) = &event_tx {
+                                let _ = tx.send(FolderSyncEvent::Error {
+                                    pair_id: pair.id.clone(),
+                                    message: e.to_string(),
+                                });
                             }
                         }
                     }
@@ -1110,6 +1188,8 @@ impl FolderSync {
                 }
             }
 
+            // Cleanup: drop watchers
+            drop(watchers);
             info!("Stopped folder auto-sync for device: {}", serial_owned);
         });
 
