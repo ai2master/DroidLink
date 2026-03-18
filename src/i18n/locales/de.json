@@ -561,6 +561,8 @@
     "general": "Allgemein",
     "syncInterval": "Synchronisationsintervall",
     "autoSync": "Automatische Synchronisation",
+    "folderAutoSync": "Ordner-Autosynchronisation",
+    "folderAutoSyncDesc": "Ordnerpaare automatisch alle 5 Sekunden synchronisieren, wenn das Gerät verbunden ist",
     "dataPath": "Datenpfad",
     "openDataPath": "Datenverzeichnis öffnen",
     "adbInfo": "ADB-Informationen",

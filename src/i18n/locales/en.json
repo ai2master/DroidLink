@@ -561,6 +561,8 @@
     "general": "General",
     "syncInterval": "Sync Interval",
     "autoSync": "Auto Sync",
+    "folderAutoSync": "Folder Auto Sync",
+    "folderAutoSyncDesc": "Automatically sync folder pairs every 5 seconds when device is connected",
     "dataPath": "Data Path",
     "openDataPath": "Open Data Directory",
     "adbInfo": "ADB Info",

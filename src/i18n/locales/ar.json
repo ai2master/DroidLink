@@ -561,6 +561,8 @@
     "general": "عام",
     "syncInterval": "فاصل المزامنة",
     "autoSync": "المزامنة التلقائية",
+    "folderAutoSync": "المزامنة التلقائية للمجلدات",
+    "folderAutoSyncDesc": "مزامنة أزواج المجلدات تلقائيًا كل 5 ثوانٍ عند اتصال الجهاز",
     "dataPath": "مسار البيانات",
     "openDataPath": "فتح دليل البيانات",
     "adbInfo": "معلومات ADB",

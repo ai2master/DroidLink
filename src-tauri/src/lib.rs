@@ -243,6 +243,7 @@ pub fn run() {
             let app_handle = app.handle().clone();
             let se = sync_engine.clone();
             let fs_for_recovery = folder_sync.clone();
+            let fs_for_auto = folder_sync.clone();
             let db_for_events = db.clone();
 
             std::thread::spawn(move || {
@@ -337,11 +338,26 @@ pub fn run() {
                                         } else {
                                             log::info!("Auto-sync disabled, skipping auto-sync for {}", info.serial);
                                         }
+
+                                        // 文件夹自动同步 / Folder auto-sync
+                                        let folder_auto_sync_enabled = db_for_events
+                                            .get_setting("folder_auto_sync")
+                                            .ok()
+                                            .flatten()
+                                            .map(|v| v == "true")
+                                            .unwrap_or(false);
+                                        if folder_auto_sync_enabled {
+                                            log::info!("Folder auto-sync enabled, starting for {}", info.serial);
+                                            fs_for_auto.start_auto_sync(&info.serial);
+                                        } else {
+                                            log::info!("Folder auto-sync disabled for {}", info.serial);
+                                        }
                                     }
                                     adb::DeviceEvent::Disconnected(serial) => {
                                         log::info!("设备已断开 / Device disconnected: {}", serial);
                                         let _ = app_handle.emit("device-disconnected", &serial);
                                         se.stop_sync(&serial);
+                                        fs_for_auto.stop_auto_sync(&serial);
                                     }
                                 }
                             }

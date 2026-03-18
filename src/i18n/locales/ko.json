@@ -561,6 +561,8 @@
     "general": "일반",
     "syncInterval": "동기화 간격",
     "autoSync": "자동 동기화",
+    "folderAutoSync": "폴더 자동 동기화",
+    "folderAutoSyncDesc": "기기 연결 시 5초마다 폴더 쌍을 자동으로 동기화",
     "dataPath": "데이터 경로",
     "openDataPath": "데이터 디렉토리 열기",
     "adbInfo": "ADB 정보",

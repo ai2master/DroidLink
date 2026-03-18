@@ -561,6 +561,8 @@
     "general": "通用设置",
     "syncInterval": "同步间隔",
     "autoSync": "自动同步",
+    "folderAutoSync": "文件夹自动同步",
+    "folderAutoSyncDesc": "设备连接时每 5 秒自动同步文件夹配对",
     "dataPath": "数据存储路径",
     "openDataPath": "打开数据目录",
     "adbInfo": "ADB 信息",

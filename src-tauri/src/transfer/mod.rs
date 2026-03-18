@@ -272,6 +272,14 @@ struct WatchHandle {
     stop_tx: Sender<()>,
 }
 
+// ========== Auto Sync Handle ==========
+
+struct AutoSyncHandle {
+    running: Arc<std::sync::atomic::AtomicBool>,
+}
+
+const FOLDER_SYNC_POLL_INTERVAL_SECS: u64 = 5;
+
 // ========== Recovery Result ==========
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -287,12 +295,18 @@ pub struct RecoveryResult {
 pub struct FolderSync {
     db: Arc<Database>,
     active_watches: Arc<Mutex<HashMap<String, WatchHandle>>>,
+    active_auto_syncs: Arc<Mutex<HashMap<String, AutoSyncHandle>>>,
     event_tx: Option<Sender<FolderSyncEvent>>,
 }
 
 impl FolderSync {
     pub fn new(db: Arc<Database>) -> Self {
-        Self { db, active_watches: Arc::new(Mutex::new(HashMap::new())), event_tx: None }
+        Self {
+            db,
+            active_watches: Arc::new(Mutex::new(HashMap::new())),
+            active_auto_syncs: Arc::new(Mutex::new(HashMap::new())),
+            event_tx: None,
+        }
     }
 
     pub fn set_event_sender(&mut self, tx: Sender<FolderSyncEvent>) {
@@ -995,6 +1009,129 @@ impl FolderSync {
         Ok(())
     }
 
+    /// Start auto-sync polling for all enabled folder sync pairs of a device.
+    /// Polls every 5 seconds, detects changes, and syncs automatically.
+    pub fn start_auto_sync(&self, serial: &str) {
+        use std::sync::atomic::{AtomicBool, Ordering};
+
+        let mut active = self.active_auto_syncs.lock();
+        if active.contains_key(serial) {
+            info!("Folder auto-sync already running for device: {}", serial);
+            return;
+        }
+
+        let running = Arc::new(AtomicBool::new(true));
+        let running_clone = running.clone();
+        let serial_owned = serial.to_string();
+        let serial_for_insert = serial_owned.clone();
+        let db = self.db.clone();
+        let event_tx = self.event_tx.clone();
+
+        std::thread::spawn(move || {
+            info!("Starting folder auto-sync for device: {}", serial_owned);
+
+            while running_clone.load(Ordering::Relaxed) {
+                // Get all enabled pairs for this device
+                let pairs = match db.get_folder_sync_pairs(Some(&serial_owned)) {
+                    Ok(p) => p,
+                    Err(e) => {
+                        warn!("Failed to load folder sync pairs: {}", e);
+                        // Wait before retry
+                        for _ in 0..(FOLDER_SYNC_POLL_INTERVAL_SECS * 10) {
+                            if !running_clone.load(Ordering::Relaxed) { return; }
+                            std::thread::sleep(Duration::from_millis(100));
+                        }
+                        continue;
+                    }
+                };
+
+                for pair in pairs.iter().filter(|p| p.enabled) {
+                    if !running_clone.load(Ordering::Relaxed) { break; }
+
+                    let local_path = Path::new(&pair.local_path);
+                    if !local_path.exists() { continue; }
+
+                    // Quick change detection: scan + compare without syncing
+                    let ignore = IgnorePatterns::load_from_file(local_path);
+                    let local_files = match FolderSync::scan_local_directory(local_path, &ignore) {
+                        Ok(f) => f,
+                        Err(_) => continue,
+                    };
+                    let remote_files = match FolderSync::scan_remote_directory(&serial_owned, &pair.remote_path, &ignore) {
+                        Ok(f) => f,
+                        Err(_) => continue,
+                    };
+
+                    let index_entries = db.get_folder_sync_index(&pair.id)
+                        .unwrap_or_default();
+                    let index: HashMap<String, FolderSyncEntry> = index_entries.into_iter()
+                        .filter(|e| e.status != "deleted")
+                        .map(|e| (e.relative_path.clone(), e)).collect();
+
+                    let changes = FolderSync::detect_changes(
+                        &local_files, &remote_files, &index,
+                        &pair.direction, &pair.remote_path, local_path,
+                    );
+
+                    if !changes.is_empty() {
+                        info!("Folder auto-sync: {} changes detected for pair {}, syncing...", changes.len(), pair.id);
+                        // Create a temporary FolderSync instance for syncing
+                        let fs = FolderSync {
+                            db: db.clone(),
+                            active_watches: Arc::new(Mutex::new(HashMap::new())),
+                            active_auto_syncs: Arc::new(Mutex::new(HashMap::new())),
+                            event_tx: event_tx.clone(),
+                        };
+                        match fs.sync_pair(&serial_owned, &pair.id) {
+                            Ok(result) => {
+                                info!(
+                                    "Folder auto-sync completed for pair {}: pushed={}, pulled={}, deleted={}",
+                                    pair.id, result.pushed, result.pulled,
+                                    result.deleted_local + result.deleted_remote
+                                );
+                            }
+                            Err(e) => {
+                                warn!("Folder auto-sync failed for pair {}: {}", pair.id, e);
+                                if let Some(tx) = &event_tx {
+                                    let _ = tx.send(FolderSyncEvent::Error {
+                                        pair_id: pair.id.clone(),
+                                        message: e.to_string(),
+                                    });
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Wait before next poll
+                for _ in 0..(FOLDER_SYNC_POLL_INTERVAL_SECS * 10) {
+                    if !running_clone.load(Ordering::Relaxed) { break; }
+                    std::thread::sleep(Duration::from_millis(100));
+                }
+            }
+
+            info!("Stopped folder auto-sync for device: {}", serial_owned);
+        });
+
+        active.insert(serial_for_insert, AutoSyncHandle { running });
+    }
+
+    pub fn stop_auto_sync(&self, serial: &str) {
+        let mut active = self.active_auto_syncs.lock();
+        if let Some(handle) = active.remove(serial) {
+            handle.running.store(false, std::sync::atomic::Ordering::Relaxed);
+            info!("Stopping folder auto-sync for device: {}", serial);
+        }
+    }
+
+    pub fn stop_all_auto_syncs(&self) {
+        let mut active = self.active_auto_syncs.lock();
+        for (serial, handle) in active.drain() {
+            handle.running.store(false, std::sync::atomic::Ordering::Relaxed);
+            info!("Stopping folder auto-sync for device: {}", serial);
+        }
+    }
+
     fn remove_index_entry(&self, pair_id: &str, rel: &str) -> Result<()> {
         self.db.upsert_folder_sync_entry(&FolderSyncEntry {
             pair_id: pair_id.to_string(), relative_path: rel.to_string(),
@@ -1090,7 +1227,10 @@ impl FolderSync {
 }
 
 impl Drop for FolderSync {
-    fn drop(&mut self) { self.stop_all_watching(); }
+    fn drop(&mut self) {
+        self.stop_all_watching();
+        self.stop_all_auto_syncs();
+    }
 }
 
 #[cfg(test)]

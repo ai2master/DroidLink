@@ -561,6 +561,8 @@
     "general": "一般",
     "syncInterval": "同期間隔",
     "autoSync": "自動同期",
+    "folderAutoSync": "フォルダ自動同期",
+    "folderAutoSyncDesc": "デバイス接続時に5秒ごとにフォルダペアを自動同期",
     "dataPath": "データパス",
     "openDataPath": "データディレクトリを開く",
     "adbInfo": "ADB情報",

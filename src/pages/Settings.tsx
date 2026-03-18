@@ -33,6 +33,7 @@ import { cn } from '../utils/cn';
 
 interface SettingsData {
   autoSync: boolean;
+  folderAutoSync: boolean;
   syncContacts: boolean;
   syncMessages: boolean;
   syncCallLogs: boolean;
@@ -73,6 +74,7 @@ export const Settings: React.FC = () => {
 
   const [settings, setSettings] = useState<SettingsData>({
     autoSync: false,
+    folderAutoSync: false,
     syncContacts: true,
     syncMessages: true,
     syncCallLogs: true,
@@ -130,6 +132,7 @@ export const Settings: React.FC = () => {
       // Properly parse DB snake_case string values into typed SettingsData
       setSettings({
         autoSync: data.auto_sync === 'true',
+        folderAutoSync: data.folder_auto_sync === 'true',
         syncContacts: data.sync_contacts !== 'false',
         syncMessages: data.sync_messages !== 'false',
         syncCallLogs: data.sync_call_logs !== 'false',
@@ -218,6 +221,7 @@ export const Settings: React.FC = () => {
       await tauriInvoke('set_settings', {
         settings: {
           auto_sync: String(settings.autoSync),
+          folder_auto_sync: String(settings.folderAutoSync),
           sync_contacts: String(settings.syncContacts),
           sync_messages: String(settings.syncMessages),
           sync_call_logs: String(settings.syncCallLogs),
@@ -440,6 +444,19 @@ export const Settings: React.FC = () => {
                   checked={settings.autoSync}
                   onCheckedChange={(checked) => {
                     setSettings((prev) => ({ ...prev, autoSync: checked }));
+                    setChanged(true);
+                  }}
+                />
+              </div>
+              <div className="flex items-center justify-between py-2">
+                <div>
+                  <label className="text-[var(--font-size-sm)]">{t('settings.folderAutoSync')}</label>
+                  <div className="text-[var(--font-size-xs)] text-gray-400">{t('settings.folderAutoSyncDesc')}</div>
+                </div>
+                <Switch
+                  checked={settings.folderAutoSync}
+                  onCheckedChange={(checked) => {
+                    setSettings((prev) => ({ ...prev, folderAutoSync: checked }));
                     setChanged(true);
                   }}
                 />

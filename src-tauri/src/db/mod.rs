@@ -328,6 +328,7 @@ impl Database {
                 ('sync_messages', 'true'),
                 ('sync_call_logs', 'true'),
                 ('auto_sync', 'false'),
+                ('folder_auto_sync', 'false'),
                 ('version_history_days', '90'),
                 ('clipboard_sync', 'true'),
                 ('scrcpy_max_size', '1920'),
