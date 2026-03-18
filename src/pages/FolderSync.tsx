@@ -373,22 +373,22 @@ export default function FolderSync() {
             <div className="grid grid-cols-5 gap-4">
               <div>
                 <div className="text-gray-500 text-[var(--font-size-xs)]">{t('folderSync.transferInfo.usbSpeed')}</div>
-                <div className="text-base font-semibold flex items-center gap-1">
+                <div className="text-[var(--font-size-base)] font-semibold flex items-center gap-1">
                   <Zap size={16} className="text-yellow-500" />
                   {transferInfo.usbSpeed}
                 </div>
               </div>
               <div>
                 <div className="text-gray-500 text-[var(--font-size-xs)]">{t('folderSync.transferInfo.estimatedSpeed')}</div>
-                <div className="text-base font-semibold">{transferInfo.estimatedSpeed}</div>
+                <div className="text-[var(--font-size-base)] font-semibold">{transferInfo.estimatedSpeed}</div>
               </div>
               <div>
                 <div className="text-gray-500 text-[var(--font-size-xs)]">{t('folderSync.transferInfo.filesystem')}</div>
-                <div className="text-base font-semibold">{transferInfo.filesystem}</div>
+                <div className="text-[var(--font-size-base)] font-semibold">{transferInfo.filesystem}</div>
               </div>
               <div>
                 <div className="text-gray-500 text-[var(--font-size-xs)]">{t('folderSync.transferInfo.maxFileSize')}</div>
-                <div className={cn("text-base font-semibold", transferInfo.hasFat32Limit && "text-red-500")}>
+                <div className={cn("text-[var(--font-size-base)] font-semibold", transferInfo.hasFat32Limit && "text-red-500")}>
                   {transferInfo.maxFileSize}
                 </div>
               </div>
@@ -521,8 +521,8 @@ export default function FolderSync() {
                           <div className="space-y-1">
                             <Progress value={Math.round((prog.current / prog.total) * 100)} />
                             {prog.file && (
-                              <div className="text-xs text-gray-500 truncate">
-                                {prog.action && <Badge variant="info" className="text-xs mr-1">{prog.action}</Badge>}
+                              <div className="text-[var(--font-size-xs)] text-gray-500 truncate">
+                                {prog.action && <Badge variant="info" className="text-[var(--font-size-xs)] mr-1">{prog.action}</Badge>}
                                 {prog.file}
                                 {prog.bytes != null && prog.bytes > 0 && ` (${formatBytes(prog.bytes)})`}
                               </div>
@@ -606,17 +606,17 @@ export default function FolderSync() {
                       <tr className="bg-gray-50">
                         <td colSpan={6} className="p-4">
                           <div className="grid grid-cols-8 gap-4">
-                            <div><div className="text-gray-500 text-xs">{t('folderSync.pushed')}</div><div className="text-sm font-semibold">{last.pushed}</div></div>
-                            <div><div className="text-gray-500 text-xs">{t('folderSync.pulled')}</div><div className="text-sm font-semibold">{last.pulled}</div></div>
-                            <div><div className="text-gray-500 text-xs">{t('folderSync.localDeleted')}</div><div className="text-sm font-semibold">{last.deletedLocal}</div></div>
-                            <div><div className="text-gray-500 text-xs">{t('folderSync.remoteDeleted')}</div><div className="text-sm font-semibold">{last.deletedRemote}</div></div>
-                            <div><div className="text-gray-500 text-xs">{t('folderSync.conflicts')}</div><div className="text-sm font-semibold">{last.conflicts}</div></div>
-                            <div><div className="text-gray-500 text-xs">{t('folderSync.pushVolume')}</div><div className="text-sm font-semibold">{formatBytes(last.bytesPushed)}</div></div>
-                            <div><div className="text-gray-500 text-xs">{t('folderSync.pullVolume')}</div><div className="text-sm font-semibold">{formatBytes(last.bytesPulled)}</div></div>
-                            <div><div className="text-gray-500 text-xs">{t('folderSync.speed')}</div><div className="text-sm font-semibold">{last.speedMbps.toFixed(1)} MB/s</div></div>
+                            <div><div className="text-gray-500 text-[var(--font-size-xs)]">{t('folderSync.pushed')}</div><div className="text-[var(--font-size-sm)] font-semibold">{last.pushed}</div></div>
+                            <div><div className="text-gray-500 text-[var(--font-size-xs)]">{t('folderSync.pulled')}</div><div className="text-[var(--font-size-sm)] font-semibold">{last.pulled}</div></div>
+                            <div><div className="text-gray-500 text-[var(--font-size-xs)]">{t('folderSync.localDeleted')}</div><div className="text-[var(--font-size-sm)] font-semibold">{last.deletedLocal}</div></div>
+                            <div><div className="text-gray-500 text-[var(--font-size-xs)]">{t('folderSync.remoteDeleted')}</div><div className="text-[var(--font-size-sm)] font-semibold">{last.deletedRemote}</div></div>
+                            <div><div className="text-gray-500 text-[var(--font-size-xs)]">{t('folderSync.conflicts')}</div><div className="text-[var(--font-size-sm)] font-semibold">{last.conflicts}</div></div>
+                            <div><div className="text-gray-500 text-[var(--font-size-xs)]">{t('folderSync.pushVolume')}</div><div className="text-[var(--font-size-sm)] font-semibold">{formatBytes(last.bytesPushed)}</div></div>
+                            <div><div className="text-gray-500 text-[var(--font-size-xs)]">{t('folderSync.pullVolume')}</div><div className="text-[var(--font-size-sm)] font-semibold">{formatBytes(last.bytesPulled)}</div></div>
+                            <div><div className="text-gray-500 text-[var(--font-size-xs)]">{t('folderSync.speed')}</div><div className="text-[var(--font-size-sm)] font-semibold">{last.speedMbps.toFixed(1)} MB/s</div></div>
                           </div>
                           {last.errors.length > 0 && (
-                            <div className="flex gap-2 p-3 rounded-[var(--border-radius)] bg-red-50 border border-red-200 text-sm mt-3">
+                            <div className="flex gap-2 p-3 rounded-[var(--border-radius)] bg-red-50 border border-red-200 text-[var(--font-size-sm)] mt-3">
                               <AlertTriangle size={16} className="text-red-600 flex-shrink-0 mt-0.5" />
                               <div>
                                 <div className="font-semibold text-red-700">{t('folderSync.errorsCount', { count: last.errors.length })}</div>
@@ -687,7 +687,7 @@ export default function FolderSync() {
                   ))}
                 </SelectContent>
               </Select>
-              <div className="text-xs text-gray-500 mt-1">{t('folderSync.conflictHint')}</div>
+              <div className="text-[var(--font-size-xs)] text-gray-500 mt-1">{t('folderSync.conflictHint')}</div>
             </div>
           </div>
           <DialogFooter>
@@ -705,11 +705,11 @@ export default function FolderSync() {
               {t('folderSync.editIgnoreRules')}
             </DialogTitle>
           </DialogHeader>
-          <div className="flex gap-2 p-3 rounded-[var(--border-radius)] bg-emerald-50 border border-emerald-200 text-sm">
+          <div className="flex gap-2 p-3 rounded-[var(--border-radius)] bg-emerald-50 border border-emerald-200 text-[var(--font-size-sm)]">
             <Info size={16} className="text-emerald-600 flex-shrink-0 mt-0.5" />
             <div>
               <div className="font-semibold text-emerald-700 mb-1">{t('folderSync.ignoreRuleSyntax')}</div>
-              <ul className="text-emerald-600 pl-5 list-disc space-y-0.5 text-xs">
+              <ul className="text-emerald-600 pl-5 list-disc space-y-0.5 text-[var(--font-size-xs)]">
                 <li>{t('folderSync.ignoreRule1')}</li>
                 <li>{t('folderSync.ignoreRule2')}</li>
                 <li>{t('folderSync.ignoreRule3')}</li>
@@ -717,14 +717,14 @@ export default function FolderSync() {
               </ul>
             </div>
           </div>
-          <div className="text-xs text-gray-500 mb-2">
+          <div className="text-[var(--font-size-xs)] text-gray-500 mb-2">
             {t('common.path')}: {ignoreLocalPath}/.droidlinkignore
           </div>
           <Textarea
             value={ignoreContent}
             onChange={(e) => setIgnoreContent(e.target.value)}
             rows={14}
-            className="font-mono text-xs"
+            className="font-mono text-[var(--font-size-xs)]"
             placeholder="*.tmp&#10;node_modules/&#10;.git/&#10;!important.txt"
           />
           <DialogFooter>
@@ -742,11 +742,11 @@ export default function FolderSync() {
               {t('folderSync.cleanVersionsTitle')}
             </DialogTitle>
           </DialogHeader>
-          <div className="flex gap-2 p-3 rounded-[var(--border-radius)] bg-emerald-50 border border-emerald-200 text-sm mb-4">
+          <div className="flex gap-2 p-3 rounded-[var(--border-radius)] bg-emerald-50 border border-emerald-200 text-[var(--font-size-sm)] mb-4">
             <Info size={16} className="text-emerald-600 flex-shrink-0 mt-0.5" />
             <div className="text-emerald-700">{t('folderSync.versionExplain')}</div>
           </div>
-          <div className="text-sm text-gray-500 mb-3">
+          <div className="text-[var(--font-size-sm)] text-gray-500 mb-3">
             {t('folderSync.syncPairPath', { path: cleanupPath })}
           </div>
           <div>
@@ -758,7 +758,7 @@ export default function FolderSync() {
               value={retentionDays}
               onChange={(e) => setRetentionDays(Number(e.target.value) || 30)}
             />
-            <div className="text-xs text-gray-500 mt-1">
+            <div className="text-[var(--font-size-xs)] text-gray-500 mt-1">
               {t('folderSync.retentionHint', { days: retentionDays })}
             </div>
           </div>

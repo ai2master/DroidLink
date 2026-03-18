@@ -36,7 +36,7 @@ export const VersionPreview: React.FC<VersionPreviewProps> = ({ dataType, data, 
       return <CallLogPreview data={data} compact={compact} />;
     default:
       return (
-        <pre className="bg-gray-50 p-3 rounded text-xs max-h-[200px] overflow-auto">
+        <pre className="bg-gray-50 p-3 rounded text-[var(--font-size-xs)] max-h-[200px] overflow-auto">
           {JSON.stringify(data, null, 2)}
         </pre>
       );
@@ -83,7 +83,7 @@ const ContactPreview: React.FC<{ data: any; compact: boolean }> = ({ data, compa
       </dt>
       <dd className="text-gray-900">
         {phones.length > 0 ? phones.map((p: string, i: number) => (
-          <span key={i} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-50 text-green-700 mr-1">
+          <span key={i} className="inline-flex items-center px-2 py-0.5 rounded text-[var(--font-size-xs)] font-medium bg-green-50 text-green-700 mr-1">
             {p}
           </span>
         )) : '-'}
@@ -94,7 +94,7 @@ const ContactPreview: React.FC<{ data: any; compact: boolean }> = ({ data, compa
       </dt>
       <dd className="text-gray-900">
         {emails.length > 0 ? emails.map((e: string, i: number) => (
-          <span key={i} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-emerald-50 text-emerald-700 mr-1">
+          <span key={i} className="inline-flex items-center px-2 py-0.5 rounded text-[var(--font-size-xs)] font-medium bg-emerald-50 text-emerald-700 mr-1">
             {e}
           </span>
         )) : '-'}
@@ -118,7 +118,7 @@ const MessagePreview: React.FC<{ data: any; compact: boolean }> = ({ data, compa
         <div className="flex items-center gap-2">
           <MessageSquare className="w-4 h-4" />
           <span className="font-semibold">{data.contactName || data.address || '-'}</span>
-          <span className={cn("inline-flex items-center px-2 py-0.5 rounded text-xs font-medium", isSent ? 'bg-emerald-50 text-emerald-700' : 'bg-green-50 text-green-700')}>
+          <span className={cn("inline-flex items-center px-2 py-0.5 rounded text-[var(--font-size-xs)] font-medium", isSent ? 'bg-emerald-50 text-emerald-700' : 'bg-green-50 text-green-700')}>
             {isSent ? t('messages.sent') : t('messages.received')}
           </span>
         </div>
@@ -138,7 +138,7 @@ const MessagePreview: React.FC<{ data: any; compact: boolean }> = ({ data, compa
 
         <dt className="font-medium text-gray-500">{t('messages.type')}</dt>
         <dd>
-          <span className={cn("inline-flex items-center px-2 py-0.5 rounded text-xs font-medium", isSent ? 'bg-emerald-50 text-emerald-700' : 'bg-green-50 text-green-700')}>
+          <span className={cn("inline-flex items-center px-2 py-0.5 rounded text-[var(--font-size-xs)] font-medium", isSent ? 'bg-emerald-50 text-emerald-700' : 'bg-green-50 text-green-700')}>
             {isSent ? t('messages.sent') : t('messages.received')}
           </span>
         </dd>
@@ -183,7 +183,7 @@ const CallLogPreview: React.FC<{ data: any; compact: boolean }> = ({ data, compa
           className="w-4 h-4"
           style={{ color, transform: callType === 1 ? 'rotate(135deg)' : callType === 2 ? 'rotate(-45deg)' : 'none' }}
         />
-        <span className={cn("inline-flex items-center px-2 py-0.5 rounded text-xs font-medium", getBadgeClass())}>
+        <span className={cn("inline-flex items-center px-2 py-0.5 rounded text-[var(--font-size-xs)] font-medium", getBadgeClass())}>
           {typeLabel}
         </span>
         <span className="font-semibold">{data.contactName || data.number || '-'}</span>
@@ -204,7 +204,7 @@ const CallLogPreview: React.FC<{ data: any; compact: boolean }> = ({ data, compa
           className="w-4 h-4"
           style={{ color, transform: callType === 1 ? 'rotate(135deg)' : callType === 2 ? 'rotate(-45deg)' : 'none' }}
         />
-        <span className={cn("inline-flex items-center px-2 py-0.5 rounded text-xs font-medium", getBadgeClass())}>
+        <span className={cn("inline-flex items-center px-2 py-0.5 rounded text-[var(--font-size-xs)] font-medium", getBadgeClass())}>
           {typeLabel}
         </span>
       </dd>

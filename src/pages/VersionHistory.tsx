@@ -123,7 +123,7 @@ export const VersionHistory: React.FC = () => {
       content: (
         <div>
           <p>{t('versionHistory.restoreConfirm', { description })}</p>
-          <div className="flex gap-2 p-3 rounded-[var(--border-radius)] bg-emerald-50 border border-emerald-200 text-sm mt-2">
+          <div className="flex gap-2 p-3 rounded-[var(--border-radius)] bg-emerald-50 border border-emerald-200 text-[var(--font-size-sm)] mt-2">
             <span className="text-emerald-800">{t('versionHistory.restoreNote')}</span>
           </div>
         </div>
@@ -214,7 +214,7 @@ export const VersionHistory: React.FC = () => {
       <div className="flex flex-col gap-3">
         {versionList.map((version) => (
           <div key={version.id} className="flex gap-4">
-            <div className="text-xs text-gray-500 w-32 text-right pt-1">
+            <div className="text-[var(--font-size-xs)] text-gray-500 w-32 text-right pt-1">
               {formatDate(version.createdAt)}
             </div>
             <div className="relative flex-1">
@@ -264,7 +264,7 @@ export const VersionHistory: React.FC = () => {
                     </Button>
                   </div>
                 </div>
-                <div className="text-xs text-gray-500">
+                <div className="text-[var(--font-size-xs)] text-gray-500">
                   {t('versionHistory.sourcePrefix', { source: version.source })}
                 </div>
               </div>
@@ -293,7 +293,7 @@ export const VersionHistory: React.FC = () => {
             <div className="text-center py-12 text-gray-400">{t('common.loading')}</div>
           ) : (
             <div className="space-y-4">
-              <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 border border-border rounded-[var(--border-radius)] p-3 text-sm">
+              <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 border border-border rounded-[var(--border-radius)] p-3 text-[var(--font-size-sm)]">
                 <dt className="text-gray-500 font-medium">{t('versionHistory.operation')}</dt>
                 <dd><Badge variant={getActionColor(rec.action)}>{rec.action}</Badge></dd>
                 <dt className="text-gray-500 font-medium">{t('versionHistory.description')}</dt>
@@ -304,14 +304,14 @@ export const VersionHistory: React.FC = () => {
 
               {beforeData && (
                 <>
-                  <div className="font-semibold text-sm border-t border-border pt-3">{t('versionHistory.before')}</div>
+                  <div className="font-semibold text-[var(--font-size-sm)] border-t border-border pt-3">{t('versionHistory.before')}</div>
                   <VersionPreview dataType={selectedDataType} data={beforeData} />
                 </>
               )}
 
               {afterData && (
                 <>
-                  <div className="font-semibold text-sm border-t border-border pt-3">{t('versionHistory.after')}</div>
+                  <div className="font-semibold text-[var(--font-size-sm)] border-t border-border pt-3">{t('versionHistory.after')}</div>
                   <VersionPreview dataType={selectedDataType} data={afterData} />
                 </>
               )}
@@ -374,9 +374,9 @@ export const VersionHistory: React.FC = () => {
           <DialogTitle>{t('versionHistory.deleteOld')}</DialogTitle>
         </DialogHeader>
         <div className="flex flex-col gap-4">
-          <div className="text-sm text-gray-600">{t('versionHistory.cleanupDesc')}</div>
+          <div className="text-[var(--font-size-sm)] text-gray-600">{t('versionHistory.cleanupDesc')}</div>
           <div>
-            <div className="mb-2 font-medium text-sm">{t('versionHistory.selectDateLabel')}</div>
+            <div className="mb-2 font-medium text-[var(--font-size-sm)]">{t('versionHistory.selectDateLabel')}</div>
             <input
               type="date"
               value={beforeDate}
@@ -384,7 +384,7 @@ export const VersionHistory: React.FC = () => {
               className="w-full p-2 border border-border rounded-[var(--border-radius)]"
             />
           </div>
-          <div className="text-sm text-yellow-600 font-medium">
+          <div className="text-[var(--font-size-sm)] text-yellow-600 font-medium">
             {t('versionHistory.cleanupWarning')}
           </div>
         </div>
@@ -448,7 +448,7 @@ export const VersionHistory: React.FC = () => {
           </div>
 
           {compareMode && (
-            <div className="flex gap-2 p-3 rounded-[var(--border-radius)] bg-emerald-50 border border-emerald-200 text-sm">
+            <div className="flex gap-2 p-3 rounded-[var(--border-radius)] bg-emerald-50 border border-emerald-200 text-[var(--font-size-sm)]">
               <span className="text-emerald-800">
                 {t('versionHistory.selectTwoVersions')}
                 {selectedForCompare.length > 0 && ` - ${selectedForCompare.length}/2 ${t('versionHistory.selected')}`}

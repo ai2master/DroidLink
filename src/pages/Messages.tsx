@@ -346,14 +346,14 @@ export const Messages: React.FC = () => {
                           <span className="font-semibold text-[var(--font-size-base)] truncate">
                             {conv.contactName || conv.address}
                           </span>
-                          <span className="text-gray-400 text-xs shrink-0 ml-2">
+                          <span className="text-gray-400 text-[var(--font-size-xs)] shrink-0 ml-2">
                             {formatRelativeTime(conv.lastDate)}
                           </span>
                         </div>
                         <p className="text-gray-500 text-[var(--font-size-sm)] truncate mb-1">
                           {conv.lastMessage}
                         </p>
-                        <span className="text-gray-400 text-xs">
+                        <span className="text-gray-400 text-[var(--font-size-xs)]">
                           {t('messages.messageCount', { count: conv.messageCount })}
                         </span>
                       </div>
@@ -412,7 +412,7 @@ export const Messages: React.FC = () => {
                                 </div>
                                 <div
                                   className={cn(
-                                    "mt-1 text-xs text-right",
+                                    "mt-1 text-[var(--font-size-xs)] text-right",
                                     isSent ? "opacity-80" : "opacity-60"
                                   )}
                                 >
@@ -473,11 +473,11 @@ export const Messages: React.FC = () => {
                         <div className="rounded-[var(--border-radius)] border border-border bg-white p-3 text-[var(--font-size-sm)]">
                           <div className="flex justify-between items-center">
                             <div className="flex items-center gap-2 flex-wrap">
-                              <span className={cn("inline-flex items-center px-2 py-0.5 rounded text-xs font-medium", getActionBadgeClass(color))}>
+                              <span className={cn("inline-flex items-center px-2 py-0.5 rounded text-[var(--font-size-xs)] font-medium", getActionBadgeClass(color))}>
                                 {v.action}
                               </span>
                               <span>{v.description}</span>
-                              <span className="text-gray-400 text-xs">{formatDate(v.createdAt)}</span>
+                              <span className="text-gray-400 text-[var(--font-size-xs)]">{formatDate(v.createdAt)}</span>
                             </div>
                             <div className="flex gap-1">
                               <Button variant="ghost" size="sm" onClick={() => handleViewVersionDetail(v.id)}>

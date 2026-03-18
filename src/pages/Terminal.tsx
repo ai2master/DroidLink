@@ -12,6 +12,11 @@ interface TerminalLine {
   timestamp: number;
 }
 
+// Terminal font: use custom font if set, otherwise monospace fallback
+const terminalFontStyle: React.CSSProperties = {
+  fontFamily: 'var(--font-family-custom), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+};
+
 const Terminal: React.FC = () => {
   const { t } = useTranslation();
   const toast = useToast();
@@ -168,7 +173,7 @@ const Terminal: React.FC = () => {
         <div className="flex items-center justify-between px-4 py-2 bg-gray-800 border-b border-gray-700 flex-shrink-0">
           <div className="flex items-center gap-2">
             <TerminalIcon className="h-4 w-4 text-green-400" />
-            <span className="text-green-400 text-sm font-mono">
+            <span className="text-green-400 text-[var(--font-size-sm)]" style={terminalFontStyle}>
               {t('terminal.title')} - {device.displayName || device.model}
             </span>
           </div>
@@ -206,7 +211,8 @@ const Terminal: React.FC = () => {
         {/* Terminal output */}
         <div
           ref={scrollRef}
-          className="flex-1 overflow-y-auto p-4 font-mono text-sm leading-relaxed"
+          className="flex-1 overflow-y-auto p-4 text-[var(--font-size-sm)] leading-relaxed"
+          style={terminalFontStyle}
           onClick={() => inputRef.current?.focus()}
         >
           {lines.map((line, i) => (
@@ -228,14 +234,15 @@ const Terminal: React.FC = () => {
 
           {/* Input line */}
           <div className="flex items-center mt-1">
-            <span className="text-blue-400 mr-2 flex-shrink-0 font-mono">{cwd} $</span>
+            <span className="text-blue-400 mr-2 flex-shrink-0">{cwd} $</span>
             <input
               ref={inputRef}
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              className="flex-1 bg-transparent text-gray-200 outline-none font-mono caret-green-400"
+              className="flex-1 bg-transparent text-gray-200 outline-none caret-green-400"
+              style={terminalFontStyle}
               disabled={running}
               autoComplete="off"
               spellCheck={false}

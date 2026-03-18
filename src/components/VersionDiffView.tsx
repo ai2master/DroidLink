@@ -60,22 +60,22 @@ export const VersionDiffView: React.FC<VersionDiffViewProps> = ({
         <div className="rounded-md bg-orange-50 border border-orange-200 p-3">
           <span className="font-semibold">{t('versionHistory.versionA')}</span>
           {actionA && (
-            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700 ml-2">
+            <span className="inline-flex items-center px-2 py-0.5 rounded text-[var(--font-size-xs)] font-medium bg-gray-100 text-gray-700 ml-2">
               {actionA}
             </span>
           )}
           <br />
-          <span className="text-gray-500 text-xs">{formatDate(timestampA)}</span>
+          <span className="text-gray-500 text-[var(--font-size-xs)]">{formatDate(timestampA)}</span>
         </div>
         <div className="rounded-md bg-green-50 border border-green-200 p-3">
           <span className="font-semibold">{t('versionHistory.versionB')}</span>
           {actionB && (
-            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700 ml-2">
+            <span className="inline-flex items-center px-2 py-0.5 rounded text-[var(--font-size-xs)] font-medium bg-gray-100 text-gray-700 ml-2">
               {actionB}
             </span>
           )}
           <br />
-          <span className="text-gray-500 text-xs">{formatDate(timestampB)}</span>
+          <span className="text-gray-500 text-[var(--font-size-xs)]">{formatDate(timestampB)}</span>
         </div>
       </div>
 
@@ -94,19 +94,19 @@ export const VersionDiffView: React.FC<VersionDiffViewProps> = ({
         let statusTag: React.ReactNode;
         if (diff.added) {
           statusTag = (
-            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-50 text-green-700">
+            <span className="inline-flex items-center px-2 py-0.5 rounded text-[var(--font-size-xs)] font-medium bg-green-50 text-green-700">
               {t('versionHistory.fieldAdded')}
             </span>
           );
         } else if (diff.removed) {
           statusTag = (
-            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-50 text-red-700">
+            <span className="inline-flex items-center px-2 py-0.5 rounded text-[var(--font-size-xs)] font-medium bg-red-50 text-red-700">
               {t('versionHistory.fieldRemoved')}
             </span>
           );
         } else {
           statusTag = (
-            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-50 text-yellow-700">
+            <span className="inline-flex items-center px-2 py-0.5 rounded text-[var(--font-size-xs)] font-medium bg-yellow-50 text-yellow-700">
               {t('versionHistory.fieldChanged')}
             </span>
           );
@@ -170,7 +170,7 @@ function getFieldDefs(dataType: string, t: (key: string) => string): FieldDef[] 
           key: 'msgType',
           label: t('messages.type'),
           render: (v: any) => (
-            <span className={cn("inline-flex items-center px-2 py-0.5 rounded text-xs font-medium", v === 2 ? 'bg-emerald-50 text-emerald-700' : 'bg-green-50 text-green-700')}>
+            <span className={cn("inline-flex items-center px-2 py-0.5 rounded text-[var(--font-size-xs)] font-medium", v === 2 ? 'bg-emerald-50 text-emerald-700' : 'bg-green-50 text-green-700')}>
               {v === 2 ? t('messages.sent') : t('messages.received')}
             </span>
           ),
@@ -199,7 +199,7 @@ function renderJsonArray(val: any): React.ReactNode {
   return (
     <>
       {arr.map((item, i) => (
-        <span key={i} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700 mr-1">
+        <span key={i} className="inline-flex items-center px-2 py-0.5 rounded text-[var(--font-size-xs)] font-medium bg-gray-100 text-gray-700 mr-1">
           {item}
         </span>
       ))}
@@ -215,7 +215,7 @@ function renderCallType(t: (key: string) => string) {
       : type === 3 ? t('callLogs.missed')
       : t('callLogs.other');
     return (
-      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700">
+      <span className="inline-flex items-center px-2 py-0.5 rounded text-[var(--font-size-xs)] font-medium bg-gray-100 text-gray-700">
         {label}
       </span>
     );

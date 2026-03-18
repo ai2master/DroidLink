@@ -98,7 +98,7 @@ export const CompanionInstallPrompt: React.FC<CompanionInstallPromptProps> = ({
           <h3 className="text-xl font-semibold text-gray-900">
             {isUpdate ? t('companion.updateSuccess') : t('companion.installSuccess')}
           </h3>
-          <p className="text-sm text-gray-500 text-center">
+          <p className="text-[var(--font-size-sm)] text-gray-500 text-center">
             {isUpdate ? t('companion.updateSuccessDesc') : t('companion.installSuccessDesc')}
           </p>
         </div>
@@ -111,10 +111,10 @@ export const CompanionInstallPrompt: React.FC<CompanionInstallPromptProps> = ({
         <div className={`flex gap-3 p-4 rounded-lg border ${isUpdate ? 'bg-amber-50 border-amber-200' : 'bg-emerald-50 border-emerald-200'}`}>
           <Smartphone className={`w-5 h-5 flex-shrink-0 mt-0.5 ${isUpdate ? 'text-amber-600' : 'text-emerald-600'}`} />
           <div className="flex-1 space-y-1">
-            <div className={`text-sm font-medium ${isUpdate ? 'text-amber-900' : 'text-emerald-900'}`}>
+            <div className={`text-[var(--font-size-sm)] font-medium ${isUpdate ? 'text-amber-900' : 'text-emerald-900'}`}>
               {t('companion.detected', { device: deviceName })}
             </div>
-            <div className={`text-sm ${isUpdate ? 'text-amber-700' : 'text-emerald-700'}`}>
+            <div className={`text-[var(--font-size-sm)] ${isUpdate ? 'text-amber-700' : 'text-emerald-700'}`}>
               {isUpdate ? t('companion.updateAvailable') : t('companion.notInstalled')}
             </div>
           </div>
@@ -123,17 +123,17 @@ export const CompanionInstallPrompt: React.FC<CompanionInstallPromptProps> = ({
         {/* Feature Details (Expandable) - only for install mode */}
         {!isUpdate && (
           <div>
-            <h4 className="text-base font-semibold text-gray-900 mb-2">{t('companion.featureOverview')}</h4>
-            <p className="text-sm text-gray-600 mb-3">{t('companion.featureOverviewDesc')}</p>
+            <h4 className="text-[var(--font-size-base)] font-semibold text-gray-900 mb-2">{t('companion.featureOverview')}</h4>
+            <p className="text-[var(--font-size-sm)] text-gray-600 mb-3">{t('companion.featureOverviewDesc')}</p>
             <details className="group">
-              <summary className="cursor-pointer text-sm font-medium text-primary hover:underline select-none flex items-center gap-1">
+              <summary className="cursor-pointer text-[var(--font-size-sm)] font-medium text-primary hover:underline select-none flex items-center gap-1">
                 <ChevronRight className="w-4 h-4 transition-transform group-open:rotate-90" />
                 {t('companion.viewFeatureDetails')}
               </summary>
               <div className="mt-3 space-y-4 pl-5">
                 <div>
-                  <div className="text-sm font-semibold text-gray-800 mb-2">{t('companion.featuresWithApk')}</div>
-                  <ul className="space-y-1.5 text-sm text-gray-700">
+                  <div className="text-[var(--font-size-sm)] font-semibold text-gray-800 mb-2">{t('companion.featuresWithApk')}</div>
+                  <ul className="space-y-1.5 text-[var(--font-size-sm)] text-gray-700">
                     {['featureContacts', 'featureMessages', 'featureCallLogs', 'featureClipboard', 'featureCjkInput', 'featureRealTimeSync'].map((key) => (
                       <li key={key} className="flex gap-2 items-start">
                         <CheckCircle2 className="w-4 h-4 text-green-500 flex-shrink-0 mt-0.5" />
@@ -143,8 +143,8 @@ export const CompanionInstallPrompt: React.FC<CompanionInstallPromptProps> = ({
                   </ul>
                 </div>
                 <div>
-                  <div className="text-sm font-semibold text-gray-800 mb-2">{t('companion.featuresWithoutApk')}</div>
-                  <ul className="space-y-1.5 text-sm text-gray-700">
+                  <div className="text-[var(--font-size-sm)] font-semibold text-gray-800 mb-2">{t('companion.featuresWithoutApk')}</div>
+                  <ul className="space-y-1.5 text-[var(--font-size-sm)] text-gray-700">
                     {['featureScreenMirror', 'featureFileManager', 'featureFileTransfer', 'featureScreenshot'].map((key) => (
                       <li key={key} className="flex gap-2 items-start">
                         <CheckCircle2 className="w-4 h-4 text-emerald-500 flex-shrink-0 mt-0.5" />
@@ -160,15 +160,15 @@ export const CompanionInstallPrompt: React.FC<CompanionInstallPromptProps> = ({
 
         {/* How It Works Section */}
         <div>
-          <h4 className="text-base font-semibold text-gray-900 mb-3">{t('companion.howItWorks')}</h4>
+          <h4 className="text-[var(--font-size-base)] font-semibold text-gray-900 mb-3">{t('companion.howItWorks')}</h4>
           <div className="space-y-4">
             <div className="flex gap-3">
               <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gray-100 flex-shrink-0">
                 <Smartphone className="w-4 h-4 text-gray-600" />
               </div>
               <div className="flex-1 pt-1">
-                <div className="text-sm font-medium text-gray-900">{t('companion.step1Title')}</div>
-                <div className="text-sm text-gray-600 mt-1">{t('companion.step1Desc')}</div>
+                <div className="text-[var(--font-size-sm)] font-medium text-gray-900">{t('companion.step1Title')}</div>
+                <div className="text-[var(--font-size-sm)] text-gray-600 mt-1">{t('companion.step1Desc')}</div>
               </div>
             </div>
             <div className="flex gap-3">
@@ -176,12 +176,12 @@ export const CompanionInstallPrompt: React.FC<CompanionInstallPromptProps> = ({
                 {installing ? (
                   <Loader2 className="w-4 h-4 text-emerald-600 animate-spin" />
                 ) : (
-                  <span className="text-sm font-medium text-gray-600">2</span>
+                  <span className="text-[var(--font-size-sm)] font-medium text-gray-600">2</span>
                 )}
               </div>
               <div className="flex-1 pt-1">
-                <div className="text-sm font-medium text-gray-900">{t('companion.step2Title')}</div>
-                <div className="text-sm text-gray-600 mt-1">{t('companion.step2Desc')}</div>
+                <div className="text-[var(--font-size-sm)] font-medium text-gray-900">{t('companion.step2Title')}</div>
+                <div className="text-[var(--font-size-sm)] text-gray-600 mt-1">{t('companion.step2Desc')}</div>
               </div>
             </div>
             <div className="flex gap-3">
@@ -189,8 +189,8 @@ export const CompanionInstallPrompt: React.FC<CompanionInstallPromptProps> = ({
                 <CheckCircle2 className="w-4 h-4 text-gray-600" />
               </div>
               <div className="flex-1 pt-1">
-                <div className="text-sm font-medium text-gray-900">{t('companion.step3Title')}</div>
-                <div className="text-sm text-gray-600 mt-1">{t('companion.step3Desc')}</div>
+                <div className="text-[var(--font-size-sm)] font-medium text-gray-900">{t('companion.step3Title')}</div>
+                <div className="text-[var(--font-size-sm)] text-gray-600 mt-1">{t('companion.step3Desc')}</div>
               </div>
             </div>
           </div>
@@ -200,8 +200,8 @@ export const CompanionInstallPrompt: React.FC<CompanionInstallPromptProps> = ({
         <div className="flex gap-3 p-4 rounded-lg bg-amber-50 border border-amber-200">
           <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
           <div className="flex-1 space-y-1">
-            <div className="text-sm font-medium text-amber-900">{t('companion.permissionNote')}</div>
-            <div className="text-sm text-amber-700">{t('companion.permissionNoteDesc')}</div>
+            <div className="text-[var(--font-size-sm)] font-medium text-amber-900">{t('companion.permissionNote')}</div>
+            <div className="text-[var(--font-size-sm)] text-amber-700">{t('companion.permissionNoteDesc')}</div>
           </div>
         </div>
 
@@ -210,8 +210,8 @@ export const CompanionInstallPrompt: React.FC<CompanionInstallPromptProps> = ({
           <div className="flex gap-3 p-4 rounded-lg bg-red-50 border border-red-200">
             <AlertTriangle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
             <div className="flex-1 space-y-1">
-              <div className="text-sm font-medium text-red-900">{t('companion.installFailed')}</div>
-              <div className="text-sm text-red-700">{errorMessage}</div>
+              <div className="text-[var(--font-size-sm)] font-medium text-red-900">{t('companion.installFailed')}</div>
+              <div className="text-[var(--font-size-sm)] text-red-700">{errorMessage}</div>
             </div>
           </div>
         )}
@@ -235,7 +235,7 @@ export const CompanionInstallPrompt: React.FC<CompanionInstallPromptProps> = ({
               <div className="flex items-center justify-center py-8">
                 <Loader2 className="w-8 h-8 text-emerald-600 animate-spin" />
               </div>
-              <p className="text-center text-sm text-gray-600">{t('companion.installing')}</p>
+              <p className="text-center text-[var(--font-size-sm)] text-gray-600">{t('companion.installing')}</p>
               {renderContent()}
             </div>
           ) : (

@@ -374,7 +374,7 @@ export const Settings: React.FC = () => {
                 >
                   {selectedFont || t('settings.fontDefault')}
                 </span>
-                <span className="text-gray-400 text-xs">{selectedFont ? '' : t('settings.fontSystemDefault')}</span>
+                <span className="text-gray-400 text-[var(--font-size-xs)]">{selectedFont ? '' : t('settings.fontSystemDefault')}</span>
               </div>
               {fontDropdownOpen && (
                 <div className="absolute z-50 mt-1 w-full bg-white border border-border rounded-[var(--border-radius)] shadow-lg max-h-[320px] flex flex-col">
@@ -864,7 +864,7 @@ export const Settings: React.FC = () => {
                   <div className="flex items-center justify-between py-2 border-b border-border last:border-b-0">
                     <dt className="text-[var(--font-size-sm)] text-gray-600">{t('settings.adbPort')}</dt>
                     <dd>
-                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-50 text-gray-700">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded text-[var(--font-size-xs)] font-medium bg-gray-50 text-gray-700">
                         {systemInfo.adbInfo.port}
                       </span>
                     </dd>
@@ -873,17 +873,17 @@ export const Settings: React.FC = () => {
                     <dt className="text-[var(--font-size-sm)] text-gray-600">{t('settings.adbSource')}</dt>
                     <dd>
                       {systemInfo.adbInfo.source === 'bundled' && (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-emerald-50 text-emerald-700">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[var(--font-size-xs)] font-medium bg-emerald-50 text-emerald-700">
                           {t('settings.bundled')}
                         </span>
                       )}
                       {systemInfo.adbInfo.source === 'system' && (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-50 text-green-700">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[var(--font-size-xs)] font-medium bg-green-50 text-green-700">
                           {t('settings.system')}
                         </span>
                       )}
                       {systemInfo.adbInfo.source === 'custom' && (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-50 text-yellow-700">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[var(--font-size-xs)] font-medium bg-yellow-50 text-yellow-700">
                           {t('settings.custom')}
                         </span>
                       )}
@@ -893,11 +893,11 @@ export const Settings: React.FC = () => {
                     <dt className="text-[var(--font-size-sm)] text-gray-600">{t('settings.adbReused')}</dt>
                     <dd>
                       {systemInfo.adbInfo.reused_server ? (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-50 text-green-700">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[var(--font-size-xs)] font-medium bg-green-50 text-green-700">
                           {t('common.yes')}
                         </span>
                       ) : (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-50 text-gray-700">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[var(--font-size-xs)] font-medium bg-gray-50 text-gray-700">
                           {t('common.no')}
                         </span>
                       )}
@@ -981,7 +981,7 @@ export const Settings: React.FC = () => {
                 <dd>
                   {systemInfo.scrcpyVersion ? (
                     <div className="flex items-center gap-2">
-                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-50 text-green-700">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded text-[var(--font-size-xs)] font-medium bg-green-50 text-green-700">
                         {systemInfo.scrcpyVersion}
                       </span>
                       {renderStatusBadge(true)}
@@ -1002,7 +1002,7 @@ export const Settings: React.FC = () => {
               <div className="flex items-center justify-between py-2 border-b border-border last:border-b-0">
                 <dt className="text-[var(--font-size-sm)] text-gray-600">{t('settings.version')}</dt>
                 <dd>
-                  <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-emerald-50 text-emerald-700">
+                  <span className="inline-flex items-center px-2 py-0.5 rounded text-[var(--font-size-xs)] font-medium bg-emerald-50 text-emerald-700">
                     v{systemInfo.appVersion}
                   </span>
                 </dd>

@@ -197,7 +197,7 @@ export const Contacts: React.FC = () => {
       content: (
         <div>
           <p>{t('versionHistory.restoreConfirm', { description })}</p>
-          <div className="mt-2 rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700">
+          <div className="mt-2 rounded-md border border-emerald-200 bg-emerald-50 p-3 text-[var(--font-size-sm)] text-emerald-700">
             <span className="mr-2">ℹ</span>
             {t('versionHistory.restoreNote')}
           </div>
@@ -456,11 +456,11 @@ export const Contacts: React.FC = () => {
                                             <div className="rounded-[var(--border-radius)] border border-border bg-white p-3 text-[var(--font-size-sm)]">
                                               <div className="flex justify-between items-center">
                                                 <div className="flex items-center gap-2 flex-wrap">
-                                                  <span className={cn("inline-flex items-center px-2 py-0.5 rounded text-xs font-medium", getActionBadgeClass(color))}>
+                                                  <span className={cn("inline-flex items-center px-2 py-0.5 rounded text-[var(--font-size-xs)] font-medium", getActionBadgeClass(color))}>
                                                     {version.action}
                                                   </span>
                                                   <span>{version.changes}</span>
-                                                  <span className="text-gray-400 text-xs">
+                                                  <span className="text-gray-400 text-[var(--font-size-xs)]">
                                                     {formatDate(version.createdAt)}
                                                   </span>
                                                 </div>
@@ -588,7 +588,7 @@ export const Contacts: React.FC = () => {
                   <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 mb-4 p-3 border border-border rounded-md text-[var(--font-size-sm)]">
                     <dt className="font-medium text-gray-500">{t('versionHistory.operation')}</dt>
                     <dd>
-                      <span className={cn("inline-flex items-center px-2 py-0.5 rounded text-xs font-medium", getActionBadgeClass(color))}>
+                      <span className={cn("inline-flex items-center px-2 py-0.5 rounded text-[var(--font-size-xs)] font-medium", getActionBadgeClass(color))}>
                         {record.action}
                       </span>
                     </dd>

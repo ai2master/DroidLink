@@ -19,7 +19,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
     if (icon || suffix) {
       return (
         <div className="relative flex items-center">
-          {icon && <span className="absolute left-2.5 text-gray-400 pointer-events-none">{renderIcon()}</span>}
+          {icon && <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none flex items-center">{renderIcon()}</span>}
           <input
             ref={ref}
             className={cn(
@@ -27,13 +27,13 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
               'text-[var(--font-size-base)] placeholder:text-gray-400',
               'focus:outline-none focus:ring-2 focus:ring-primary/40',
               'disabled:cursor-not-allowed disabled:opacity-50',
-              icon ? 'pl-8 pr-3' : 'px-3',
-              suffix ? 'pr-8' : '',
+              icon ? 'pl-9 pr-3' : 'px-3',
+              suffix ? 'pr-9' : '',
               className,
             )}
             {...props}
           />
-          {suffix && <span className="absolute right-2.5 text-gray-400">{suffix}</span>}
+          {suffix && <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 flex items-center">{suffix}</span>}
         </div>
       );
     }

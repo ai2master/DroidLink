@@ -314,7 +314,7 @@ export default function Transfer() {
                 <div
                   className={cn(
                     "min-h-[226px] max-h-[226px] overflow-auto p-3 bg-gray-50 rounded-md border border-border",
-                    "whitespace-pre-wrap break-all text-sm mb-3",
+                    "whitespace-pre-wrap break-all text-[var(--font-size-sm)] mb-3",
                     !deviceClipText && "text-gray-400"
                   )}
                 >
@@ -380,7 +380,7 @@ export default function Transfer() {
                     {t('transfer.sendFolder')}
                   </Button>
                 </div>
-                <div className="text-xs text-gray-500">
+                <div className="text-[var(--font-size-xs)] text-gray-500">
                   {t('transfer.pcToPhoneDesc')}
                 </div>
               </div>
@@ -391,7 +391,7 @@ export default function Transfer() {
                   <Download size={16} />
                   {t('transfer.receiveFile')}
                 </Button>
-                <div className="text-xs text-gray-500 mt-2">
+                <div className="text-[var(--font-size-xs)] text-gray-500 mt-2">
                   {t('transfer.phoneToPCDesc')}
                 </div>
               </div>
@@ -419,7 +419,7 @@ export default function Transfer() {
                       </Badge>
                       {item.method && <Badge>{methodLabels[item.method] || item.method}</Badge>}
                       {item.size && <Badge variant="default">{item.size}</Badge>}
-                      <span className="text-xs text-gray-500">{item.time}</span>
+                      <span className="text-[var(--font-size-xs)] text-gray-500">{item.time}</span>
                     </div>
                   ))}
                 </div>

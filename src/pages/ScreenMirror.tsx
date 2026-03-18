@@ -305,7 +305,7 @@ export default function ScreenMirror() {
                 : t('screenMirror.scrcpyInstallHint')}
             </span>
             {scrcpyError && (
-              <pre className="text-xs text-yellow-700 bg-yellow-100 p-2 rounded overflow-x-auto whitespace-pre-wrap">{scrcpyError}</pre>
+              <pre className="text-[var(--font-size-xs)] text-yellow-700 bg-yellow-100 p-2 rounded overflow-x-auto whitespace-pre-wrap">{scrcpyError}</pre>
             )}
           </div>
         )}
@@ -367,7 +367,7 @@ export default function ScreenMirror() {
                   {imeEnabled && <Badge variant="success">{t('screenMirror.imeEnabled')}</Badge>}
                 </div>
                 {imeStatus && (
-                  <div className="text-xs text-gray-500">
+                  <div className="text-[var(--font-size-xs)] text-gray-500">
                     {t('screenMirror.currentIME')}: {imeStatus}
                   </div>
                 )}
@@ -381,7 +381,7 @@ export default function ScreenMirror() {
                 disabled={!imeEnabled}
                 onKeyDown={(e) => { if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') sendText(); }}
               />
-              <div className="text-xs text-gray-500">{t('screenMirror.ctrlEnterHint')}</div>
+              <div className="text-[var(--font-size-xs)] text-gray-500">{t('screenMirror.ctrlEnterHint')}</div>
 
               <div className="flex flex-wrap gap-2">
                 <Button variant="primary" onClick={sendText} disabled={!imeEnabled || !textInput}>
@@ -425,7 +425,7 @@ export default function ScreenMirror() {
                       ))}
                     </SelectContent>
                   </Select>
-                  <div className="text-xs text-gray-500 mt-1">
+                  <div className="text-[var(--font-size-xs)] text-gray-500 mt-1">
                     {t('screenMirror.currentIME')}: {currentIme}
                   </div>
                 </div>
@@ -604,27 +604,27 @@ export default function ScreenMirror() {
           <div className="rounded-[var(--border-radius)] border border-border bg-white p-[var(--card-padding)]">
             <div className="font-semibold text-[var(--font-size-base)] mb-3">{t('screenMirror.touchSettings')}</div>
             <div className="flex flex-col gap-4">
-              <div className="flex gap-2 p-2 rounded-[var(--border-radius)] bg-emerald-50 border border-emerald-200 text-xs">
+              <div className="flex gap-2 p-2 rounded-[var(--border-radius)] bg-emerald-50 border border-emerald-200 text-[var(--font-size-xs)]">
                 <span className="text-emerald-800">{t('screenMirror.touchInfoDesc')}</span>
               </div>
               <div className="flex justify-between items-start">
                 <div>
                   <div>{t('screenMirror.forwardAllClicks')}</div>
-                  <div className="text-xs text-gray-500">{t('screenMirror.forwardAllClicksDesc')}</div>
+                  <div className="text-[var(--font-size-xs)] text-gray-500">{t('screenMirror.forwardAllClicksDesc')}</div>
                 </div>
                 <Switch checked={options.forwardAllClicks} onCheckedChange={(v) => setOptions((o) => ({ ...o, forwardAllClicks: v }))} disabled={running} />
               </div>
               <div className="flex justify-between items-start">
                 <div>
                   <div>{t('screenMirror.noMouseHover')}</div>
-                  <div className="text-xs text-gray-500">{t('screenMirror.noMouseHoverDesc')}</div>
+                  <div className="text-[var(--font-size-xs)] text-gray-500">{t('screenMirror.noMouseHoverDesc')}</div>
                 </div>
                 <Switch checked={options.noMouseHover} onCheckedChange={(v) => setOptions((o) => ({ ...o, noMouseHover: v }))} disabled={running} />
               </div>
               <div className="flex justify-between items-start">
                 <div>
                   <div>{t('screenMirror.otgMode')}</div>
-                  <div className="text-xs text-gray-500">{t('screenMirror.otgModeDesc')}</div>
+                  <div className="text-[var(--font-size-xs)] text-gray-500">{t('screenMirror.otgModeDesc')}</div>
                 </div>
                 <Switch checked={options.otgMode} onCheckedChange={(v) => setOptions((o) => ({ ...o, otgMode: v }))} disabled={running} />
               </div>
@@ -693,7 +693,7 @@ export default function ScreenMirror() {
                   <div className="flex justify-between items-center">
                     <div>
                       <span className="font-medium">{t('screenMirror.advRecord')}</span>
-                      <code className="ml-2 text-xs bg-gray-100 px-1.5 py-0.5 rounded">--record</code>
+                      <code className="ml-2 text-[var(--font-size-xs)] bg-gray-100 px-1.5 py-0.5 rounded">--record</code>
                     </div>
                     <Input
                       value={advancedOptions.recordFile}
@@ -703,7 +703,7 @@ export default function ScreenMirror() {
                       className="w-64"
                     />
                   </div>
-                  <span className="text-xs text-gray-500">{t('screenMirror.advRecordDesc')}</span>
+                  <span className="text-[var(--font-size-xs)] text-gray-500">{t('screenMirror.advRecordDesc')}</span>
                 </div>
 
                 {/* --window-title / 窗口标题 */}
@@ -711,7 +711,7 @@ export default function ScreenMirror() {
                   <div className="flex justify-between items-center">
                     <div>
                       <span className="font-medium">{t('screenMirror.advWindowTitle')}</span>
-                      <code className="ml-2 text-xs bg-gray-100 px-1.5 py-0.5 rounded">--window-title</code>
+                      <code className="ml-2 text-[var(--font-size-xs)] bg-gray-100 px-1.5 py-0.5 rounded">--window-title</code>
                     </div>
                     <Input
                       value={advancedOptions.windowTitle}
@@ -721,7 +721,7 @@ export default function ScreenMirror() {
                       className="w-64"
                     />
                   </div>
-                  <span className="text-xs text-gray-500">{t('screenMirror.advWindowTitleDesc')}</span>
+                  <span className="text-[var(--font-size-xs)] text-gray-500">{t('screenMirror.advWindowTitleDesc')}</span>
                 </div>
 
                 {/* --crop / 裁剪 */}
@@ -729,7 +729,7 @@ export default function ScreenMirror() {
                   <div className="flex justify-between items-center">
                     <div>
                       <span className="font-medium">{t('screenMirror.advCrop')}</span>
-                      <code className="ml-2 text-xs bg-gray-100 px-1.5 py-0.5 rounded">--crop</code>
+                      <code className="ml-2 text-[var(--font-size-xs)] bg-gray-100 px-1.5 py-0.5 rounded">--crop</code>
                     </div>
                     <Input
                       value={advancedOptions.crop}
@@ -739,7 +739,7 @@ export default function ScreenMirror() {
                       className="w-64"
                     />
                   </div>
-                  <span className="text-xs text-gray-500">{t('screenMirror.advCropDesc')}</span>
+                  <span className="text-[var(--font-size-xs)] text-gray-500">{t('screenMirror.advCropDesc')}</span>
                 </div>
 
                 {/* --display-id / 显示器ID */}
@@ -747,7 +747,7 @@ export default function ScreenMirror() {
                   <div className="flex justify-between items-center">
                     <div>
                       <span className="font-medium">{t('screenMirror.advDisplayId')}</span>
-                      <code className="ml-2 text-xs bg-gray-100 px-1.5 py-0.5 rounded">--display-id</code>
+                      <code className="ml-2 text-[var(--font-size-xs)] bg-gray-100 px-1.5 py-0.5 rounded">--display-id</code>
                     </div>
                     <Input
                       type="number"
@@ -759,7 +759,7 @@ export default function ScreenMirror() {
                       min={0}
                     />
                   </div>
-                  <span className="text-xs text-gray-500">{t('screenMirror.advDisplayIdDesc')}</span>
+                  <span className="text-[var(--font-size-xs)] text-gray-500">{t('screenMirror.advDisplayIdDesc')}</span>
                 </div>
 
                 {/* --rotation / 旋转 */}
@@ -767,7 +767,7 @@ export default function ScreenMirror() {
                   <div className="flex justify-between items-center">
                     <div>
                       <span className="font-medium">{t('screenMirror.advRotation')}</span>
-                      <code className="ml-2 text-xs bg-gray-100 px-1.5 py-0.5 rounded">--rotation</code>
+                      <code className="ml-2 text-[var(--font-size-xs)] bg-gray-100 px-1.5 py-0.5 rounded">--rotation</code>
                     </div>
                     <Select
                       value={advancedOptions.rotation || 'none'}
@@ -785,7 +785,7 @@ export default function ScreenMirror() {
                       </SelectContent>
                     </Select>
                   </div>
-                  <span className="text-xs text-gray-500">{t('screenMirror.advRotationDesc')}</span>
+                  <span className="text-[var(--font-size-xs)] text-gray-500">{t('screenMirror.advRotationDesc')}</span>
                 </div>
 
                 {/* --prefer-text / 文本优先 */}
@@ -793,7 +793,7 @@ export default function ScreenMirror() {
                   <div className="flex justify-between items-center">
                     <div>
                       <span className="font-medium">{t('screenMirror.advPreferText')}</span>
-                      <code className="ml-2 text-xs bg-gray-100 px-1.5 py-0.5 rounded">--prefer-text</code>
+                      <code className="ml-2 text-[var(--font-size-xs)] bg-gray-100 px-1.5 py-0.5 rounded">--prefer-text</code>
                     </div>
                     <Switch
                       checked={advancedOptions.preferText}
@@ -801,43 +801,43 @@ export default function ScreenMirror() {
                       disabled={running}
                     />
                   </div>
-                  <span className="text-xs text-gray-500">{t('screenMirror.advPreferTextDesc')}</span>
+                  <span className="text-[var(--font-size-xs)] text-gray-500">{t('screenMirror.advPreferTextDesc')}</span>
                 </div>
 
                 {/* --mouse-bind / 鼠标绑定说明 */}
                 <div className="flex flex-col gap-1">
                   <div className="flex items-center gap-2">
                     <span className="font-medium">{t('screenMirror.advMouseBind')}</span>
-                    <code className="text-xs bg-gray-100 px-1.5 py-0.5 rounded">--mouse-bind=++++</code>
+                    <code className="text-[var(--font-size-xs)] bg-gray-100 px-1.5 py-0.5 rounded">--mouse-bind=++++</code>
                   </div>
-                  <span className="text-xs text-gray-500">{t('screenMirror.advMouseBindDesc')}</span>
+                  <span className="text-[var(--font-size-xs)] text-gray-500">{t('screenMirror.advMouseBindDesc')}</span>
                 </div>
 
                 {/* --stay-awake 说明 */}
                 <div className="flex flex-col gap-1">
                   <div className="flex items-center gap-2">
                     <span className="font-medium">{t('screenMirror.advStayAwake')}</span>
-                    <code className="text-xs bg-gray-100 px-1.5 py-0.5 rounded">--stay-awake</code>
+                    <code className="text-[var(--font-size-xs)] bg-gray-100 px-1.5 py-0.5 rounded">--stay-awake</code>
                   </div>
-                  <span className="text-xs text-gray-500">{t('screenMirror.advStayAwakeDesc')}</span>
+                  <span className="text-[var(--font-size-xs)] text-gray-500">{t('screenMirror.advStayAwakeDesc')}</span>
                 </div>
 
                 {/* --no-audio 说明 */}
                 <div className="flex flex-col gap-1">
                   <div className="flex items-center gap-2">
                     <span className="font-medium">{t('screenMirror.advNoAudio')}</span>
-                    <code className="text-xs bg-gray-100 px-1.5 py-0.5 rounded">--no-audio</code>
+                    <code className="text-[var(--font-size-xs)] bg-gray-100 px-1.5 py-0.5 rounded">--no-audio</code>
                   </div>
-                  <span className="text-xs text-gray-500">{t('screenMirror.advNoAudioDesc')}</span>
+                  <span className="text-[var(--font-size-xs)] text-gray-500">{t('screenMirror.advNoAudioDesc')}</span>
                 </div>
 
                 {/* --otg 说明 */}
                 <div className="flex flex-col gap-1">
                   <div className="flex items-center gap-2">
                     <span className="font-medium">{t('screenMirror.advOtg')}</span>
-                    <code className="text-xs bg-gray-100 px-1.5 py-0.5 rounded">--otg</code>
+                    <code className="text-[var(--font-size-xs)] bg-gray-100 px-1.5 py-0.5 rounded">--otg</code>
                   </div>
-                  <span className="text-xs text-gray-500">{t('screenMirror.advOtgDesc')}</span>
+                  <span className="text-[var(--font-size-xs)] text-gray-500">{t('screenMirror.advOtgDesc')}</span>
                 </div>
               </div>
             </div>

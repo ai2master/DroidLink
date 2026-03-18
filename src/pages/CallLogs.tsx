@@ -280,7 +280,7 @@ export const CallLogs: React.FC = () => {
                 type="button"
                 onClick={() => setTypeFilter('all')}
                 className={cn(
-                  "px-3 py-2 text-sm font-medium border rounded-l-md",
+                  "px-3 py-2 text-[var(--font-size-sm)] font-medium border rounded-l-md",
                   typeFilter === 'all'
                     ? "bg-emerald-500 text-white border-emerald-500"
                     : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
@@ -292,7 +292,7 @@ export const CallLogs: React.FC = () => {
                 type="button"
                 onClick={() => setTypeFilter('incoming')}
                 className={cn(
-                  "px-3 py-2 text-sm font-medium border-t border-b",
+                  "px-3 py-2 text-[var(--font-size-sm)] font-medium border-t border-b",
                   typeFilter === 'incoming'
                     ? "bg-emerald-500 text-white border-emerald-500"
                     : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
@@ -304,7 +304,7 @@ export const CallLogs: React.FC = () => {
                 type="button"
                 onClick={() => setTypeFilter('outgoing')}
                 className={cn(
-                  "px-3 py-2 text-sm font-medium border-t border-b",
+                  "px-3 py-2 text-[var(--font-size-sm)] font-medium border-t border-b",
                   typeFilter === 'outgoing'
                     ? "bg-emerald-500 text-white border-emerald-500"
                     : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
@@ -316,7 +316,7 @@ export const CallLogs: React.FC = () => {
                 type="button"
                 onClick={() => setTypeFilter('missed')}
                 className={cn(
-                  "px-3 py-2 text-sm font-medium border rounded-r-md",
+                  "px-3 py-2 text-[var(--font-size-sm)] font-medium border rounded-r-md",
                   typeFilter === 'missed'
                     ? "bg-emerald-500 text-white border-emerald-500"
                     : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
@@ -393,7 +393,7 @@ export const CallLogs: React.FC = () => {
                       <td className="px-3 py-2">
                         <div className="flex items-center gap-2">
                           {getCallTypeIcon(log.callType)}
-                          <span className={cn("inline-flex items-center px-2 py-0.5 rounded text-xs font-medium", getCallTypeBadgeClass(log.callType))}>
+                          <span className={cn("inline-flex items-center px-2 py-0.5 rounded text-[var(--font-size-xs)] font-medium", getCallTypeBadgeClass(log.callType))}>
                             {callTypeText(log.callType)}
                           </span>
                         </div>
@@ -483,11 +483,11 @@ export const CallLogs: React.FC = () => {
                         <div className="rounded-[var(--border-radius)] border border-border bg-white p-3 text-[var(--font-size-sm)]">
                           <div className="flex justify-between items-center">
                             <div className="flex items-center gap-2 flex-wrap">
-                              <span className={cn("inline-flex items-center px-2 py-0.5 rounded text-xs font-medium", getActionBadgeClass(color))}>
+                              <span className={cn("inline-flex items-center px-2 py-0.5 rounded text-[var(--font-size-xs)] font-medium", getActionBadgeClass(color))}>
                                 {v.action}
                               </span>
                               <span>{v.description}</span>
-                              <span className="text-gray-400 text-xs">{formatDate(v.createdAt)}</span>
+                              <span className="text-gray-400 text-[var(--font-size-xs)]">{formatDate(v.createdAt)}</span>
                             </div>
                             <div className="flex gap-1">
                               <Button variant="ghost" size="sm" onClick={() => handleViewVersionDetail(v.id)}>

@@ -251,7 +251,7 @@ export const Dashboard: React.FC = () => {
                     {t('companion.installedVersion', { version: companionDeviceVersion || '?' })}
                   </span>
                   {companionNeedsUpdate && (
-                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-700">
+                    <span className="inline-flex items-center px-2 py-0.5 rounded text-[var(--font-size-xs)] font-medium bg-amber-100 text-amber-700">
                       {t('companion.updateAvailable')}
                     </span>
                   )}
@@ -373,21 +373,21 @@ export const Dashboard: React.FC = () => {
           <div className="text-gray-500 text-[var(--font-size-xs)] mb-1">{t('dashboard.contacts')}</div>
           <div className="flex items-center gap-2">
             <Users className="h-5 w-5 text-primary" />
-            <div className="text-lg font-semibold text-primary">{stats.contactCount}</div>
+            <div className="text-[var(--font-size-lg)] font-semibold text-primary">{stats.contactCount}</div>
           </div>
         </div>
         <div className="rounded-[var(--border-radius)] border border-border bg-white p-[var(--card-padding)]">
           <div className="text-gray-500 text-[var(--font-size-xs)] mb-1">{t('dashboard.messages')}</div>
           <div className="flex items-center gap-2">
             <MessageSquare className="h-5 w-5 text-success" />
-            <div className="text-lg font-semibold text-success">{stats.messageCount}</div>
+            <div className="text-[var(--font-size-lg)] font-semibold text-success">{stats.messageCount}</div>
           </div>
         </div>
         <div className="rounded-[var(--border-radius)] border border-border bg-white p-[var(--card-padding)]">
           <div className="text-gray-500 text-[var(--font-size-xs)] mb-1">{t('dashboard.callLogs')}</div>
           <div className="flex items-center gap-2">
             <Phone className="h-5 w-5 text-warning" />
-            <div className="text-lg font-semibold text-warning">{stats.callLogCount}</div>
+            <div className="text-[var(--font-size-lg)] font-semibold text-warning">{stats.callLogCount}</div>
           </div>
         </div>
       </div>
@@ -450,7 +450,7 @@ export const Dashboard: React.FC = () => {
                     </span>
                     <span
                       className={cn(
-                        'inline-flex items-center px-2 py-0.5 rounded text-xs font-medium',
+                        'inline-flex items-center px-2 py-0.5 rounded text-[var(--font-size-xs)] font-medium',
                         status?.status === 'success'
                           ? 'bg-green-50 text-green-700'
                           : 'bg-gray-50 text-gray-700'

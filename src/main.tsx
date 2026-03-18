@@ -12,6 +12,13 @@ import { TooltipProvider } from './components/ui/tooltip';
 const density = useStore.getState().density;
 document.documentElement.setAttribute('data-density', density);
 
+// Apply saved custom font BEFORE first render to avoid FOUC (Flash of Unstyled Content)
+// Previously this only ran when Settings page was opened — now it runs at startup
+const savedFont = localStorage.getItem('droidlink-font');
+if (savedFont) {
+  document.documentElement.style.setProperty('--font-family-custom', `"${savedFont}"`);
+}
+
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <TooltipProvider>

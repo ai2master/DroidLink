@@ -877,7 +877,7 @@ export default function FileManager() {
                 <Download size={14} /> {t('fileManager.download')}
               </CtxItem>
               <CtxItem onClick={() => { openRename(contextMenu.record!); setContextMenu(null); }}>
-                <Pencil size={14} /> {t('fileManager.rename')} <span className="ml-auto text-gray-400 text-xs">F2</span>
+                <Pencil size={14} /> {t('fileManager.rename')} <span className="ml-auto text-gray-400 text-[var(--font-size-xs)]">F2</span>
               </CtxItem>
               <div className="h-px bg-border -mx-1 my-1" />
               <CtxItem onClick={() => {
@@ -885,18 +885,18 @@ export default function FileManager() {
                 toast.info(t('fileManager.filesCopied', { count: 1 }));
                 setContextMenu(null);
               }}>
-                <Copy size={14} /> {t('fileManager.copyTo')} <span className="ml-auto text-gray-400 text-xs">Ctrl+C</span>
+                <Copy size={14} /> {t('fileManager.copyTo')} <span className="ml-auto text-gray-400 text-[var(--font-size-xs)]">Ctrl+C</span>
               </CtxItem>
               <CtxItem onClick={() => {
                 setFileClipboard({ files: getSelectedFiles().length > 0 ? getSelectedFiles() : [contextMenu.record!], operation: 'cut' });
                 toast.info(t('fileManager.filesCut', { count: 1 }));
                 setContextMenu(null);
               }}>
-                <Scissors size={14} /> {t('fileManager.cut')} <span className="ml-auto text-gray-400 text-xs">Ctrl+X</span>
+                <Scissors size={14} /> {t('fileManager.cut')} <span className="ml-auto text-gray-400 text-[var(--font-size-xs)]">Ctrl+X</span>
               </CtxItem>
               <div className="h-px bg-border -mx-1 my-1" />
               <CtxItem onClick={() => { handleDeleteSingle(contextMenu.record!); setContextMenu(null); }} className="text-red-600">
-                <Trash2 size={14} /> {t('common.delete')} <span className="ml-auto text-gray-400 text-xs">Del</span>
+                <Trash2 size={14} /> {t('common.delete')} <span className="ml-auto text-gray-400 text-[var(--font-size-xs)]">Del</span>
               </CtxItem>
             </>
           ) : (
@@ -911,7 +911,7 @@ export default function FileManager() {
               {fileClipboard && fileClipboard.files.length > 0 && (
                 <CtxItem onClick={() => { handlePasteFromClipboard(); setContextMenu(null); }}>
                   <ClipboardPaste size={14} /> {t('common.paste')} ({fileClipboard.files.length})
-                  <span className="ml-auto text-gray-400 text-xs">Ctrl+V</span>
+                  <span className="ml-auto text-gray-400 text-[var(--font-size-xs)]">Ctrl+V</span>
                 </CtxItem>
               )}
               <div className="h-px bg-border -mx-1 my-1" />
