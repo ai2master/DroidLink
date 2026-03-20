@@ -94,8 +94,51 @@ jobs:
             libayatana-appindicator3-dev \
             rpm
 
-      # 统一版本号生成: 从 tauri.conf.json 读取基础版本 + commit count 作为构建号
-      # Unified version generation: base version from tauri.conf.json + commit count as build number
+      # =====================================================================
+      # 统一版本号生成 / Unified Version Number Generation
+      # =====================================================================
+      #
+      # 【三层版本方案 / Three-Layer Version Scheme】
+      #
+      # 此步骤为 Desktop 和 Companion 生成统一的版本号。
+      # This step generates unified version numbers for Desktop and Companion.
+      #
+      # 输入 / Inputs:
+      #   - tauri.conf.json 中的 version 字段 → 基础语义版本 (手动维护)
+      #     version field in tauri.conf.json → base semantic version (manually maintained)
+      #   - git rev-list --count HEAD → 构建号 (每次提交自动递增)
+      #     git rev-list --count HEAD → build number (auto-increments per commit)
+      #   - git rev-parse --short=7 HEAD → 短 SHA (用于追溯源码)
+      #     git rev-parse --short=7 HEAD → short SHA (for source tracing)
+      #
+      # 输出 / Outputs:
+      #   - VERSION = "2.0.0.42"     ── 完整版本号 (写入 tauri.conf.json 和 Cargo.toml)
+      #                                  Full version (written to tauri.conf.json and Cargo.toml)
+      #   - BASE_VERSION = "2.0.0"   ── 基础版本 (写入 version.txt)
+      #                                  Base version (written to version.txt)
+      #   - BUILD_NUMBER = "42"      ── 构建号 (传给 gradle 作为 versionCode)
+      #                                  Build number (passed to gradle as versionCode)
+      #   - SHORT_SHA = "9d8f3a1"    ── 短 SHA (写入 version.txt 供追溯)
+      #                                  Short SHA (written to version.txt for tracing)
+      #
+      # 版本号如何跨组件流动 / How version flows across components:
+      #   tauri.conf.json (手动维护 "2.0.0")
+      #     ↓ CI 读取
+      #     ↓ CI reads
+      #   VERSION = "2.0.0.42" → 写回 tauri.conf.json + Cargo.toml
+      #                          Written back to tauri.conf.json + Cargo.toml
+      #   BUILD_NUMBER = "42" → 传给 gradle -PciVersionCode=42
+      #                         Passed to gradle -PciVersionCode=42
+      #   VERSION = "2.0.0.42" → 传给 gradle -PciVersionName="2.0.0.42"
+      #                          Passed to gradle -PciVersionName="2.0.0.42"
+      #   → 写入 version.txt JSON (Desktop 内置元数据)
+      #     Written to version.txt JSON (Desktop bundled metadata)
+      #
+      # 开发者只需维护 tauri.conf.json 中的基础版本号 (如 "2.0.0")，
+      # 构建号由 CI 自动从 git commit count 生成，确保每次构建版本唯一。
+      # Developer only maintains base version in tauri.conf.json (e.g. "2.0.0"),
+      # build number is auto-generated from git commit count, ensuring unique builds.
+      # =====================================================================
       - name: Set version number
         shell: bash
         run: |
@@ -106,15 +149,18 @@ jobs:
           BASE_VERSION=$(node -e "console.log(JSON.parse(require('fs').readFileSync('src-tauri/tauri.conf.json','utf8')).version)")
           VERSION="${BASE_VERSION}.${COMMIT_COUNT}"
           echo "Setting version to ${VERSION} (base=${BASE_VERSION}, build=${COMMIT_COUNT}, sha=${SHORT_SHA})"
-          # 更新 tauri.conf.json 中的版本号 / Update version in tauri.conf.json
+          # 更新 tauri.conf.json 中的版本号 (CI 构建时临时覆盖，不提交)
+          # Update version in tauri.conf.json (CI build-time override, not committed)
           node -e "
             const fs = require('fs');
             const conf = JSON.parse(fs.readFileSync('src-tauri/tauri.conf.json', 'utf8'));
             conf.version = '${VERSION}';
             fs.writeFileSync('src-tauri/tauri.conf.json', JSON.stringify(conf, null, 2) + '\n');
           "
-          # 同步更新 Cargo.toml 中的版本号 / Sync version in Cargo.toml
+          # 同步更新 Cargo.toml 中的版本号 (CI 构建时临时覆盖，不提交)
+          # Sync version in Cargo.toml (CI build-time override, not committed)
           sed -i "s/^version = \".*\"/version = \"${VERSION}\"/" src-tauri/Cargo.toml
+          # 将版本变量导出到后续步骤 / Export version variables to subsequent steps
           echo "VERSION=${VERSION}" >> $GITHUB_ENV
           echo "BASE_VERSION=${BASE_VERSION}" >> $GITHUB_ENV
           echo "BUILD_NUMBER=${COMMIT_COUNT}" >> $GITHUB_ENV
@@ -124,20 +170,59 @@ jobs:
       - name: Install npm dependencies
         run: npm ci || npm install
 
-      # 构建 Android companion APK (使用 setup-gradle 提供的 gradle 命令)
-      # Build Android companion APK (uses gradle command from setup-gradle)
-      # CI 通过 gradle 属性注入版本号 / CI injects version via gradle properties
+      # =====================================================================
+      # 构建 Android Companion APK + 生成版本元数据
+      # Build Android Companion APK + Generate Version Metadata
+      # =====================================================================
+      #
+      # 此步骤完成两件事 / This step does two things:
+      #
+      # 1. 构建 Companion APK 并注入版本号
+      #    Build Companion APK with injected version numbers
+      #    - gradle 属性 -PciVersionCode → Android versionCode (整数，递增)
+      #      gradle property -PciVersionCode → Android versionCode (integer, incrementing)
+      #    - gradle 属性 -PciVersionName → Android versionName (用户可见字符串)
+      #      gradle property -PciVersionName → Android versionName (user-facing string)
+      #    - build.gradle.kts 中通过 project.findProperty() 接收这些值
+      #      build.gradle.kts receives these via project.findProperty()
+      #
+      # 2. 生成 version.txt JSON 元数据文件
+      #    Generate version.txt JSON metadata file
+      #    - Desktop 启动时读取此文件判断 Companion 版本
+      #      Desktop reads this file at startup to check Companion version
+      #    - 包含版本号、构建号、协议版本、git SHA
+      #      Contains version, build, protocol version, git SHA
+      #
+      # version.txt JSON 格式 / version.txt JSON format:
+      #   {
+      #     "version": "2.0.0",        ── 基础语义版本 / base semantic version
+      #     "build": 42,               ── CI 构建号 = git commit count
+      #     "versionCode": 42,         ── Android versionCode (与 build 相同)
+      #     "protocolVersion": 1,      ── 协议版本号 (见下方重要说明)
+      #                                   Protocol version (see important note below)
+      #     "sha": "9d8f3a1"           ── git commit 短 SHA
+      #   }
+      #
+      # 重要：protocolVersion 必须与以下两处保持一致！
+      # IMPORTANT: protocolVersion must match these two locations!
+      #   - src-tauri/src/commands/mod.rs → pub const PROTOCOL_VERSION
+      #   - android/.../CompanionVersion.kt → PROTOCOL_VERSION
+      # =====================================================================
       - name: Build companion APK
         shell: bash
         run: |
           cd android
+          # 构建 release APK，通过 gradle 属性注入版本号
+          # Build release APK, inject version via gradle properties
           gradle assembleRelease --no-daemon --stacktrace \
             -PciVersionCode=${{ env.BUILD_NUMBER }} \
             -PciVersionName=${{ env.VERSION }}
+          # 复制 APK 到 Desktop 的资源目录 (Tauri 会将此目录打包进安装包)
+          # Copy APK to Desktop's resource directory (Tauri bundles this into the installer)
           mkdir -p ../src-tauri/resources/companion
           cp app/build/outputs/apk/release/app-release.apk ../src-tauri/resources/companion/DroidLinkCompanion.apk
-          # 写入 JSON 格式的 version.txt (新格式)
-          # Write JSON format version.txt (new format)
+          # 生成 JSON 格式的 version.txt (Desktop 运行时读取此文件判断版本)
+          # Generate JSON version.txt (Desktop reads this file at runtime for version check)
           node -e "
             const fs = require('fs');
             const info = {

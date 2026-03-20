@@ -116,15 +116,47 @@ class DataExportReceiver : BroadcastReceiver() {
         }
     }
 
+    /**
+     * 处理 EXPORT_CHANGES 请求：返回数据可用状态摘要 + 协议版本号
+     * Handle EXPORT_CHANGES request: return data availability summary + protocol version
+     *
+     * 此方法有两个用途 / This method serves two purposes:
+     *   1. 告诉 Desktop 哪些数据类型有权限可导出 (contacts=1 表示有权限, 0 表示无权限)
+     *      Tell Desktop which data types have export permission (1=granted, 0=denied)
+     *   2. 在响应中携带 protocolVersion 字段，让 Desktop 判断协议是否兼容
+     *      Include protocolVersion in response for Desktop to check protocol compatibility
+     *
+     * Desktop 调用路径 / Desktop call path:
+     *   adb shell am broadcast -a com.droidlink.EXPORT_CHANGES \
+     *     --es output_path '/data/local/tmp/.droidlink_changes.json' \
+     *     -n com.droidlink.companion/.data.DataExportReceiver
+     *   → 读取输出文件提取 protocolVersion 字段
+     *   → Read output file to extract protocolVersion field
+     *
+     * 输出 JSON 格式 / Output JSON format:
+     *   {
+     *     "contacts": 1,           // 1=权限已授予 / 1=permission granted
+     *     "messages": 0,           // 0=权限未授予 / 0=permission denied
+     *     "callLogs": 1,
+     *     "protocolVersion": 1     // 协议版本号 / protocol version number
+     *   }
+     *
+     * @see CompanionVersion.PROTOCOL_VERSION - 协议版本常量定义
+     *                                          Protocol version constant definition
+     * @see commands/mod.rs get_device_protocol_version() - Desktop 端解析此字段的逻辑
+     *                                                       Desktop side parsing logic
+     */
     private fun handleExportChanges(context: Context, outputPath: String?) {
         val path = outputPath ?: "/data/local/tmp/.droidlink_changes.json"
         try {
-            // 返回每种数据类型的可用状态 + 协议版本号
-            // Return availability status for each data type + protocol version
+            // 构建变更摘要：每种数据类型的权限状态 + 协议版本号
+            // Build change summary: permission status for each data type + protocol version
             val changeSummary = mapOf(
                 "contacts" to if (hasPermission(context, Manifest.permission.READ_CONTACTS)) 1 else 0,
                 "messages" to if (hasPermission(context, Manifest.permission.READ_SMS)) 1 else 0,
                 "callLogs" to if (hasPermission(context, Manifest.permission.READ_CALL_LOG)) 1 else 0,
+                // 协议版本号：Desktop 用此字段判断是否需要更新 Companion
+                // Protocol version: Desktop uses this field to determine if Companion needs update
                 "protocolVersion" to CompanionVersion.PROTOCOL_VERSION
             )
 

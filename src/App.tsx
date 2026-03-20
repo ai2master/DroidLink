@@ -70,11 +70,34 @@ function App() {
       setCompanionPromptVisible(false);
     });
 
-    // 监听 companion 状态事件 - 设备连接后后端自动检查并通知
-    // Listen for companion status event - backend checks after device connects
+    // =====================================================================
+    // 监听 Companion 状态事件 / Listen for Companion Status Event
+    // =====================================================================
+    //
+    // 后端 (lib.rs) 在设备连接时自动检查 Companion 状态，
+    // 通过 "companion-status" Tauri 事件通知前端。
+    // Backend (lib.rs) auto-checks Companion status on device connect,
+    // notifies frontend via "companion-status" Tauri event.
+    //
+    // 事件数据格式 / Event data format:
+    //   {
+    //     serial: string,               // 设备序列号 / device serial
+    //     installed: boolean,            // 是否已安装 / whether installed
+    //     deviceVersion: string,         // 设备上的版本 / version on device
+    //     bundledVersion: string,        // Desktop 内置版本 / bundled version
+    //     needsUpdate: boolean,          // 是否需要更新 / whether update needed
+    //     protocolVersion: number,       // Desktop 协议版本 / Desktop protocol version
+    //     deviceProtocolVersion: number|null  // 设备协议版本 / device protocol version
+    //   }
+    //
+    // 前端行为 / Frontend behavior:
+    //   installed=false → 弹出安装提示 / show install prompt
+    //   needsUpdate=true → 弹出更新提示 / show update prompt
+    //   否则 → 无操作 / otherwise → no action
     const unlistenCompanion = tauriListen('companion-status', (status: any) => {
       if (status) {
-        // 更新完整的 companion 状态 / Update full companion status
+        // 将后端数据写入 zustand store (按设备序列号存储)
+        // Write backend data to zustand store (stored per device serial)
         setCompanionStatus(status.serial || '', {
           installed: !!status.installed,
           deviceVersion: status.deviceVersion || '',
@@ -84,9 +107,11 @@ function App() {
           deviceProtocolVersion: status.deviceProtocolVersion ?? null,
         });
 
+        // 显示安装/更新弹窗 / Show install/update prompt dialog
         const showPrompt = (mode: 'install' | 'update') => {
           setCompanionDeviceSerial(status.serial || '');
           setCompanionPromptMode(mode);
+          // 获取设备名称用于弹窗显示 / Get device name for prompt display
           tauriInvoke<any>('get_device_info', { serial: status.serial })
             .then((info: any) => {
               setCompanionDeviceName(info?.displayName || info?.model || status.serial);
@@ -99,10 +124,16 @@ function App() {
         };
 
         if (!status.installed) {
+          // Companion 未安装 → 提示用户安装
+          // Companion not installed → prompt user to install
           showPrompt('install');
         } else if (status.needsUpdate) {
+          // 协议不兼容 → 提示用户更新
+          // Protocol incompatible → prompt user to update
           showPrompt('update');
         }
+        // 协议兼容 → 不弹窗，Dashboard 显示 "协议兼容，无需更新"
+        // Protocol compatible → no prompt, Dashboard shows "Protocol compatible, no update needed"
       }
     });
 

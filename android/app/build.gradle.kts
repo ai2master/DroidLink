@@ -12,8 +12,34 @@ android {
         minSdk = 26
         targetSdk = 34
 
-        // CI 通过 gradle 属性注入版本号，本地开发使用默认值
-        // CI injects version via gradle properties, local dev uses defaults
+        // =====================================================================
+        // Android 版本号管理 / Android Version Number Management
+        // =====================================================================
+        //
+        // Android 有两个版本字段 / Android has two version fields:
+        //   - versionCode: 整数，Google Play 强制要求每次发布必须递增。
+        //                  Integer, Google Play requires strict increase on each release.
+        //                  用于内部比较，用户不可见。
+        //                  Used for internal comparison, not visible to users.
+        //   - versionName: 字符串，用户可见的版本号显示。
+        //                  String, user-facing version display.
+        //
+        // CI 构建时通过 gradle 属性注入 / CI injects via gradle properties:
+        //   gradle assembleRelease -PciVersionCode=42 -PciVersionName="2.0.0.42"
+        //
+        // 本地开发时使用下方默认值 / Local dev uses defaults below:
+        //   versionCode = 2 (本地开发的占位值 / placeholder for local dev)
+        //   versionName = "2.0.0" (基础语义版本 / base semantic version)
+        //
+        // CI 生成规则 / CI generation rules:
+        //   versionCode = git commit count (每次提交自动递增 / auto-increments per commit)
+        //   versionName = "${BASE_VERSION}.${COMMIT_COUNT}" 例如 "2.0.0.42"
+        //
+        // @see .github/workflows/build.yml - CI 版本号生成逻辑
+        //                                    CI version generation logic
+        // @see CompanionVersion.kt - 协议版本号 (与此处的 versionCode/Name 无关)
+        //                            Protocol version (independent from versionCode/Name)
+        // =====================================================================
         versionCode = (project.findProperty("ciVersionCode") as? String)?.toIntOrNull() ?: 2
         versionName = (project.findProperty("ciVersionName") as? String) ?: "2.0.0"
 

@@ -256,14 +256,41 @@ pub fn run() {
                                         log::info!("设备已连接 / Device connected: {} ({})", info.display_name, info.serial);
                                         let _ = app_handle.emit("device-connected", &info);
 
-                                        // 检查 companion app 是否已安装，通知前端
-                                        // Check if companion app is installed, notify frontend
+                                        // ===================================================
+                                        // 设备连接时自动检查 Companion 应用状态
+                                        // Auto-check Companion app status on device connect
+                                        // ===================================================
+                                        //
+                                        // 在单独的线程中执行，避免阻塞设备监控循环。
+                                        // Runs in a separate thread to avoid blocking the device monitor loop.
+                                        //
+                                        // 检查流程 / Check flow:
+                                        //   1. pm list packages → 检查是否已安装
+                                        //      pm list packages → check if installed
+                                        //   2. dumpsys package → 获取已安装的 versionName
+                                        //      dumpsys package → get installed versionName
+                                        //   3. EXPORT_CHANGES broadcast → 获取设备端协议版本
+                                        //      EXPORT_CHANGES broadcast → get device protocol version
+                                        //   4. 读取内置 version.txt → 获取 Desktop 端版本信息
+                                        //      Read bundled version.txt → get Desktop version info
+                                        //   5. 协议版本比较 → 判断是否需要更新
+                                        //      Protocol version compare → determine if update needed
+                                        //   6. emit "companion-status" 事件 → 通知前端
+                                        //      emit "companion-status" event → notify frontend
+                                        //
+                                        // 前端 App.tsx 监听 "companion-status" 事件，
+                                        // 根据 installed/needsUpdate 显示安装或更新提示。
+                                        // Frontend App.tsx listens for "companion-status" event,
+                                        // shows install or update prompt based on installed/needsUpdate.
                                         let serial_for_check = info.serial.clone();
                                         let app_handle_for_check = app_handle.clone();
                                         std::thread::spawn(move || {
+                                            // 检查包是否已安装 / Check if package is installed
                                             let output = adb::shell(&serial_for_check, "pm list packages com.droidlink.companion 2>/dev/null");
                                             let installed = output.as_ref().map(|o| o.contains("com.droidlink.companion")).unwrap_or(false);
 
+                                            // 获取已安装的 versionName (用于前端显示)
+                                            // Get installed versionName (for frontend display)
                                             let device_version = if installed {
                                                 adb::shell(&serial_for_check, "dumpsys package com.droidlink.companion | grep versionName")
                                                     .ok()
@@ -273,28 +300,45 @@ pub fn run() {
                                                 String::new()
                                             };
 
+                                            // 读取 Desktop 内置的 Companion 版本信息
+                                            // Read Desktop's bundled Companion version info
                                             let resource_dir = app_handle_for_check.path().resource_dir()
                                                 .unwrap_or_else(|_| std::path::PathBuf::from("."));
                                             let bundled_version = crate::commands::get_bundled_companion_version_public(&resource_dir);
 
-                                            // 协议版本判断：只有协议不兼容才提示更新
-                                            // Protocol-based check: only prompt update when protocol is incompatible
+                                            // 获取设备端协议版本号 (通过 EXPORT_CHANGES broadcast)
+                                            // Get device protocol version (via EXPORT_CHANGES broadcast)
                                             let device_protocol = if installed {
                                                 crate::commands::get_device_protocol_version_public(&serial_for_check)
                                             } else {
                                                 None
                                             };
+
+                                            // 协议版本判断：只有协议不兼容才提示更新
+                                            // Protocol-based check: only prompt update when protocol is incompatible
+                                            //
+                                            // 判断逻辑 / Decision logic:
+                                            //   未安装 → false (由 installed=false 另行处理)
+                                            //   Not installed → false (handled by installed=false)
+                                            //   有协议版本且 >= Desktop → 兼容 (false)
+                                            //   Has protocol and >= Desktop → compatible (false)
+                                            //   有协议版本且 < Desktop → 不兼容 (true)
+                                            //   Has protocol and < Desktop → incompatible (true)
+                                            //   无协议版本 (旧版) → 回退到 versionName 字符串比较
+                                            //   No protocol (old version) → fallback to versionName comparison
                                             let needs_update = if !installed {
                                                 false
                                             } else {
                                                 match device_protocol {
                                                     Some(dev_proto) => dev_proto < crate::commands::PROTOCOL_VERSION,
-                                                    // 旧版 companion 没有协议版本 → 回退到版本名比较
-                                                    // Old companion lacks protocol version → fallback to versionName comparison
                                                     None => !device_version.is_empty() && !bundled_version.is_empty() && device_version != bundled_version,
                                                 }
                                             };
 
+                                            // 发送 "companion-status" 事件到前端
+                                            // Emit "companion-status" event to frontend
+                                            // 前端 App.tsx 中 tauriListen('companion-status', ...) 接收此事件
+                                            // Frontend App.tsx receives via tauriListen('companion-status', ...)
                                             let _ = app_handle_for_check.emit("companion-status", serde_json::json!({
                                                 "serial": serial_for_check,
                                                 "installed": installed,

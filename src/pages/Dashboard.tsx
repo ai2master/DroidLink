@@ -227,7 +227,30 @@ export const Dashboard: React.FC = () => {
 
       <h2 className="text-[var(--font-size-title)] font-semibold mb-6">{t('dashboard.title')}</h2>
 
-      {/* Companion app status card */}
+      {/* =====================================================================
+        Companion 应用状态卡片 / Companion App Status Card
+
+        显示 Companion 应用的安装状态和协议兼容性。
+        Shows Companion app install status and protocol compatibility.
+
+        三种状态 / Three states:
+          1. 未安装 (companionInstalled === false)
+             Not installed → 黄色警告卡片 + 安装提示
+                             Amber warning card + install prompt
+
+          2. 已安装但需要更新 (companionNeedsUpdate === true)
+             Installed but needs update → 绿色卡片 + "有可用更新" 标签 + 版本对比
+                                          Green card + "update available" badge + version comparison
+
+          3. 已安装且协议兼容 (默认)
+             Installed and compatible → 白色卡片 + "协议兼容，无需更新"
+                                        White card + "Protocol compatible, no update needed"
+
+        数据来源 / Data source:
+          companionInstalled / companionNeedsUpdate / companionDeviceVersion / companionBundledVersion
+          → 均从 useStore 中获取，由 App.tsx 监听 "companion-status" 事件写入
+            All from useStore, written by App.tsx listening to "companion-status" event
+      ===================================================================== */}
       <div className={cn(
         "rounded-[var(--border-radius)] border p-[var(--card-padding)] mb-[var(--card-gap)]",
         companionInstalled === false
@@ -239,28 +262,36 @@ export const Dashboard: React.FC = () => {
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <div className="flex-1 min-w-0">
             {companionInstalled === false ? (
+              /* 状态 1：未安装 / State 1: Not installed */
               <>
                 <div className="font-semibold text-amber-900 text-[var(--font-size-base)]">{t('common.companionRequired')}</div>
                 <div className="text-amber-700 text-[var(--font-size-sm)] mt-1">{t('common.companionRequiredDesc')}</div>
               </>
             ) : (
+              /* 状态 2/3：已安装 / State 2/3: Installed */
               <>
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="h-4 w-4 text-success flex-shrink-0" />
                   <span className="font-semibold text-[var(--font-size-base)]">
+                    {/* 显示设备上的版本号 / Show version on device */}
                     {t('companion.installedVersion', { version: companionDeviceVersion || '?' })}
                   </span>
                   {companionNeedsUpdate && (
+                    /* 协议不兼容时显示 "有可用更新" 标签 / Show "update available" badge when protocol incompatible */
                     <span className="inline-flex items-center px-2 py-0.5 rounded text-[var(--font-size-xs)] font-medium bg-amber-100 text-amber-700">
                       {t('companion.updateAvailable')}
                     </span>
                   )}
                 </div>
                 {companionNeedsUpdate ? (
+                  /* 协议不兼容：显示设备版本 vs 可用版本对比 */
+                  /* Protocol incompatible: show device version vs available version comparison */
                   <div className="text-[var(--font-size-sm)] text-amber-600 mt-1">
                     {t('companion.versionMismatch', { device: companionDeviceVersion || '-', bundled: companionBundledVersion || '-' })}
                   </div>
                 ) : (
+                  /* 协议兼容：显示 "协议兼容，无需更新" */
+                  /* Protocol compatible: show "Protocol compatible, no update needed" */
                   <div className="text-[var(--font-size-sm)] text-gray-500 mt-1">
                     {t('companion.protocolOk')}
                   </div>

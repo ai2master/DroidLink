@@ -861,26 +861,115 @@ pub async fn open_in_explorer(path: String) -> Result<(), String> {
     Ok(())
 }
 
-// ========== Companion App 命令 ==========
-// ========== Companion App Commands ==========
+// ========================================================================
+// Companion App 命令 - 版本管理与安装
+// Companion App Commands - Version Management & Installation
+// ========================================================================
+//
+// 【架构说明 / Architecture】
+//
+// DroidLink Desktop 内置了 Companion APK 和 version.txt 元数据文件：
+// DroidLink Desktop bundles the Companion APK and version.txt metadata file:
+//   resources/companion/DroidLinkCompanion.apk  ── 编译好的 APK 安装包
+//                                                  Pre-built APK installer
+//   resources/companion/version.txt             ── JSON 格式的版本元数据
+//                                                  JSON format version metadata
+//
+// version.txt 格式 / version.txt format:
+//   {
+//     "version": "2.0.0",        // 基础语义版本 / base semantic version
+//     "build": 42,               // CI 构建号 = git commit count
+//     "versionCode": 42,         // Android versionCode (与 build 相同)
+//     "protocolVersion": 1,      // 协议版本号 / protocol version
+//     "sha": "9d8f3a1"           // git commit SHA (前 7 位)
+//   }
+//
+// 旧版 version.txt 是纯文本格式 (如 "1.0.42")，代码对此有向后兼容处理。
+// Legacy version.txt is plain text (e.g. "1.0.42"), code has backward compat handling.
+//
+// 【更新判断逻辑 / Update Decision Logic】
+//
+// 以前：字符串比较 deviceVersion != bundledVersion → 总是触发更新提示 (误报)
+// Before: string compare deviceVersion != bundledVersion → always triggered update (false positive)
+//
+// 现在：协议版本比较，只有 ADB 接口不兼容时才提示更新
+// Now: protocol version comparison, only prompts update when ADB interface is incompatible
+//
+//   device.protocolVersion >= desktop.PROTOCOL_VERSION → 兼容 / compatible
+//   device.protocolVersion <  desktop.PROTOCOL_VERSION → 不兼容 / incompatible
+//   无法获取 protocolVersion (旧版 Companion) → 回退到字符串比较
+//   Cannot get protocolVersion (old Companion) → fallback to string comparison
+// ========================================================================
 
+/// Companion 应用的 Android 包名 / Companion app's Android package name
 const COMPANION_PACKAGE: &str = "com.droidlink.companion";
 
-/// 协议版本号：仅在 Desktop ↔ Companion 的 ADB 通信接口变更时递增
-/// Protocol version: only increment when the ADB communication interface changes
-/// (new/modified broadcast actions, changed JSON formats, etc.)
-/// Must match CompanionVersion.PROTOCOL_VERSION in the Kotlin companion app.
+/// =====================================================================
+/// 协议版本号 / Protocol Version Number
+/// =====================================================================
+///
+/// 仅在 Desktop ↔ Companion 的 ADB 通信接口变更时递增。
+/// Only increment when the ADB communication interface between
+/// Desktop and Companion changes.
+///
+/// 需要递增的场景 / Scenarios requiring increment:
+///   - 新增/修改/删除 broadcast action (EXPORT_CONTACTS, EXPORT_CHANGES 等)
+///     Added/modified/removed broadcast actions
+///   - 修改导出 JSON 格式 (增删改字段名、类型或嵌套结构)
+///     Changed export JSON format (fields, types, nesting)
+///   - 修改 DroidLinkIME 或 ClipboardReceiver 的 broadcast 接口
+///     Changed DroidLinkIME or ClipboardReceiver broadcast interface
+///
+/// 不需要递增的场景 / Scenarios NOT requiring increment:
+///   - 内部逻辑优化 (性能改进、ContentObserver 策略)
+///     Internal logic optimizations (performance, ContentObserver strategy)
+///   - UI 调整、日志变更、权限检查逻辑变更 (不影响输出格式)
+///     UI changes, log changes, permission check changes (no output format impact)
+///
+/// 修改此值时必须同步修改 / When changing this, also update:
+///   1. android/.../CompanionVersion.kt → PROTOCOL_VERSION
+///   2. .github/workflows/build.yml → version.txt 中的 protocolVersion 字段
+///      .github/workflows/build.yml → protocolVersion field in version.txt
 pub const PROTOCOL_VERSION: u32 = 1;
 
-/// 检查手机上是否已安装 DroidLink Companion，返回安装状态、版本和协议兼容性
-/// Check if DroidLink Companion is installed on device, return status, version, and protocol compatibility
+/// =====================================================================
+/// 检查 Companion 应用安装状态、版本和协议兼容性
+/// Check Companion app installation status, version, and protocol compatibility
+/// =====================================================================
+///
+/// 前端通过 Tauri command 调用此函数。
+/// Frontend invokes this function via Tauri command.
+///
+/// 返回 JSON / Returns JSON:
+/// ```json
+/// {
+///   "installed": true,                    // 是否已安装 / whether installed
+///   "deviceVersion": "2.0.0.42",          // 设备上的 versionName
+///   "bundledVersion": "2.0.0.42",         // Desktop 内置的版本号
+///   "bundledBuild": 42,                   // Desktop 内置的构建号
+///   "needsUpdate": false,                 // 是否需要更新 / whether update needed
+///   "protocolVersion": 1,                 // Desktop 端协议版本
+///   "deviceProtocolVersion": 1            // 设备端协议版本 (null=旧版/未安装)
+/// }
+/// ```
+///
+/// needsUpdate 判断逻辑 / needsUpdate decision logic:
+///   1. 未安装 → false (由 installed=false 另行处理)
+///      Not installed → false (handled separately by installed=false)
+///   2. 设备有 protocolVersion 且 < Desktop 的 → true
+///      Device has protocolVersion and < Desktop's → true
+///   3. 设备无 protocolVersion (旧版) → 回退到 versionName 字符串比较
+///      Device lacks protocolVersion (old version) → fallback to versionName comparison
 #[tauri::command]
 pub async fn check_companion_app(serial: String, app_handle: tauri::AppHandle) -> Result<Value, String> {
-    // Check if package is installed
+    // 第 1 步：检查包是否已安装 / Step 1: Check if package is installed
+    // 通过 pm list packages 命令查询 / Query via pm list packages command
     let output = adb::shell(&serial, &format!("pm list packages {}", COMPANION_PACKAGE))
         .map_err(|e| e.to_string())?;
     let installed = output.contains(COMPANION_PACKAGE);
 
+    // 未安装：直接返回，前端会显示安装提示
+    // Not installed: return immediately, frontend will show install prompt
     if !installed {
         return Ok(serde_json::json!({
             "installed": false,
@@ -891,7 +980,8 @@ pub async fn check_companion_app(serial: String, app_handle: tauri::AppHandle) -
         }));
     }
 
-    // Get installed versionName
+    // 第 2 步：获取设备上已安装的 versionName / Step 2: Get installed versionName
+    // 通过 dumpsys package 命令提取 / Extract via dumpsys package command
     let version_output = adb::shell(&serial,
         &format!("dumpsys package {} | grep versionName", COMPANION_PACKAGE))
         .unwrap_or_default();
@@ -902,23 +992,26 @@ pub async fn check_companion_app(serial: String, app_handle: tauri::AppHandle) -
         .map(|v| v.trim().to_string())
         .unwrap_or_default();
 
-    // Try to get companion protocol version via EXPORT_CHANGES
-    // The companion includes "protocolVersion" in its change summary response
+    // 第 3 步：获取设备端的协议版本号 / Step 3: Get device-side protocol version
+    // 通过 EXPORT_CHANGES broadcast 触发 DataExportReceiver 返回含 protocolVersion 的 JSON
+    // Trigger DataExportReceiver via EXPORT_CHANGES broadcast to get JSON with protocolVersion
     let device_protocol = get_device_protocol_version(&serial);
 
-    // Read bundled version info from resources
+    // 第 4 步：读取 Desktop 内置的版本信息 / Step 4: Read bundled version info from resources
     let resource_dir = app_handle.path().resource_dir()
         .map_err(|e| format!("Failed to get resource dir: {}", e))?;
     let bundled_info = get_bundled_companion_info(&resource_dir);
 
-    // 协议版本判断：只有协议不兼容才提示更新
-    // Protocol version check: only prompt update when protocol is incompatible
+    // 第 5 步：协议版本判断 / Step 5: Protocol version check
+    // 核心逻辑：只有协议不兼容才提示更新，内部优化无需更新
+    // Core logic: only prompt update when protocol incompatible, internal optimizations skip update
     let needs_update = match device_protocol {
+        // 有协议版本：直接比较。设备版本 < Desktop 版本 → 不兼容
+        // Has protocol version: direct compare. Device < Desktop → incompatible
         Some(dev_proto) => dev_proto < PROTOCOL_VERSION,
-        // 无法获取协议版本（旧版 Companion 没有此字段）→ 需要更新
-        // Cannot get protocol version (old companion lacks this field) → needs update
+        // 无法获取协议版本（旧版 Companion 没有此字段）→ 回退到字符串比较
+        // Cannot get protocol version (old companion lacks this field) → fallback to string compare
         None => {
-            // Fallback: compare versionName strings (for pre-protocol-version companions)
             let bundled_version = bundled_info.as_ref()
                 .and_then(|info| info.get("version").and_then(|v| v.as_str()))
                 .unwrap_or("");
@@ -926,6 +1019,7 @@ pub async fn check_companion_app(serial: String, app_handle: tauri::AppHandle) -
         }
     };
 
+    // 组装返回数据 / Assemble return data
     let bundled_version = bundled_info.as_ref()
         .and_then(|info| info.get("version").and_then(|v| v.as_str()))
         .unwrap_or("")
@@ -938,6 +1032,7 @@ pub async fn check_companion_app(serial: String, app_handle: tauri::AppHandle) -
         "installed": true,
         "deviceVersion": device_version,
         "bundledVersion": if bundled_version.is_empty() {
+            // 回退到旧版纯文本 version.txt / Fallback to legacy plain text version.txt
             get_bundled_companion_version_legacy(&resource_dir)
         } else {
             bundled_version
@@ -949,16 +1044,52 @@ pub async fn check_companion_app(serial: String, app_handle: tauri::AppHandle) -
     }))
 }
 
-/// 公开接口：从设备获取 Companion 协议版本号 (供 lib.rs 调用)
-/// Public API: get companion protocol version from device (for lib.rs)
+/// 公开接口：从设备获取 Companion 协议版本号
+/// Public API: get companion protocol version from device
+///
+/// 供 lib.rs 中设备连接时的自动检查逻辑调用。
+/// Called by the auto-check logic in lib.rs when a device connects.
+/// 封装了私有的 get_device_protocol_version() 函数。
+/// Wraps the private get_device_protocol_version() function.
 pub fn get_device_protocol_version_public(serial: &str) -> Option<u32> {
     get_device_protocol_version(serial)
 }
 
+/// =====================================================================
 /// 从设备获取 Companion 的协议版本号
 /// Get companion protocol version from device via EXPORT_CHANGES broadcast
+/// =====================================================================
+///
+/// 实现原理 / Implementation:
+///   1. 通过 ADB 发送 EXPORT_CHANGES broadcast 到 DataExportReceiver
+///      Send EXPORT_CHANGES broadcast to DataExportReceiver via ADB
+///   2. DataExportReceiver 将包含 protocolVersion 的 JSON 写入临时文件
+///      DataExportReceiver writes JSON with protocolVersion to temp file
+///   3. 读取临时文件内容，解析 JSON 提取 protocolVersion 字段
+///      Read temp file content, parse JSON to extract protocolVersion field
+///   4. 清理临时文件
+///      Clean up temp file
+///
+/// 返回值 / Return value:
+///   - Some(version) ── 成功获取协议版本号
+///                       Successfully retrieved protocol version
+///   - None ── 获取失败 (Companion 未运行/旧版无此字段/ADB 通信错误)
+///              Failed (Companion not running / old version lacks field / ADB error)
+///
+/// 注意事项 / Notes:
+///   - 此操作需要 Companion 已安装且 broadcast receiver 已注册
+///     Requires Companion to be installed with registered broadcast receiver
+///   - 旧版 Companion (协议版本方案引入之前) 的 EXPORT_CHANGES 响应不含此字段，返回 None
+///     Old Companions (pre-protocol-version) don't include this field, returns None
+///   - 临时文件使用 /data/local/tmp/ 目录，ADB 有写入权限
+///     Temp file uses /data/local/tmp/ directory, ADB has write permission
 fn get_device_protocol_version(serial: &str) -> Option<u32> {
+    // 使用不同于其他导出操作的临时文件，避免文件冲突
+    // Use a different temp file than other export operations to avoid file conflicts
     let tmp_path = "/data/local/tmp/.droidlink_proto_check.json";
+
+    // 合并为单条 ADB shell 命令：发送 broadcast → 读取结果 → 清理文件
+    // Combine into single ADB shell command: send broadcast → read result → cleanup
     let cmd = format!(
         "am broadcast -a com.droidlink.EXPORT_CHANGES --es output_path '{}' \
          -n com.droidlink.companion/.data.DataExportReceiver 2>/dev/null && \
@@ -966,7 +1097,10 @@ fn get_device_protocol_version(serial: &str) -> Option<u32> {
         tmp_path, tmp_path, tmp_path
     );
     if let Ok(output) = adb::shell(serial, &cmd) {
-        // Parse JSON to extract protocolVersion
+        // ADB shell 输出可能包含 broadcast 命令本身的输出 (如 "Broadcasting: Intent...")
+        // 需要找到 JSON 开始位置 '{' 再解析
+        // ADB shell output may contain broadcast command output (e.g. "Broadcasting: Intent...")
+        // Need to find JSON start position '{' before parsing
         if let Some(json_start) = output.find('{') {
             if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&output[json_start..]) {
                 return parsed.get("protocolVersion").and_then(|v| v.as_u64()).map(|v| v as u32);
@@ -1025,24 +1159,52 @@ pub async fn install_companion_app(serial: String, app_handle: tauri::AppHandle)
     }
 }
 
-/// 获取内置 companion 的版本号 (公开版本供 lib.rs 调用)
-/// Get the bundled companion version (public for lib.rs)
+/// =====================================================================
+/// 获取内置 Companion 的用户可见版本号
+/// Get the bundled companion's user-facing version string
+/// =====================================================================
+///
+/// 供 lib.rs 在设备连接时的自动检查逻辑调用，用于前端显示。
+/// Called by lib.rs auto-check logic when device connects, for frontend display.
+///
+/// 版本号格式 / Version string format:
+///   - JSON 格式 version.txt 且有 build 字段 → "2.0.0.42" (基础版本.构建号)
+///     JSON format version.txt with build field → "2.0.0.42" (base.build)
+///   - JSON 格式 version.txt 无 build 字段 → "2.0.0" (仅基础版本)
+///     JSON format version.txt without build → "2.0.0" (base only)
+///   - 纯文本格式 version.txt (旧版) → 原样返回，如 "1.0.42"
+///     Plain text version.txt (legacy) → returned as-is, e.g. "1.0.42"
+///   - 读取失败 → 空字符串
+///     Read failed → empty string
 pub fn get_bundled_companion_version_public(resource_dir: &std::path::Path) -> String {
-    // Try JSON format first, fall back to legacy plain text
+    // 优先尝试 JSON 格式 (新版) / Prefer JSON format (new)
     if let Some(info) = get_bundled_companion_info(resource_dir) {
         if let Some(version) = info.get("version").and_then(|v| v.as_str()) {
             let build = info.get("build").and_then(|v| v.as_u64()).unwrap_or(0);
             if build > 0 {
+                // 拼接完整版本号: "2.0.0" + "." + "42" = "2.0.0.42"
+                // Compose full version: "2.0.0" + "." + "42" = "2.0.0.42"
                 return format!("{}.{}", version, build);
             }
             return version.to_string();
         }
     }
+    // 回退到纯文本格式 (旧版兼容) / Fallback to plain text format (legacy compat)
     get_bundled_companion_version_legacy(resource_dir)
 }
 
-/// 获取内置 companion 的协议版本号 (供 lib.rs 调用)
-/// Get the bundled companion protocol version (for lib.rs)
+/// =====================================================================
+/// 获取内置 Companion 的协议版本号
+/// Get the bundled companion protocol version
+/// =====================================================================
+///
+/// 从 version.txt 的 JSON 格式中读取 protocolVersion 字段。
+/// Reads protocolVersion field from JSON format version.txt.
+/// 如果无法读取 (文件不存在或旧版纯文本格式)，返回当前 Desktop 的 PROTOCOL_VERSION。
+/// If unreadable (file missing or legacy plain text), returns current Desktop PROTOCOL_VERSION.
+///
+/// 此函数目前作为备用接口存在，主要的协议比较逻辑直接使用 PROTOCOL_VERSION 常量。
+/// This function exists as a utility; main protocol comparison logic uses PROTOCOL_VERSION directly.
 pub fn get_bundled_protocol_version(resource_dir: &std::path::Path) -> u32 {
     get_bundled_companion_info(resource_dir)
         .and_then(|info| info.get("protocolVersion").and_then(|v| v.as_u64()))
@@ -1050,13 +1212,30 @@ pub fn get_bundled_protocol_version(resource_dir: &std::path::Path) -> u32 {
         .unwrap_or(PROTOCOL_VERSION)
 }
 
+/// =====================================================================
 /// 读取 version.txt 的 JSON 格式 (新版)
 /// Read version.txt in JSON format (new format)
+/// =====================================================================
+///
+/// version.txt 文件位于 / version.txt file located at:
+///   {resource_dir}/resources/companion/version.txt
+///
+/// 新版 JSON 格式 / New JSON format:
+///   {
+///     "version": "2.0.0",       // 基础语义版本 / base semantic version
+///     "build": 42,              // CI 构建号 = git commit count
+///     "versionCode": 42,        // Android versionCode (同 build)
+///     "protocolVersion": 1,     // 协议版本号 / protocol version
+///     "sha": "9d8f3a1"          // git commit 短 SHA / short git SHA
+///   }
+///
+/// 如果文件内容以 '{' 开头则尝试 JSON 解析，否则返回 None (由调用方回退到纯文本处理)。
+/// If content starts with '{', try JSON parsing; otherwise return None (caller falls back to plain text).
 fn get_bundled_companion_info(resource_dir: &std::path::Path) -> Option<serde_json::Value> {
     let version_path = resource_dir.join("resources").join("companion").join("version.txt");
     if let Ok(content) = std::fs::read_to_string(&version_path) {
         let trimmed = content.trim();
-        // Try parsing as JSON first
+        // 以 '{' 开头判断为 JSON 格式 / Starts with '{' indicates JSON format
         if trimmed.starts_with('{') {
             if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(trimmed) {
                 return Some(parsed);
@@ -1066,8 +1245,15 @@ fn get_bundled_companion_info(resource_dir: &std::path::Path) -> Option<serde_js
     None
 }
 
+/// =====================================================================
 /// 回退：读取 version.txt 的纯文本格式 (旧版兼容)
 /// Fallback: read version.txt in plain text format (legacy compatibility)
+/// =====================================================================
+///
+/// 旧版 version.txt 是纯文本，内容直接就是版本号字符串 (如 "1.0.42")。
+/// Legacy version.txt is plain text, content is directly the version string (e.g. "1.0.42").
+/// 如果文件以 '{' 开头说明是 JSON 格式，不应该走此分支。
+/// If file starts with '{' it's JSON format, should not use this branch.
 fn get_bundled_companion_version_legacy(resource_dir: &std::path::Path) -> String {
     let version_path = resource_dir.join("resources").join("companion").join("version.txt");
     if let Ok(content) = std::fs::read_to_string(&version_path) {

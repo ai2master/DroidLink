@@ -22,12 +22,50 @@ export interface SyncStatus {
   message?: string;
 }
 
+/**
+ * Companion 应用状态接口 / Companion App Status Interface
+ *
+ * 描述某台设备上 Companion 应用的安装状态、版本信息和协议兼容性。
+ * Describes the Companion app's install status, version info, and protocol
+ * compatibility on a specific device.
+ *
+ * 数据来源 / Data source:
+ *   后端通过 "companion-status" Tauri 事件推送此数据。
+ *   Backend pushes this data via "companion-status" Tauri event.
+ *   前端 App.tsx 监听事件并调用 setCompanionStatus() 写入 store。
+ *   Frontend App.tsx listens and calls setCompanionStatus() to write to store.
+ *
+ * 更新判断逻辑 / Update decision logic:
+ *   needsUpdate 由后端基于协议版本计算，前端不需要自行判断。
+ *   needsUpdate is computed by backend based on protocol version;
+ *   frontend does not need to determine this itself.
+ *
+ * @see App.tsx - tauriListen('companion-status', ...) 事件监听
+ *               Event listener for companion-status
+ * @see commands/mod.rs - check_companion_app() 后端逻辑
+ *                        Backend logic for check_companion_app()
+ */
 export interface CompanionStatus {
+  /** 设备上是否已安装 Companion / Whether Companion is installed on device */
   installed: boolean;
+  /** 设备上安装的版本号 (versionName) / Installed version on device (versionName) */
   deviceVersion: string;
+  /** Desktop 内置的 Companion 版本号 / Desktop's bundled Companion version */
   bundledVersion: string;
+  /**
+   * 是否需要更新 / Whether update is needed
+   * 后端基于协议版本计算 / Backend computes based on protocol version:
+   *   device.protocolVersion < desktop.PROTOCOL_VERSION → true
+   */
   needsUpdate: boolean;
+  /** Desktop 端的协议版本号 / Desktop's protocol version (optional) */
   protocolVersion?: number;
+  /**
+   * 设备端的协议版本号 / Device's protocol version
+   *   number = 成功获取 / successfully retrieved
+   *   null = 旧版 Companion 或获取失败 / old Companion or retrieval failed
+   *   undefined = 数据未加载 / data not yet loaded
+   */
   deviceProtocolVersion?: number | null;
 }
 
