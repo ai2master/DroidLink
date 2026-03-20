@@ -112,10 +112,12 @@ jobs:
       #     git rev-parse --short=7 HEAD → short SHA (for source tracing)
       #
       # 输出 / Outputs:
-      #   - VERSION = "2.0.0.42"     ── 完整版本号 (写入 tauri.conf.json 和 Cargo.toml)
-      #                                  Full version (written to tauri.conf.json and Cargo.toml)
-      #   - BASE_VERSION = "2.0.0"   ── 基础版本 (写入 version.txt)
-      #                                  Base version (written to version.txt)
+      #   - VERSION = "2.0.42"       ── semver 版本号 (写入 tauri.conf.json 和 Cargo.toml)
+      #                                  semver version (written to tauri.conf.json and Cargo.toml)
+      #                                  格式: MAJOR.MINOR.BUILD (Tauri 要求严格 3 段 semver)
+      #                                  Format: MAJOR.MINOR.BUILD (Tauri requires strict 3-segment semver)
+      #   - BASE_VERSION = "2.0.0"   ── 基础版本 (写入 version.txt 的 version 字段)
+      #                                  Base version (written to version.txt version field)
       #   - BUILD_NUMBER = "42"      ── 构建号 (传给 gradle 作为 versionCode)
       #                                  Build number (passed to gradle as versionCode)
       #   - SHORT_SHA = "9d8f3a1"    ── 短 SHA (写入 version.txt 供追溯)
@@ -123,49 +125,62 @@ jobs:
       #
       # 版本号如何跨组件流动 / How version flows across components:
       #   tauri.conf.json (手动维护 "2.0.0")
-      #     ↓ CI 读取
-      #     ↓ CI reads
-      #   VERSION = "2.0.0.42" → 写回 tauri.conf.json + Cargo.toml
-      #                          Written back to tauri.conf.json + Cargo.toml
+      #     ↓ CI 读取 MAJOR=2, MINOR=0
+      #     ↓ CI reads MAJOR=2, MINOR=0
+      #   VERSION = "2.0.42" (MAJOR.MINOR.BUILD) → 写回 tauri.conf.json + Cargo.toml
+      #                                             Written back to tauri.conf.json + Cargo.toml
       #   BUILD_NUMBER = "42" → 传给 gradle -PciVersionCode=42
       #                         Passed to gradle -PciVersionCode=42
-      #   VERSION = "2.0.0.42" → 传给 gradle -PciVersionName="2.0.0.42"
-      #                          Passed to gradle -PciVersionName="2.0.0.42"
+      #   VERSION = "2.0.42" → 传给 gradle -PciVersionName="2.0.42"
+      #                         Passed to gradle -PciVersionName="2.0.42"
       #   → 写入 version.txt JSON (Desktop 内置元数据)
       #     Written to version.txt JSON (Desktop bundled metadata)
       #
       # 开发者只需维护 tauri.conf.json 中的基础版本号 (如 "2.0.0")，
-      # 构建号由 CI 自动从 git commit count 生成，确保每次构建版本唯一。
+      # CI 提取 MAJOR.MINOR 并用 commit count 作为 PATCH，确保 semver 合规且唯一。
       # Developer only maintains base version in tauri.conf.json (e.g. "2.0.0"),
-      # build number is auto-generated from git commit count, ensuring unique builds.
+      # CI extracts MAJOR.MINOR and uses commit count as PATCH, ensuring semver-compliant unique builds.
       # =====================================================================
       - name: Set version number
         shell: bash
         run: |
           COMMIT_COUNT=$(git rev-list --count HEAD)
           SHORT_SHA=$(git rev-parse --short=7 HEAD)
-          # 从 tauri.conf.json 读取基础语义版本 (手动维护)
-          # Read base semantic version from tauri.conf.json (manually maintained)
+          # 从 tauri.conf.json 读取基础语义版本 (手动维护，如 "2.0.0")
+          # Read base semantic version from tauri.conf.json (manually maintained, e.g. "2.0.0")
           BASE_VERSION=$(node -e "console.log(JSON.parse(require('fs').readFileSync('src-tauri/tauri.conf.json','utf8')).version)")
-          VERSION="${BASE_VERSION}.${COMMIT_COUNT}"
+          # 提取 MAJOR.MINOR，用 commit count 作为 PATCH → 严格 3 段 semver
+          # Extract MAJOR.MINOR, use commit count as PATCH → strict 3-segment semver
+          # Tauri v2 要求 version 必须是严格的 semver (X.Y.Z)，不支持 4 段
+          # Tauri v2 requires version to be strict semver (X.Y.Z), 4-segment is not supported
+          MAJOR=$(echo "$BASE_VERSION" | cut -d. -f1)
+          MINOR=$(echo "$BASE_VERSION" | cut -d. -f2)
+          VERSION="${MAJOR}.${MINOR}.${COMMIT_COUNT}"
           echo "Setting version to ${VERSION} (base=${BASE_VERSION}, build=${COMMIT_COUNT}, sha=${SHORT_SHA})"
-          # 更新 tauri.conf.json 中的版本号 (CI 构建时临时覆盖，不提交)
-          # Update version in tauri.conf.json (CI build-time override, not committed)
+          # 使用 node 更新 tauri.conf.json 和 Cargo.toml (跨平台兼容，macOS/Linux/Windows)
+          # Use node to update tauri.conf.json and Cargo.toml (cross-platform: macOS/Linux/Windows)
+          # 注意：不能用 sed -i，因为 macOS BSD sed 语法不同
+          # Note: cannot use sed -i, macOS BSD sed has different syntax
           node -e "
             const fs = require('fs');
+            // 更新 tauri.conf.json / Update tauri.conf.json
             const conf = JSON.parse(fs.readFileSync('src-tauri/tauri.conf.json', 'utf8'));
             conf.version = '${VERSION}';
             fs.writeFileSync('src-tauri/tauri.conf.json', JSON.stringify(conf, null, 2) + '\n');
+            // 更新 Cargo.toml / Update Cargo.toml
+            let cargo = fs.readFileSync('src-tauri/Cargo.toml', 'utf8');
+            cargo = cargo.replace(/^version = \".*\"/m, 'version = \"${VERSION}\"');
+            fs.writeFileSync('src-tauri/Cargo.toml', cargo);
           "
-          # 同步更新 Cargo.toml 中的版本号 (CI 构建时临时覆盖，不提交)
-          # Sync version in Cargo.toml (CI build-time override, not committed)
-          sed -i "s/^version = \".*\"/version = \"${VERSION}\"/" src-tauri/Cargo.toml
           # 将版本变量导出到后续步骤 / Export version variables to subsequent steps
           echo "VERSION=${VERSION}" >> $GITHUB_ENV
           echo "BASE_VERSION=${BASE_VERSION}" >> $GITHUB_ENV
           echo "BUILD_NUMBER=${COMMIT_COUNT}" >> $GITHUB_ENV
           echo "SHORT_SHA=${SHORT_SHA}" >> $GITHUB_ENV
+          echo "=== tauri.conf.json ==="
           cat src-tauri/tauri.conf.json | head -6
+          echo "=== Cargo.toml ==="
+          head -3 src-tauri/Cargo.toml
 
       - name: Install npm dependencies
         run: npm ci || npm install

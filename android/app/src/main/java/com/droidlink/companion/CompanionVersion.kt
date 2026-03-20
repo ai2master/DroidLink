@@ -14,11 +14,13 @@ package com.droidlink.companion
  *
  *   1. 语义版本号 (Semantic Version) - 手动维护
  *      Semantic version - manually maintained
- *      例如 / Example: "2.0.0"
+ *      例如 / Example: "2.0.0" (基础版本), CI 生成 "2.0.42" (MAJOR.MINOR.BUILD)
  *      ── 在 tauri.conf.json (Desktop) 和 build.gradle.kts (Companion) 中定义
  *      ── Defined in tauri.conf.json (Desktop) and build.gradle.kts (Companion)
- *      ── 仅在功能性重大变更时手动更新
- *      ── Only manually updated on significant feature changes
+ *      ── 仅在功能性重大变更时手动更新 MAJOR/MINOR
+ *      ── Only manually update MAJOR/MINOR on significant feature changes
+ *      ── Tauri v2 要求严格 3 段 semver，CI 用 commit count 作为第三段
+ *      ── Tauri v2 requires strict 3-segment semver, CI uses commit count as third segment
  *
  *   2. 协议版本号 (Protocol Version) - 手动维护，本文件定义
  *      Protocol version - manually maintained, defined in this file

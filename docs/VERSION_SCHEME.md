@@ -88,15 +88,24 @@ DroidLink uses a three-layer version management scheme to solve version confusio
 ## 完整版本号格式 / Full Version Number Format
 
 ```
-{MAJOR}.{MINOR}.{PATCH}.{BUILD}
-  2   .  0   .  0   .  42
+{MAJOR}.{MINOR}.{BUILD}
+  2   .  0   .  42
 
-  ↑ 语义版本 (手动)      ↑ 构建号 (CI 自动)
-  ↑ Semantic (manual)    ↑ Build number (CI auto)
+  ↑ 手动维护         ↑ CI 自动 (git commit count)
+  ↑ Manually set     ↑ CI auto (git commit count)
 ```
 
-- Desktop 显示版本: `2.0.0.42`
-- Companion versionName: `2.0.0.42`
+Tauri v2 要求版本号必须是严格的 3 段 semver (`X.Y.Z`)，不支持 4 段。
+Tauri v2 requires strict 3-segment semver (`X.Y.Z`), 4-segment is not supported.
+
+因此 CI 从基础版本 `"2.0.0"` 提取 MAJOR 和 MINOR，用 commit count 作为第三段：
+So CI extracts MAJOR and MINOR from base `"2.0.0"`, uses commit count as third segment:
+
+- `tauri.conf.json` 中手动维护 `"2.0.0"` → CI 生成 `"2.0.42"`
+  Manually maintain `"2.0.0"` in `tauri.conf.json` → CI generates `"2.0.42"`
+
+- Desktop 显示版本: `2.0.42`
+- Companion versionName: `2.0.42`
 - Companion versionCode: `42`
 
 ---
@@ -119,12 +128,12 @@ DroidLink uses a three-layer version management scheme to solve version confusio
 │  读取 tauri.conf.json → BASE_VERSION = "2.0.0"  │
 │  git commit count → BUILD_NUMBER = "42"          │
 │  git short SHA → SHORT_SHA = "9d8f3a1"           │
-│  VERSION = "2.0.0.42"                            │
+│  提取 MAJOR=2, MINOR=0 → VERSION = "2.0.42"    │
 │                                                   │
-│  ┌─ 写入 tauri.conf.json: "2.0.0.42" (临时)     │
-│  ├─ 写入 Cargo.toml: "2.0.0.42" (临时)          │
+│  ┌─ 写入 tauri.conf.json: "2.0.42" (临时)       │
+│  ├─ 写入 Cargo.toml: "2.0.42" (临时)            │
 │  ├─ 传给 gradle: -PciVersionCode=42             │
-│  │               -PciVersionName="2.0.0.42"     │
+│  │               -PciVersionName="2.0.42"       │
 │  └─ 生成 version.txt JSON:                       │
 │     {                                             │
 │       "version": "2.0.0",                        │
@@ -141,11 +150,11 @@ DroidLink uses a three-layer version management scheme to solve version confusio
 │                                                   │
 │  Desktop 安装包:                                  │
 │    内置 version.txt JSON + DroidLinkCompanion.apk│
-│    版本号: 2.0.0.42                              │
+│    版本号: 2.0.42 (semver 3 段)                  │
 │                                                   │
 │  Companion APK:                                   │
 │    versionCode: 42                               │
-│    versionName: "2.0.0.42"                       │
+│    versionName: "2.0.42"                         │
 │    内部 PROTOCOL_VERSION: 1                      │
 └─────────────────────────────────────────────────┘
 ```
@@ -248,7 +257,7 @@ pm list packages com.droidlink.companion
 
 1. 修改 `src-tauri/tauri.conf.json` 中的 `version` 字段 (如 `"2.0.0"` → `"2.1.0"`)
 2. 提交并推送
-3. CI 自动生成完整版本号 (如 `"2.1.0.58"`)
+3. CI 自动生成完整版本号 (如 `"2.1.58"`)
 
 ### 修改了 ADB 通信接口
 
@@ -261,7 +270,7 @@ pm list packages com.droidlink.companion
 ### 本地开发 Companion APK
 
 - 本地构建使用 `build.gradle.kts` 中的默认值: `versionCode=2`, `versionName="2.0.0"`
-- 如需模拟 CI 版本: `gradle assembleRelease -PciVersionCode=99 -PciVersionName="2.0.0.99"`
+- 如需模拟 CI 版本: `gradle assembleRelease -PciVersionCode=99 -PciVersionName="2.0.99"`
 
 ---
 
@@ -284,6 +293,12 @@ Desktop sends `EXPORT_CHANGES` broadcast to Companion's `DataExportReceiver` via
 **A:** 如果 `get_device_protocol_version()` 返回 `None` (旧版 Companion 的 EXPORT_CHANGES 响应不含此字段)，则回退到 versionName 字符串比较。这确保了向后兼容。
 
 If `get_device_protocol_version()` returns `None` (old Companion's EXPORT_CHANGES response lacks this field), it falls back to versionName string comparison. This ensures backward compatibility.
+
+### Q: 为什么版本号是 3 段而非 4 段？/ Why 3 segments instead of 4?
+
+**A:** Tauri v2 要求 `tauri.conf.json` 中的 `version` 必须是严格的 semver 格式 (`X.Y.Z`)，不支持 4 段 (`X.Y.Z.W`)。尝试使用 4 段版本号 (如 `2.0.0.42`) 会导致编译失败并报错 `"version must be a semver string"`。因此 CI 从基础版本提取 MAJOR 和 MINOR，用 commit count 作为第三段 (PATCH)，生成如 `2.0.42` 的版本号。
+
+Tauri v2 requires `tauri.conf.json` `version` to be strict semver (`X.Y.Z`), 4-segment (`X.Y.Z.W`) is not supported. Using 4 segments (e.g. `2.0.0.42`) causes build failure with error `"version must be a semver string"`. So CI extracts MAJOR.MINOR from base version and uses commit count as third segment (PATCH), producing versions like `2.0.42`.
 
 ### Q: 三处 protocolVersion 不一致会怎样？/ What if protocolVersion is inconsistent across the three locations?
 

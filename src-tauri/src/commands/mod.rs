@@ -944,8 +944,8 @@ pub const PROTOCOL_VERSION: u32 = 1;
 /// ```json
 /// {
 ///   "installed": true,                    // 是否已安装 / whether installed
-///   "deviceVersion": "2.0.0.42",          // 设备上的 versionName
-///   "bundledVersion": "2.0.0.42",         // Desktop 内置的版本号
+///   "deviceVersion": "2.0.42",             // 设备上的 versionName
+///   "bundledVersion": "2.0.42",            // Desktop 内置的版本号
 ///   "bundledBuild": 42,                   // Desktop 内置的构建号
 ///   "needsUpdate": false,                 // 是否需要更新 / whether update needed
 ///   "protocolVersion": 1,                 // Desktop 端协议版本
@@ -1168,22 +1168,36 @@ pub async fn install_companion_app(serial: String, app_handle: tauri::AppHandle)
 /// Called by lib.rs auto-check logic when device connects, for frontend display.
 ///
 /// 版本号格式 / Version string format:
-///   - JSON 格式 version.txt 且有 build 字段 → "2.0.0.42" (基础版本.构建号)
-///     JSON format version.txt with build field → "2.0.0.42" (base.build)
+///   - JSON 格式 version.txt 且有 build 字段 → "2.0.42" (MAJOR.MINOR.BUILD)
+///     JSON format version.txt with build field → "2.0.42" (MAJOR.MINOR.BUILD)
+///     从 base version "2.0.0" 提取 MAJOR.MINOR，用 build 作为 PATCH
+///     Extracts MAJOR.MINOR from base "2.0.0", uses build as PATCH
 ///   - JSON 格式 version.txt 无 build 字段 → "2.0.0" (仅基础版本)
-///     JSON format version.txt without build → "2.0.0" (base only)
+///     JSON format version.txt without build → "2.0.0" (base version only)
 ///   - 纯文本格式 version.txt (旧版) → 原样返回，如 "1.0.42"
 ///     Plain text version.txt (legacy) → returned as-is, e.g. "1.0.42"
 ///   - 读取失败 → 空字符串
 ///     Read failed → empty string
+///
+/// 注意：Tauri v2 要求 version 必须是严格 3 段 semver (X.Y.Z)，
+/// 所以版本格式为 MAJOR.MINOR.BUILD，而非 MAJOR.MINOR.PATCH.BUILD (4 段)。
+/// Note: Tauri v2 requires strict 3-segment semver (X.Y.Z),
+/// so version format is MAJOR.MINOR.BUILD, not MAJOR.MINOR.PATCH.BUILD (4-segment).
 pub fn get_bundled_companion_version_public(resource_dir: &std::path::Path) -> String {
     // 优先尝试 JSON 格式 (新版) / Prefer JSON format (new)
     if let Some(info) = get_bundled_companion_info(resource_dir) {
         if let Some(version) = info.get("version").and_then(|v| v.as_str()) {
             let build = info.get("build").and_then(|v| v.as_u64()).unwrap_or(0);
             if build > 0 {
-                // 拼接完整版本号: "2.0.0" + "." + "42" = "2.0.0.42"
-                // Compose full version: "2.0.0" + "." + "42" = "2.0.0.42"
+                // 从 base version 提取 MAJOR.MINOR，用 build 作为第三段
+                // Extract MAJOR.MINOR from base version, use build as third segment
+                // "2.0.0" → ["2", "0", "0"] → MAJOR="2", MINOR="0" → "2.0.42"
+                let parts: Vec<&str> = version.splitn(3, '.').collect();
+                if parts.len() >= 2 {
+                    return format!("{}.{}.{}", parts[0], parts[1], build);
+                }
+                // 基础版本格式不标准，回退到简单拼接
+                // Base version format non-standard, fallback to simple concat
                 return format!("{}.{}", version, build);
             }
             return version.to_string();

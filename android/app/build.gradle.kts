@@ -25,7 +25,7 @@ android {
         //                  String, user-facing version display.
         //
         // CI 构建时通过 gradle 属性注入 / CI injects via gradle properties:
-        //   gradle assembleRelease -PciVersionCode=42 -PciVersionName="2.0.0.42"
+        //   gradle assembleRelease -PciVersionCode=42 -PciVersionName="2.0.42"
         //
         // 本地开发时使用下方默认值 / Local dev uses defaults below:
         //   versionCode = 2 (本地开发的占位值 / placeholder for local dev)
@@ -33,7 +33,7 @@ android {
         //
         // CI 生成规则 / CI generation rules:
         //   versionCode = git commit count (每次提交自动递增 / auto-increments per commit)
-        //   versionName = "${BASE_VERSION}.${COMMIT_COUNT}" 例如 "2.0.0.42"
+        //   versionName = "${MAJOR}.${MINOR}.${COMMIT_COUNT}" 例如 "2.0.42"
         //
         // @see .github/workflows/build.yml - CI 版本号生成逻辑
         //                                    CI version generation logic
