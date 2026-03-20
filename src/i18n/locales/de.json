@@ -667,6 +667,7 @@
     "updateSuccess": "Update erfolgreich!",
     "updateSuccessDesc": "DroidLink Companion wurde aktualisiert. Alle Funktionen sind auf dem neuesten Stand.",
     "versionMismatch": "Geräteversion: {{device}}, verfügbar: {{bundled}}",
+    "protocolOk": "Protokoll kompatibel, kein Update nötig",
     "installedVersion": "Companion-App v{{version}}",
     "reinstall": "Neu installieren",
     "serviceLabel": "Hintergrunddienst",

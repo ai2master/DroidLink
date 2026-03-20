@@ -667,6 +667,7 @@
     "updateSuccess": "تم التحديث بنجاح!",
     "updateSuccessDesc": "تم تحديث تطبيق DroidLink المساعد. جميع الميزات محدثة.",
     "versionMismatch": "إصدار الجهاز: {{device}}، المتاح: {{bundled}}",
+    "protocolOk": "البروتوكول متوافق، لا حاجة للتحديث",
     "installedVersion": "التطبيق المساعد v{{version}}",
     "reinstall": "إعادة التثبيت",
     "serviceLabel": "خدمة الخلفية",

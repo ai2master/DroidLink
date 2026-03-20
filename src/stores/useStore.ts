@@ -27,6 +27,8 @@ export interface CompanionStatus {
   deviceVersion: string;
   bundledVersion: string;
   needsUpdate: boolean;
+  protocolVersion?: number;
+  deviceProtocolVersion?: number | null;
 }
 
 export type Density = 'compact' | 'comfortable';

@@ -273,15 +273,27 @@ pub fn run() {
                                                 String::new()
                                             };
 
-                                            // 读取内置 APK 版本号 / Read bundled APK version
                                             let resource_dir = app_handle_for_check.path().resource_dir()
                                                 .unwrap_or_else(|_| std::path::PathBuf::from("."));
                                             let bundled_version = crate::commands::get_bundled_companion_version_public(&resource_dir);
 
-                                            let needs_update = installed
-                                                && !device_version.is_empty()
-                                                && !bundled_version.is_empty()
-                                                && device_version != bundled_version;
+                                            // 协议版本判断：只有协议不兼容才提示更新
+                                            // Protocol-based check: only prompt update when protocol is incompatible
+                                            let device_protocol = if installed {
+                                                crate::commands::get_device_protocol_version_public(&serial_for_check)
+                                            } else {
+                                                None
+                                            };
+                                            let needs_update = if !installed {
+                                                false
+                                            } else {
+                                                match device_protocol {
+                                                    Some(dev_proto) => dev_proto < crate::commands::PROTOCOL_VERSION,
+                                                    // 旧版 companion 没有协议版本 → 回退到版本名比较
+                                                    // Old companion lacks protocol version → fallback to versionName comparison
+                                                    None => !device_version.is_empty() && !bundled_version.is_empty() && device_version != bundled_version,
+                                                }
+                                            };
 
                                             let _ = app_handle_for_check.emit("companion-status", serde_json::json!({
                                                 "serial": serial_for_check,
@@ -289,12 +301,16 @@ pub fn run() {
                                                 "deviceVersion": device_version,
                                                 "bundledVersion": bundled_version,
                                                 "needsUpdate": needs_update,
+                                                "protocolVersion": crate::commands::PROTOCOL_VERSION,
+                                                "deviceProtocolVersion": device_protocol,
                                             }));
 
                                             if !installed {
                                                 log::info!("Companion app NOT installed on {}. Frontend will prompt user.", serial_for_check);
                                             } else if needs_update {
-                                                log::info!("Companion app on {} needs update: {} -> {}", serial_for_check, device_version, bundled_version);
+                                                log::info!("Companion protocol mismatch on {}: device={:?} desktop={}", serial_for_check, device_protocol, crate::commands::PROTOCOL_VERSION);
+                                            } else {
+                                                log::info!("Companion on {} OK: version={}, protocol={:?}", serial_for_check, device_version, device_protocol);
                                             }
                                         });
 

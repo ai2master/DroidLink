@@ -80,6 +80,8 @@ function App() {
           deviceVersion: status.deviceVersion || '',
           bundledVersion: status.bundledVersion || '',
           needsUpdate: !!status.needsUpdate,
+          protocolVersion: status.protocolVersion ?? undefined,
+          deviceProtocolVersion: status.deviceProtocolVersion ?? null,
         });
 
         const showPrompt = (mode: 'install' | 'update') => {

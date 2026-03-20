@@ -667,6 +667,7 @@
     "updateSuccess": "업데이트 성공!",
     "updateSuccessDesc": "DroidLink 컴패니언이 업데이트되었습니다. 모든 기능이 최신 상태입니다.",
     "versionMismatch": "기기 버전: {{device}}, 사용 가능: {{bundled}}",
+    "protocolOk": "프로토콜 호환, 업데이트 불필요",
     "installedVersion": "컴패니언 앱 v{{version}}",
     "reinstall": "재설치",
     "serviceLabel": "백그라운드 서비스",

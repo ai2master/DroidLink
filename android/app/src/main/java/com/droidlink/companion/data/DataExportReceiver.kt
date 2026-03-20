@@ -7,6 +7,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.util.Log
 import androidx.core.content.ContextCompat
+import com.droidlink.companion.CompanionVersion
 import com.droidlink.companion.providers.CallLogProvider
 import com.droidlink.companion.providers.ContactProvider
 import com.droidlink.companion.providers.SmsProvider
@@ -118,16 +119,18 @@ class DataExportReceiver : BroadcastReceiver() {
     private fun handleExportChanges(context: Context, outputPath: String?) {
         val path = outputPath ?: "/data/local/tmp/.droidlink_changes.json"
         try {
-            // 返回每种数据类型的可用状态 / Return availability status for each data type
+            // 返回每种数据类型的可用状态 + 协议版本号
+            // Return availability status for each data type + protocol version
             val changeSummary = mapOf(
                 "contacts" to if (hasPermission(context, Manifest.permission.READ_CONTACTS)) 1 else 0,
                 "messages" to if (hasPermission(context, Manifest.permission.READ_SMS)) 1 else 0,
-                "callLogs" to if (hasPermission(context, Manifest.permission.READ_CALL_LOG)) 1 else 0
+                "callLogs" to if (hasPermission(context, Manifest.permission.READ_CALL_LOG)) 1 else 0,
+                "protocolVersion" to CompanionVersion.PROTOCOL_VERSION
             )
 
             val json = gson.toJson(changeSummary)
             File(path).writeText(json, Charsets.UTF_8)
-            Log.i(TAG, "Exported change summary to $path")
+            Log.i(TAG, "Exported change summary to $path (protocol v${CompanionVersion.PROTOCOL_VERSION})")
         } catch (e: Exception) {
             Log.e(TAG, "Error exporting changes", e)
             writeError(path, e)

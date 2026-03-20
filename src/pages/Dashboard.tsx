@@ -256,9 +256,15 @@ export const Dashboard: React.FC = () => {
                     </span>
                   )}
                 </div>
-                <div className="text-[var(--font-size-sm)] text-gray-500 mt-1">
-                  {t('companion.versionMismatch', { device: companionDeviceVersion || '-', bundled: companionBundledVersion || '-' })}
-                </div>
+                {companionNeedsUpdate ? (
+                  <div className="text-[var(--font-size-sm)] text-amber-600 mt-1">
+                    {t('companion.versionMismatch', { device: companionDeviceVersion || '-', bundled: companionBundledVersion || '-' })}
+                  </div>
+                ) : (
+                  <div className="text-[var(--font-size-sm)] text-gray-500 mt-1">
+                    {t('companion.protocolOk')}
+                  </div>
+                )}
               </>
             )}
           </div>

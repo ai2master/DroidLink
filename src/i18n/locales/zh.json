@@ -667,6 +667,7 @@
     "updateSuccess": "更新成功！",
     "updateSuccessDesc": "DroidLink 手机端应用已更新，所有功能已是最新版本。",
     "versionMismatch": "设备版本：{{device}}，可用版本：{{bundled}}",
+    "protocolOk": "协议兼容，无需更新",
     "installedVersion": "手机端应用 v{{version}}",
     "reinstall": "重新安装",
     "serviceLabel": "后台服务",

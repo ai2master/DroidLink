@@ -866,8 +866,14 @@ pub async fn open_in_explorer(path: String) -> Result<(), String> {
 
 const COMPANION_PACKAGE: &str = "com.droidlink.companion";
 
-/// 检查手机上是否已安装 DroidLink Companion，返回安装状态和版本
-/// Check if DroidLink Companion is installed on the device, return status and version
+/// 协议版本号：仅在 Desktop ↔ Companion 的 ADB 通信接口变更时递增
+/// Protocol version: only increment when the ADB communication interface changes
+/// (new/modified broadcast actions, changed JSON formats, etc.)
+/// Must match CompanionVersion.PROTOCOL_VERSION in the Kotlin companion app.
+pub const PROTOCOL_VERSION: u32 = 1;
+
+/// 检查手机上是否已安装 DroidLink Companion，返回安装状态、版本和协议兼容性
+/// Check if DroidLink Companion is installed on device, return status, version, and protocol compatibility
 #[tauri::command]
 pub async fn check_companion_app(serial: String, app_handle: tauri::AppHandle) -> Result<Value, String> {
     // Check if package is installed
@@ -880,10 +886,12 @@ pub async fn check_companion_app(serial: String, app_handle: tauri::AppHandle) -
             "installed": false,
             "deviceVersion": null,
             "needsUpdate": false,
+            "protocolVersion": PROTOCOL_VERSION,
+            "deviceProtocolVersion": null,
         }));
     }
 
-    // Get installed version
+    // Get installed versionName
     let version_output = adb::shell(&serial,
         &format!("dumpsys package {} | grep versionName", COMPANION_PACKAGE))
         .unwrap_or_default();
@@ -894,21 +902,78 @@ pub async fn check_companion_app(serial: String, app_handle: tauri::AppHandle) -
         .map(|v| v.trim().to_string())
         .unwrap_or_default();
 
-    // Read bundled version from resources (using app_handle for correct path in packaged builds)
+    // Try to get companion protocol version via EXPORT_CHANGES
+    // The companion includes "protocolVersion" in its change summary response
+    let device_protocol = get_device_protocol_version(&serial);
+
+    // Read bundled version info from resources
     let resource_dir = app_handle.path().resource_dir()
         .map_err(|e| format!("Failed to get resource dir: {}", e))?;
-    let bundled_version = get_bundled_companion_version(&resource_dir);
+    let bundled_info = get_bundled_companion_info(&resource_dir);
 
-    let needs_update = !device_version.is_empty()
-        && !bundled_version.is_empty()
-        && device_version != bundled_version;
+    // 协议版本判断：只有协议不兼容才提示更新
+    // Protocol version check: only prompt update when protocol is incompatible
+    let needs_update = match device_protocol {
+        Some(dev_proto) => dev_proto < PROTOCOL_VERSION,
+        // 无法获取协议版本（旧版 Companion 没有此字段）→ 需要更新
+        // Cannot get protocol version (old companion lacks this field) → needs update
+        None => {
+            // Fallback: compare versionName strings (for pre-protocol-version companions)
+            let bundled_version = bundled_info.as_ref()
+                .and_then(|info| info.get("version").and_then(|v| v.as_str()))
+                .unwrap_or("");
+            !device_version.is_empty() && !bundled_version.is_empty() && device_version != bundled_version
+        }
+    };
+
+    let bundled_version = bundled_info.as_ref()
+        .and_then(|info| info.get("version").and_then(|v| v.as_str()))
+        .unwrap_or("")
+        .to_string();
+    let bundled_build = bundled_info.as_ref()
+        .and_then(|info| info.get("build").and_then(|v| v.as_u64()))
+        .unwrap_or(0);
 
     Ok(serde_json::json!({
         "installed": true,
         "deviceVersion": device_version,
-        "bundledVersion": bundled_version,
+        "bundledVersion": if bundled_version.is_empty() {
+            get_bundled_companion_version_legacy(&resource_dir)
+        } else {
+            bundled_version
+        },
+        "bundledBuild": bundled_build,
         "needsUpdate": needs_update,
+        "protocolVersion": PROTOCOL_VERSION,
+        "deviceProtocolVersion": device_protocol,
     }))
+}
+
+/// 公开接口：从设备获取 Companion 协议版本号 (供 lib.rs 调用)
+/// Public API: get companion protocol version from device (for lib.rs)
+pub fn get_device_protocol_version_public(serial: &str) -> Option<u32> {
+    get_device_protocol_version(serial)
+}
+
+/// 从设备获取 Companion 的协议版本号
+/// Get companion protocol version from device via EXPORT_CHANGES broadcast
+fn get_device_protocol_version(serial: &str) -> Option<u32> {
+    let tmp_path = "/data/local/tmp/.droidlink_proto_check.json";
+    let cmd = format!(
+        "am broadcast -a com.droidlink.EXPORT_CHANGES --es output_path '{}' \
+         -n com.droidlink.companion/.data.DataExportReceiver 2>/dev/null && \
+         cat '{}' 2>/dev/null && rm -f '{}'",
+        tmp_path, tmp_path, tmp_path
+    );
+    if let Ok(output) = adb::shell(serial, &cmd) {
+        // Parse JSON to extract protocolVersion
+        if let Some(json_start) = output.find('{') {
+            if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&output[json_start..]) {
+                return parsed.get("protocolVersion").and_then(|v| v.as_u64()).map(|v| v as u32);
+            }
+        }
+    }
+    None
 }
 
 /// 通过 ADB 安装 companion APK 到手机（用户已同意后调用）
@@ -960,18 +1025,56 @@ pub async fn install_companion_app(serial: String, app_handle: tauri::AppHandle)
     }
 }
 
-/// 获取内置 companion APK 的版本号 (公开版本供 lib.rs 调用)
-/// Get the bundled companion APK version (public for lib.rs)
+/// 获取内置 companion 的版本号 (公开版本供 lib.rs 调用)
+/// Get the bundled companion version (public for lib.rs)
 pub fn get_bundled_companion_version_public(resource_dir: &std::path::Path) -> String {
-    get_bundled_companion_version(resource_dir)
+    // Try JSON format first, fall back to legacy plain text
+    if let Some(info) = get_bundled_companion_info(resource_dir) {
+        if let Some(version) = info.get("version").and_then(|v| v.as_str()) {
+            let build = info.get("build").and_then(|v| v.as_u64()).unwrap_or(0);
+            if build > 0 {
+                return format!("{}.{}", version, build);
+            }
+            return version.to_string();
+        }
+    }
+    get_bundled_companion_version_legacy(resource_dir)
 }
 
-/// 获取内置 companion APK 的版本号
-/// Get the bundled companion APK version
-fn get_bundled_companion_version(resource_dir: &std::path::Path) -> String {
+/// 获取内置 companion 的协议版本号 (供 lib.rs 调用)
+/// Get the bundled companion protocol version (for lib.rs)
+pub fn get_bundled_protocol_version(resource_dir: &std::path::Path) -> u32 {
+    get_bundled_companion_info(resource_dir)
+        .and_then(|info| info.get("protocolVersion").and_then(|v| v.as_u64()))
+        .map(|v| v as u32)
+        .unwrap_or(PROTOCOL_VERSION)
+}
+
+/// 读取 version.txt 的 JSON 格式 (新版)
+/// Read version.txt in JSON format (new format)
+fn get_bundled_companion_info(resource_dir: &std::path::Path) -> Option<serde_json::Value> {
     let version_path = resource_dir.join("resources").join("companion").join("version.txt");
     if let Ok(content) = std::fs::read_to_string(&version_path) {
-        return content.trim().to_string();
+        let trimmed = content.trim();
+        // Try parsing as JSON first
+        if trimmed.starts_with('{') {
+            if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(trimmed) {
+                return Some(parsed);
+            }
+        }
+    }
+    None
+}
+
+/// 回退：读取 version.txt 的纯文本格式 (旧版兼容)
+/// Fallback: read version.txt in plain text format (legacy compatibility)
+fn get_bundled_companion_version_legacy(resource_dir: &std::path::Path) -> String {
+    let version_path = resource_dir.join("resources").join("companion").join("version.txt");
+    if let Ok(content) = std::fs::read_to_string(&version_path) {
+        let trimmed = content.trim();
+        if !trimmed.starts_with('{') {
+            return trimmed.to_string();
+        }
     }
     log::warn!("Failed to read bundled companion version from {:?}", version_path);
     String::new()

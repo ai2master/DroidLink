@@ -94,14 +94,18 @@ jobs:
             libayatana-appindicator3-dev \
             rpm
 
-      # 自动生成版本号: 1.0.{commit_count} (每次提交递增)
-      # Auto-generate version: 1.0.{commit_count} (increments per commit)
+      # 统一版本号生成: 从 tauri.conf.json 读取基础版本 + commit count 作为构建号
+      # Unified version generation: base version from tauri.conf.json + commit count as build number
       - name: Set version number
         shell: bash
         run: |
           COMMIT_COUNT=$(git rev-list --count HEAD)
-          VERSION="1.0.${COMMIT_COUNT}"
-          echo "Setting version to ${VERSION}"
+          SHORT_SHA=$(git rev-parse --short=7 HEAD)
+          # 从 tauri.conf.json 读取基础语义版本 (手动维护)
+          # Read base semantic version from tauri.conf.json (manually maintained)
+          BASE_VERSION=$(node -e "console.log(JSON.parse(require('fs').readFileSync('src-tauri/tauri.conf.json','utf8')).version)")
+          VERSION="${BASE_VERSION}.${COMMIT_COUNT}"
+          echo "Setting version to ${VERSION} (base=${BASE_VERSION}, build=${COMMIT_COUNT}, sha=${SHORT_SHA})"
           # 更新 tauri.conf.json 中的版本号 / Update version in tauri.conf.json
           node -e "
             const fs = require('fs');
@@ -109,7 +113,12 @@ jobs:
             conf.version = '${VERSION}';
             fs.writeFileSync('src-tauri/tauri.conf.json', JSON.stringify(conf, null, 2) + '\n');
           "
+          # 同步更新 Cargo.toml 中的版本号 / Sync version in Cargo.toml
+          sed -i "s/^version = \".*\"/version = \"${VERSION}\"/" src-tauri/Cargo.toml
           echo "VERSION=${VERSION}" >> $GITHUB_ENV
+          echo "BASE_VERSION=${BASE_VERSION}" >> $GITHUB_ENV
+          echo "BUILD_NUMBER=${COMMIT_COUNT}" >> $GITHUB_ENV
+          echo "SHORT_SHA=${SHORT_SHA}" >> $GITHUB_ENV
           cat src-tauri/tauri.conf.json | head -6
 
       - name: Install npm dependencies
@@ -117,14 +126,31 @@ jobs:
 
       # 构建 Android companion APK (使用 setup-gradle 提供的 gradle 命令)
       # Build Android companion APK (uses gradle command from setup-gradle)
+      # CI 通过 gradle 属性注入版本号 / CI injects version via gradle properties
       - name: Build companion APK
         shell: bash
         run: |
           cd android
-          gradle assembleRelease --no-daemon --stacktrace
+          gradle assembleRelease --no-daemon --stacktrace \
+            -PciVersionCode=${{ env.BUILD_NUMBER }} \
+            -PciVersionName=${{ env.VERSION }}
           mkdir -p ../src-tauri/resources/companion
           cp app/build/outputs/apk/release/app-release.apk ../src-tauri/resources/companion/DroidLinkCompanion.apk
-          echo "${{ env.VERSION }}" > ../src-tauri/resources/companion/version.txt
+          # 写入 JSON 格式的 version.txt (新格式)
+          # Write JSON format version.txt (new format)
+          node -e "
+            const fs = require('fs');
+            const info = {
+              version: '${{ env.BASE_VERSION }}',
+              build: parseInt('${{ env.BUILD_NUMBER }}', 10),
+              versionCode: parseInt('${{ env.BUILD_NUMBER }}', 10),
+              protocolVersion: 1, // Must match PROTOCOL_VERSION in commands/mod.rs and CompanionVersion.kt
+              sha: '${{ env.SHORT_SHA }}'
+            };
+            fs.writeFileSync('../src-tauri/resources/companion/version.txt', JSON.stringify(info, null, 2) + '\n');
+          "
+          echo "=== version.txt ==="
+          cat ../src-tauri/resources/companion/version.txt
           ls -lah ../src-tauri/resources/companion/
 
       # 下载 Google 官方 platform-tools (内含 ADB)

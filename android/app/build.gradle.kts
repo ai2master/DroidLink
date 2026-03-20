@@ -11,8 +11,11 @@ android {
         applicationId = "com.droidlink.companion"
         minSdk = 26
         targetSdk = 34
-        versionCode = 2
-        versionName = "2.0"
+
+        // CI 通过 gradle 属性注入版本号，本地开发使用默认值
+        // CI injects version via gradle properties, local dev uses defaults
+        versionCode = (project.findProperty("ciVersionCode") as? String)?.toIntOrNull() ?: 2
+        versionName = (project.findProperty("ciVersionName") as? String) ?: "2.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {

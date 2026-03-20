@@ -667,6 +667,7 @@
     "updateSuccess": "更新成功！",
     "updateSuccessDesc": "DroidLink コンパニオンが更新されました。すべての機能が最新です。",
     "versionMismatch": "デバイスバージョン: {{device}}、利用可能: {{bundled}}",
+    "protocolOk": "プロトコル互換、更新不要",
     "installedVersion": "コンパニオンアプリ v{{version}}",
     "reinstall": "再インストール",
     "serviceLabel": "バックグラウンドサービス",

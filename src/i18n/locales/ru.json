@@ -667,6 +667,7 @@
     "updateSuccess": "Обновление успешно!",
     "updateSuccessDesc": "DroidLink Companion обновлён. Все функции актуальны.",
     "versionMismatch": "Версия на устройстве: {{device}}, доступна: {{bundled}}",
+    "protocolOk": "Протокол совместим, обновление не требуется",
     "installedVersion": "Companion v{{version}}",
     "reinstall": "Переустановить",
     "serviceLabel": "Фоновая служба",
