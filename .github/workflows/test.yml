@@ -42,8 +42,10 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
 
+      # npm install (not npm ci) 因 lockfile 可能由不同 npm 版本生成
+      # npm install (not npm ci) since lockfile may be from a different npm version
       - name: Install dependencies
-        run: npm ci
+        run: npm install
 
       # TypeScript 编译检查 (不输出文件，仅检查类型错误)
       # TypeScript compile check (noEmit, type errors only)
@@ -334,7 +336,7 @@ jobs:
           gradle-version: '8.5'
 
       - name: Install npm dependencies
-        run: npm ci
+        run: npm install
 
       # 构建 placeholder Companion APK + 资源
       # Build placeholder companion resources

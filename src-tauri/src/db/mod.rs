@@ -939,21 +939,54 @@ mod tests {
     #[test]
     fn test_folder_sync_pairs() {
         let (_tmp, db) = setup_db();
-        db.add_folder_sync_pair("pair1", "DEV1", "/home/user/photos", "/sdcard/DCIM", "bidirectional").unwrap();
-        db.add_folder_sync_pair("pair2", "DEV1", "/home/user/docs", "/sdcard/Documents", "push_only").unwrap();
+        let pair1 = FolderSyncPair {
+            id: "pair1".to_string(),
+            device_serial: "DEV1".to_string(),
+            local_path: "/home/user/photos".to_string(),
+            remote_path: "/sdcard/DCIM".to_string(),
+            direction: "bidirectional".to_string(),
+            enabled: true,
+            last_synced: None,
+            created_at: String::new(),
+        };
+        let pair2 = FolderSyncPair {
+            id: "pair2".to_string(),
+            device_serial: "DEV1".to_string(),
+            local_path: "/home/user/docs".to_string(),
+            remote_path: "/sdcard/Documents".to_string(),
+            direction: "push_only".to_string(),
+            enabled: true,
+            last_synced: None,
+            created_at: String::new(),
+        };
+        db.add_folder_sync_pair(&pair1).unwrap();
+        db.add_folder_sync_pair(&pair2).unwrap();
 
-        let pairs = db.get_folder_sync_pairs("DEV1").unwrap();
+        let pairs = db.get_folder_sync_pairs(Some("DEV1")).unwrap();
         assert_eq!(pairs.len(), 2);
 
         db.remove_folder_sync_pair("pair1").unwrap();
-        assert_eq!(db.get_folder_sync_pairs("DEV1").unwrap().len(), 1);
+        assert_eq!(db.get_folder_sync_pairs(Some("DEV1")).unwrap().len(), 1);
     }
 
     #[test]
     fn test_version_record() {
         let (_tmp, db) = setup_db();
-        db.add_version_record("v1", "DEV1", "contacts", Some("c1"), "update", None, None, None, "sync", Some("test")).unwrap();
-        let versions = db.get_version_history("contacts", None, 10, 0).unwrap();
+        let v = VersionRecord {
+            id: "v1".to_string(),
+            device_serial: "DEV1".to_string(),
+            data_type: "contacts".to_string(),
+            item_id: Some("c1".to_string()),
+            action: "update".to_string(),
+            snapshot_path: None,
+            data_before: None,
+            data_after: None,
+            source: "sync".to_string(),
+            description: Some("test".to_string()),
+            created_at: String::new(),
+        };
+        db.insert_version(&v).unwrap();
+        let versions = db.get_version_history("contacts", None, 10).unwrap();
         assert_eq!(versions.len(), 1);
         assert_eq!(versions[0].id, "v1");
     }
