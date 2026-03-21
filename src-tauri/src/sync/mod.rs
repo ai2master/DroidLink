@@ -799,16 +799,18 @@ impl SyncEngine {
 
     fn parse_content_row(line: &str) -> Option<HashMap<String, String>> {
         // Parse format: "Row: 0 _id=1, display_name=张三, has_phone_number=1"
+        // adb shell content query 输出: "Row: N" 后跟 key=value 对
         if !line.starts_with("Row: ") {
             return None;
         }
 
-        let parts: Vec<&str> = line.splitn(2, ' ').collect();
-        if parts.len() < 2 {
-            return None;
-        }
-
-        let fields_str = parts[1].trim();
+        // 跳过 "Row: " 前缀, 然后跳过行号 (第一个空格之前的数字)
+        // Skip "Row: " prefix, then skip the row number (digits before first space)
+        let after_prefix = &line[5..]; // skip "Row: "
+        let fields_str = match after_prefix.find(' ') {
+            Some(pos) => after_prefix[pos + 1..].trim(),
+            None => return None,
+        };
         let mut map = HashMap::new();
 
         for field in fields_str.split(", ") {
