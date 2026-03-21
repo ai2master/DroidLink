@@ -807,3 +807,176 @@ impl Database {
         Ok(count)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tempfile::TempDir;
+
+    fn setup_db() -> (TempDir, Database) {
+        let tmp = TempDir::new().unwrap();
+        let db = Database::new(tmp.path()).unwrap();
+        (tmp, db)
+    }
+
+    #[test]
+    fn test_create_database() {
+        let (_tmp, db) = setup_db();
+        assert!(db.data_path().exists());
+        let db_file = db.data_path().join("droidlink.db");
+        assert!(db_file.exists());
+    }
+
+    #[test]
+    fn test_default_settings() {
+        let (_tmp, db) = setup_db();
+        let settings = db.get_all_settings().unwrap();
+        assert!(!settings.is_empty());
+        assert_eq!(settings.get("sync_contacts").map(|s| s.as_str()), Some("true"));
+        assert_eq!(settings.get("auto_sync").map(|s| s.as_str()), Some("false"));
+        assert_eq!(settings.get("language").map(|s| s.as_str()), Some("zh-CN"));
+    }
+
+    #[test]
+    fn test_upsert_and_get_device() {
+        let (_tmp, db) = setup_db();
+        db.upsert_device("ABC123", "Pixel 7", "Google", "14", "My Pixel").unwrap();
+        let devices = db.get_all_devices().unwrap();
+        assert_eq!(devices.len(), 1);
+        assert_eq!(devices[0]["serial"], "ABC123");
+        assert_eq!(devices[0]["model"], "Pixel 7");
+    }
+
+    #[test]
+    fn test_device_upsert_updates_existing() {
+        let (_tmp, db) = setup_db();
+        db.upsert_device("ABC123", "Pixel 7", "Google", "14", "My Pixel").unwrap();
+        db.upsert_device("ABC123", "Pixel 7 Pro", "Google", "15", "My Pixel Pro").unwrap();
+        let devices = db.get_all_devices().unwrap();
+        assert_eq!(devices.len(), 1);
+        assert_eq!(devices[0]["model"], "Pixel 7 Pro");
+    }
+
+    #[test]
+    fn test_contact_crud() {
+        let (_tmp, db) = setup_db();
+        db.upsert_contact("DEV1", "c1", "Alice", "[\"123\"]", "[]", "", "{}", "hash1").unwrap();
+        db.upsert_contact("DEV1", "c2", "Bob", "[\"456\"]", "[]", "", "{}", "hash2").unwrap();
+
+        let contacts = db.get_contacts("DEV1").unwrap();
+        assert_eq!(contacts.len(), 2);
+        assert_eq!(contacts[0].display_name, "Alice");
+
+        let hashes = db.get_contact_hashes("DEV1").unwrap();
+        assert_eq!(hashes.len(), 2);
+
+        db.delete_contact("DEV1", "c1").unwrap();
+        assert_eq!(db.get_contacts("DEV1").unwrap().len(), 1);
+    }
+
+    #[test]
+    fn test_contact_upsert_updates_hash() {
+        let (_tmp, db) = setup_db();
+        db.upsert_contact("DEV1", "c1", "Alice", "[]", "[]", "", "{}", "hash_old").unwrap();
+        db.upsert_contact("DEV1", "c1", "Alice Updated", "[]", "[]", "", "{}", "hash_new").unwrap();
+        let contacts = db.get_contacts("DEV1").unwrap();
+        assert_eq!(contacts.len(), 1);
+        assert_eq!(contacts[0].display_name, "Alice Updated");
+        assert_eq!(contacts[0].hash, "hash_new");
+    }
+
+    #[test]
+    fn test_message_crud() {
+        let (_tmp, db) = setup_db();
+        db.upsert_message("DEV1", "m1", "t1", "1234567890", "Alice", "Hello!", "2024-01-01", "", 1, 1, "h1").unwrap();
+        db.upsert_message("DEV1", "m2", "t1", "1234567890", "Alice", "Hi!", "2024-01-02", "", 2, 1, "h2").unwrap();
+        db.upsert_message("DEV1", "m3", "t2", "9876543210", "Bob", "Hey", "2024-01-03", "", 1, 0, "h3").unwrap();
+
+        let all = db.get_messages("DEV1", None).unwrap();
+        assert_eq!(all.len(), 3);
+
+        let thread1 = db.get_messages("DEV1", Some("t1")).unwrap();
+        assert_eq!(thread1.len(), 2);
+
+        let conversations = db.get_conversations("DEV1").unwrap();
+        assert_eq!(conversations.len(), 2);
+
+        let hashes = db.get_message_hashes("DEV1").unwrap();
+        assert_eq!(hashes.len(), 3);
+
+        db.delete_message("DEV1", "m1").unwrap();
+        assert_eq!(db.get_messages("DEV1", None).unwrap().len(), 2);
+    }
+
+    #[test]
+    fn test_call_log_crud() {
+        let (_tmp, db) = setup_db();
+        db.upsert_call_log("DEV1", "cl1", "1234567890", "Alice", 1, "2024-01-01", 120, "h1").unwrap();
+        db.upsert_call_log("DEV1", "cl2", "9876543210", "Bob", 3, "2024-01-02", 0, "h2").unwrap();
+
+        let logs = db.get_call_logs("DEV1").unwrap();
+        assert_eq!(logs.len(), 2);
+
+        let hashes = db.get_call_log_hashes("DEV1").unwrap();
+        assert_eq!(hashes.len(), 2);
+    }
+
+    #[test]
+    fn test_settings_crud() {
+        let (_tmp, db) = setup_db();
+        db.set_setting("test_key", "test_value").unwrap();
+        let val = db.get_setting("test_key").unwrap();
+        assert_eq!(val, Some("test_value".to_string()));
+
+        db.set_setting("test_key", "updated").unwrap();
+        let val = db.get_setting("test_key").unwrap();
+        assert_eq!(val, Some("updated".to_string()));
+
+        let all = db.get_all_settings().unwrap();
+        assert!(all.contains_key("test_key"));
+    }
+
+    #[test]
+    fn test_folder_sync_pairs() {
+        let (_tmp, db) = setup_db();
+        db.add_folder_sync_pair("pair1", "DEV1", "/home/user/photos", "/sdcard/DCIM", "bidirectional").unwrap();
+        db.add_folder_sync_pair("pair2", "DEV1", "/home/user/docs", "/sdcard/Documents", "push_only").unwrap();
+
+        let pairs = db.get_folder_sync_pairs("DEV1").unwrap();
+        assert_eq!(pairs.len(), 2);
+
+        db.remove_folder_sync_pair("pair1").unwrap();
+        assert_eq!(db.get_folder_sync_pairs("DEV1").unwrap().len(), 1);
+    }
+
+    #[test]
+    fn test_version_record() {
+        let (_tmp, db) = setup_db();
+        db.add_version_record("v1", "DEV1", "contacts", Some("c1"), "update", None, None, None, "sync", Some("test")).unwrap();
+        let versions = db.get_version_history("contacts", None, 10, 0).unwrap();
+        assert_eq!(versions.len(), 1);
+        assert_eq!(versions[0].id, "v1");
+    }
+
+    #[test]
+    fn test_sync_state() {
+        let (_tmp, db) = setup_db();
+        db.update_sync_state("DEV1", "contacts", "syncing", 50, None).unwrap();
+        let state = db.get_sync_state("DEV1", "contacts").unwrap();
+        assert!(state.is_some());
+        let s = state.unwrap();
+        assert_eq!(s.status, "syncing");
+        assert_eq!(s.items_synced, 50);
+    }
+
+    #[test]
+    fn test_device_isolation() {
+        let (_tmp, db) = setup_db();
+        db.upsert_contact("DEV1", "c1", "Alice", "[]", "[]", "", "{}", "h1").unwrap();
+        db.upsert_contact("DEV2", "c1", "Bob", "[]", "[]", "", "{}", "h2").unwrap();
+        assert_eq!(db.get_contacts("DEV1").unwrap().len(), 1);
+        assert_eq!(db.get_contacts("DEV1").unwrap()[0].display_name, "Alice");
+        assert_eq!(db.get_contacts("DEV2").unwrap().len(), 1);
+        assert_eq!(db.get_contacts("DEV2").unwrap()[0].display_name, "Bob");
+    }
+}

@@ -1555,3 +1555,125 @@ pub async fn import_settings(json: String, state: tauri::State<'_, AppState>) ->
 
     Ok(count)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tempfile::TempDir;
+    use std::fs;
+
+    fn create_version_txt(dir: &std::path::Path, content: &str) {
+        let version_dir = dir.join("resources").join("companion");
+        fs::create_dir_all(&version_dir).unwrap();
+        fs::write(version_dir.join("version.txt"), content).unwrap();
+    }
+
+    #[test]
+    fn test_protocol_version_constant() {
+        assert!(PROTOCOL_VERSION >= 1);
+    }
+
+    #[test]
+    fn test_bundled_version_json_with_build() {
+        let tmp = TempDir::new().unwrap();
+        create_version_txt(tmp.path(), r#"{"version":"2.0.0","build":42,"protocolVersion":1,"sha":"abc1234"}"#);
+        let version = get_bundled_companion_version_public(tmp.path());
+        assert_eq!(version, "2.0.42");
+    }
+
+    #[test]
+    fn test_bundled_version_json_without_build() {
+        let tmp = TempDir::new().unwrap();
+        create_version_txt(tmp.path(), r#"{"version":"2.0.0","protocolVersion":1}"#);
+        let version = get_bundled_companion_version_public(tmp.path());
+        assert_eq!(version, "2.0.0");
+    }
+
+    #[test]
+    fn test_bundled_version_json_build_zero() {
+        let tmp = TempDir::new().unwrap();
+        create_version_txt(tmp.path(), r#"{"version":"3.1.0","build":0}"#);
+        let version = get_bundled_companion_version_public(tmp.path());
+        assert_eq!(version, "3.1.0");
+    }
+
+    #[test]
+    fn test_bundled_version_legacy_plain_text() {
+        let tmp = TempDir::new().unwrap();
+        create_version_txt(tmp.path(), "1.0.42\n");
+        let version = get_bundled_companion_version_public(tmp.path());
+        assert_eq!(version, "1.0.42");
+    }
+
+    #[test]
+    fn test_bundled_version_missing_file() {
+        let tmp = TempDir::new().unwrap();
+        let version = get_bundled_companion_version_public(tmp.path());
+        assert_eq!(version, "");
+    }
+
+    #[test]
+    fn test_bundled_protocol_version_from_json() {
+        let tmp = TempDir::new().unwrap();
+        create_version_txt(tmp.path(), r#"{"version":"2.0.0","build":42,"protocolVersion":3}"#);
+        let proto = get_bundled_protocol_version(tmp.path());
+        assert_eq!(proto, 3);
+    }
+
+    #[test]
+    fn test_bundled_protocol_version_fallback() {
+        let tmp = TempDir::new().unwrap();
+        create_version_txt(tmp.path(), "1.0.42\n");
+        let proto = get_bundled_protocol_version(tmp.path());
+        assert_eq!(proto, PROTOCOL_VERSION);
+    }
+
+    #[test]
+    fn test_bundled_companion_info_json() {
+        let tmp = TempDir::new().unwrap();
+        create_version_txt(tmp.path(), r#"{"version":"2.0.0","build":42,"versionCode":42,"protocolVersion":1,"sha":"9d8f3a1"}"#);
+        let info = get_bundled_companion_info(tmp.path()).unwrap();
+        assert_eq!(info["version"], "2.0.0");
+        assert_eq!(info["build"], 42);
+        assert_eq!(info["protocolVersion"], 1);
+        assert_eq!(info["sha"], "9d8f3a1");
+    }
+
+    #[test]
+    fn test_bundled_companion_info_plain_text_returns_none() {
+        let tmp = TempDir::new().unwrap();
+        create_version_txt(tmp.path(), "1.0.42\n");
+        assert!(get_bundled_companion_info(tmp.path()).is_none());
+    }
+
+    #[test]
+    fn test_bundled_companion_info_invalid_json_returns_none() {
+        let tmp = TempDir::new().unwrap();
+        create_version_txt(tmp.path(), "{invalid json}");
+        assert!(get_bundled_companion_info(tmp.path()).is_none());
+    }
+
+    #[test]
+    fn test_legacy_version_reader() {
+        let tmp = TempDir::new().unwrap();
+        create_version_txt(tmp.path(), "  1.5.100  \n");
+        let version = get_bundled_companion_version_legacy(tmp.path());
+        assert_eq!(version, "1.5.100");
+    }
+
+    #[test]
+    fn test_legacy_version_reader_skips_json() {
+        let tmp = TempDir::new().unwrap();
+        create_version_txt(tmp.path(), r#"{"version":"2.0.0"}"#);
+        let version = get_bundled_companion_version_legacy(tmp.path());
+        assert_eq!(version, "");
+    }
+
+    #[test]
+    fn test_high_build_number() {
+        let tmp = TempDir::new().unwrap();
+        create_version_txt(tmp.path(), r#"{"version":"2.0.0","build":9999}"#);
+        let version = get_bundled_companion_version_public(tmp.path());
+        assert_eq!(version, "2.0.9999");
+    }
+}

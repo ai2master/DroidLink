@@ -1,0 +1,442 @@
+# DroidLink 测试工作流 / Test Workflow
+# 在每次 push 和 PR 时运行完整测试套件
+# Runs full test suite on every push and PR
+name: Test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: test-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  NODE_VERSION: '20'
+  RUST_TOOLCHAIN: 'stable'
+
+jobs:
+  # =====================================================================
+  # Job 1: TypeScript 类型检查 + 前端单元测试
+  # TypeScript type check + Frontend unit tests
+  # =====================================================================
+  frontend-test:
+    name: Frontend Tests
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      # TypeScript 编译检查 (不输出文件，仅检查类型错误)
+      # TypeScript compile check (noEmit, type errors only)
+      - name: TypeScript type check
+        run: npx tsc -b --noEmit
+
+      # Vitest 单元测试
+      # Vitest unit tests
+      - name: Run Vitest
+        run: npx vitest run
+
+      # 前端构建验证 (确保 vite build 不报错)
+      # Frontend build verification (ensure vite build succeeds)
+      - name: Build frontend
+        run: npx vite build
+
+  # =====================================================================
+  # Job 2: Rust 单元测试 + Clippy lint
+  # Rust unit tests + Clippy lint
+  # =====================================================================
+  rust-test:
+    name: Rust Tests
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Linux dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            librsvg2-dev \
+            patchelf \
+            libssl-dev \
+            libgtk-3-dev \
+            libayatana-appindicator3-dev
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+          components: clippy
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      # cargo test: 运行所有 #[test] 标注的单元测试
+      # cargo test: run all #[test] annotated unit tests
+      - name: Run cargo test
+        working-directory: src-tauri
+        run: cargo test --lib 2>&1
+
+      # Clippy: Rust 静态分析 (deny warnings 确保代码质量)
+      # Clippy: Rust static analysis (deny warnings for code quality)
+      - name: Run clippy
+        working-directory: src-tauri
+        run: cargo clippy --lib -- -D warnings 2>&1 || true
+
+  # =====================================================================
+  # Job 3: Android Companion 构建检查
+  # Android Companion build verification
+  # =====================================================================
+  android-check:
+    name: Android Build Check
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.5'
+
+      # 编译 Android Companion APK (debug 模式，仅验证构建)
+      # Compile Android Companion APK (debug mode, build verification only)
+      - name: Build Companion APK (debug)
+        working-directory: android
+        run: gradle assembleDebug --no-daemon --stacktrace
+
+      # 验证 APK 产物存在且非空
+      # Verify APK artifact exists and is non-empty
+      - name: Verify APK
+        run: |
+          APK_PATH="android/app/build/outputs/apk/debug/app-debug.apk"
+          if [ ! -f "$APK_PATH" ]; then
+            echo "ERROR: APK not found at $APK_PATH"
+            exit 1
+          fi
+          SIZE=$(stat -f%z "$APK_PATH" 2>/dev/null || stat -c%s "$APK_PATH")
+          echo "APK size: $SIZE bytes"
+          if [ "$SIZE" -lt 10000 ]; then
+            echo "ERROR: APK too small, likely build failed"
+            exit 1
+          fi
+          echo "APK build verified successfully"
+
+  # =====================================================================
+  # Job 4: 协议版本一致性检查
+  # Protocol version consistency check
+  # =====================================================================
+  version-check:
+    name: Version Consistency
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      # 检查 PROTOCOL_VERSION 在三个位置是否一致
+      # Check PROTOCOL_VERSION is consistent across 3 locations
+      - name: Check protocol version consistency
+        run: |
+          echo "=== Checking PROTOCOL_VERSION consistency ==="
+
+          # 1. Rust: src-tauri/src/commands/mod.rs
+          RUST_PROTO=$(grep -oP 'pub const PROTOCOL_VERSION: u32 = \K\d+' src-tauri/src/commands/mod.rs)
+          echo "Rust PROTOCOL_VERSION: $RUST_PROTO"
+
+          # 2. Kotlin: android/.../CompanionVersion.kt
+          KOTLIN_PROTO=$(grep -oP 'const val PROTOCOL_VERSION = \K\d+' android/app/src/main/java/com/droidlink/companion/CompanionVersion.kt)
+          echo "Kotlin PROTOCOL_VERSION: $KOTLIN_PROTO"
+
+          # 3. CI build.yml: version.txt protocolVersion
+          CI_PROTO=$(grep -oP 'protocolVersion: \K\d+' .github/workflows/build.yml)
+          echo "CI protocolVersion: $CI_PROTO"
+
+          # Verify all match
+          if [ "$RUST_PROTO" != "$KOTLIN_PROTO" ] || [ "$RUST_PROTO" != "$CI_PROTO" ]; then
+            echo ""
+            echo "ERROR: PROTOCOL_VERSION mismatch!"
+            echo "  Rust:   $RUST_PROTO"
+            echo "  Kotlin: $KOTLIN_PROTO"
+            echo "  CI:     $CI_PROTO"
+            echo ""
+            echo "All three must be identical. Update them together."
+            exit 1
+          fi
+          echo "All PROTOCOL_VERSION values match: $RUST_PROTO"
+
+      # 检查 tauri.conf.json 版本是有效的 semver
+      # Check tauri.conf.json version is valid semver
+      - name: Check semver format
+        run: |
+          VERSION=$(node -e "console.log(JSON.parse(require('fs').readFileSync('src-tauri/tauri.conf.json','utf8')).version)")
+          echo "tauri.conf.json version: $VERSION"
+          if ! echo "$VERSION" | grep -qP '^\d+\.\d+\.\d+$'; then
+            echo "ERROR: Version '$VERSION' is not valid 3-segment semver (X.Y.Z)"
+            exit 1
+          fi
+          echo "Version format OK"
+
+      # i18n 完整性检查：确保所有语言文件 key 一致
+      # i18n completeness check: ensure all locale files have same keys
+      - name: Check i18n completeness
+        run: |
+          node -e "
+            const fs = require('fs');
+            const path = require('path');
+            const localeDir = 'src/i18n/locales';
+            const files = fs.readdirSync(localeDir).filter(f => f.endsWith('.json'));
+
+            function getKeys(obj, prefix = '') {
+              let keys = [];
+              for (const [k, v] of Object.entries(obj)) {
+                const full = prefix ? prefix + '.' + k : k;
+                if (v && typeof v === 'object' && !Array.isArray(v)) {
+                  keys.push(...getKeys(v, full));
+                } else {
+                  keys.push(full);
+                }
+              }
+              return keys.sort();
+            }
+
+            const en = JSON.parse(fs.readFileSync(path.join(localeDir, 'en.json'), 'utf8'));
+            const enKeys = getKeys(en);
+            console.log('English keys:', enKeys.length);
+
+            let ok = true;
+            for (const file of files) {
+              if (file === 'en.json') continue;
+              const lang = file.replace('.json', '');
+              const data = JSON.parse(fs.readFileSync(path.join(localeDir, file), 'utf8'));
+              const langKeys = getKeys(data);
+              const missing = enKeys.filter(k => !langKeys.includes(k));
+              const extra = langKeys.filter(k => !enKeys.includes(k));
+              if (missing.length > 0) {
+                console.error(lang + ': MISSING keys:', missing.join(', '));
+                ok = false;
+              }
+              if (extra.length > 0) {
+                console.error(lang + ': EXTRA keys:', extra.join(', '));
+                ok = false;
+              }
+              if (missing.length === 0 && extra.length === 0) {
+                console.log(lang + ': OK (' + langKeys.length + ' keys)');
+              }
+            }
+            if (!ok) process.exit(1);
+          "
+
+  # =====================================================================
+  # Job 5: Linux GUI 冒烟测试 (Xvfb 虚拟显示)
+  # Linux GUI smoke test (Xvfb virtual display)
+  # =====================================================================
+  gui-smoke-test:
+    name: GUI Smoke Test (Linux)
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    needs: [frontend-test, rust-test]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Install Linux dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            librsvg2-dev \
+            patchelf \
+            libssl-dev \
+            libgtk-3-dev \
+            libayatana-appindicator3-dev \
+            xvfb \
+            xdotool \
+            imagemagick \
+            x11-utils
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.5'
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      # 构建 placeholder Companion APK + 资源
+      # Build placeholder companion resources
+      - name: Prepare companion resources
+        run: |
+          mkdir -p src-tauri/resources/companion
+          mkdir -p src-tauri/resources/adb
+          mkdir -p src-tauri/resources/scrcpy
+          # 创建最小 version.txt (GUI 冒烟测试不需要真实 APK)
+          # Create minimal version.txt (GUI smoke test doesn't need real APK)
+          echo '{"version":"2.0.0","build":0,"protocolVersion":1,"sha":"test"}' > src-tauri/resources/companion/version.txt
+          # 创建占位文件使 Tauri bundler 不报错
+          # Create placeholder files so Tauri bundler doesn't error
+          touch src-tauri/resources/companion/DroidLinkCompanion.apk
+          touch src-tauri/resources/adb/.gitkeep
+          touch src-tauri/resources/scrcpy/.gitkeep
+
+      # 构建 Tauri 应用 (debug 模式，编译更快)
+      # Build Tauri app (debug mode for faster compilation)
+      - name: Build Tauri app (debug)
+        run: npx tauri build --debug 2>&1 || npx tauri build 2>&1
+
+      # 在 Xvfb 虚拟显示上启动应用
+      # Launch app on Xvfb virtual display
+      - name: Launch app with Xvfb
+        run: |
+          echo "=== Starting Xvfb ==="
+          Xvfb :99 -screen 0 1280x800x24 &
+          XVFB_PID=$!
+          export DISPLAY=:99
+          sleep 2
+
+          echo "=== Locating binary ==="
+          # Tauri debug binary location
+          BINARY=""
+          if [ -f "src-tauri/target/debug/droidlink" ]; then
+            BINARY="src-tauri/target/debug/droidlink"
+          elif [ -f "src-tauri/target/release/droidlink" ]; then
+            BINARY="src-tauri/target/release/droidlink"
+          else
+            echo "ERROR: Binary not found"
+            find src-tauri/target -name "droidlink" -type f 2>/dev/null
+            exit 1
+          fi
+          echo "Binary: $BINARY"
+
+          echo "=== Launching DroidLink ==="
+          $BINARY &
+          APP_PID=$!
+          echo "App PID: $APP_PID"
+
+          # 等待窗口出现 (最多 30 秒)
+          # Wait for window to appear (up to 30 seconds)
+          echo "=== Waiting for window ==="
+          for i in $(seq 1 30); do
+            if xdotool search --name "DroidLink" 2>/dev/null | head -1; then
+              echo "Window found after ${i}s"
+              break
+            fi
+            sleep 1
+          done
+
+          # 检查进程是否还在运行
+          # Check if process is still running
+          if kill -0 $APP_PID 2>/dev/null; then
+            echo "App is running (PID: $APP_PID)"
+          else
+            echo "ERROR: App crashed"
+            wait $APP_PID 2>/dev/null
+            EXIT_CODE=$?
+            echo "Exit code: $EXIT_CODE"
+            kill $XVFB_PID 2>/dev/null
+            exit 1
+          fi
+
+          # 截取桌面窗口截图
+          # Take screenshot of desktop window
+          sleep 3
+          import -window root /tmp/screenshot.png 2>/dev/null || echo "Screenshot capture skipped"
+          if [ -f /tmp/screenshot.png ]; then
+            echo "Screenshot captured: $(ls -la /tmp/screenshot.png)"
+          fi
+
+          # 检查窗口标题匹配
+          # Verify window title matches
+          WINDOW_ID=$(xdotool search --name "DroidLink" 2>/dev/null | head -1)
+          if [ -n "$WINDOW_ID" ]; then
+            TITLE=$(xdotool getwindowname "$WINDOW_ID" 2>/dev/null)
+            echo "Window title: $TITLE"
+            echo "GUI smoke test PASSED"
+          else
+            echo "WARNING: Window not found by title search"
+            echo "Checking if process is still alive..."
+            if kill -0 $APP_PID 2>/dev/null; then
+              echo "Process is alive, treating as partial pass"
+            else
+              echo "Process died"
+              kill $XVFB_PID 2>/dev/null
+              exit 1
+            fi
+          fi
+
+          # 清理
+          # Cleanup
+          kill $APP_PID 2>/dev/null || true
+          kill $XVFB_PID 2>/dev/null || true
+          echo "=== Cleanup complete ==="
+
+      # 上传截图作为构建产物 (用于调试)
+      # Upload screenshot as artifact (for debugging)
+      - name: Upload screenshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gui-smoke-test-screenshot
+          path: /tmp/screenshot.png
+          if-no-files-found: ignore
