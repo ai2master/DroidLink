@@ -95,6 +95,18 @@ jobs:
         with:
           workspaces: src-tauri
 
+      # Tauri 构建脚本要求资源文件存在 (即使只跑测试)
+      # Tauri build script requires resource files to exist (even for tests only)
+      - name: Prepare resource placeholders
+        run: |
+          mkdir -p src-tauri/resources/companion
+          mkdir -p src-tauri/resources/adb
+          mkdir -p src-tauri/resources/scrcpy
+          echo '{"version":"2.0.0","build":0,"protocolVersion":1,"sha":"test"}' > src-tauri/resources/companion/version.txt
+          touch src-tauri/resources/companion/DroidLinkCompanion.apk
+          touch src-tauri/resources/adb/.gitkeep
+          touch src-tauri/resources/scrcpy/.gitkeep
+
       # cargo test: 运行所有 #[test] 标注的单元测试
       # cargo test: run all #[test] annotated unit tests
       - name: Run cargo test
